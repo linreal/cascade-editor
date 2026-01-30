@@ -41,7 +41,7 @@ public class CascadeEditorState {
     /**
      * Updates the blocks in the editor.
      */
-    public fun setBlocks(newBlocks: List<Block>) {
+    public fun updateBlocks(newBlocks: List<Block>) {
         blocks = newBlocks
     }
 
