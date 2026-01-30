@@ -22,10 +22,6 @@ public data class CascadeEditorConfig(
      */
     val enableSlashCommands: Boolean = true,
 
-    /**
-     * Placeholder text shown in empty text blocks.
-     */
-    val placeholder: String = "Type '/' for commands...",
 ) {
     public companion object {
         /**
