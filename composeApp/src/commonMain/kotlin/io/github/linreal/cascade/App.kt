@@ -9,24 +9,35 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
-import io.github.linreal.cascade.editor.loge
-import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
+import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.state.rememberEditorState
+import io.github.linreal.cascade.editor.ui.CascadeEditor
 
 @Composable
 @Preview
 fun App() {
     MaterialTheme {
+        // Create initial blocks for the editor
+        val initialBlocks = remember {
+            listOf(
+                Block.paragraph("Welcome to CascadeEditor!"),
+                Block.paragraph("Press Enter to split a block."),
+                Block.paragraph("Press Backspace at the start to merge with the previous block.")
+            )
+        }
+
+        val editorState = rememberEditorState(initialBlocks)
+
         Box(
             modifier = Modifier
-                .background(Color.Gray)
+                .background(Color.White)
                 .safeContentPadding()
                 .fillMaxSize(),
         ) {
-            BackspaceAwareTextField(
-                modifier = Modifier.background(Color.Blue),
-                onBackspaceAtStart = {
-                    loge(tag = "BackspaceAwareTextField", "Backspace at start")
-                })
+            CascadeEditor(
+                stateHolder = editorState,
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }
