@@ -4,7 +4,6 @@ import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
-import io.github.linreal.cascade.editor.loge
 import io.github.linreal.cascade.editor.state.DragState
 import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.SlashCommandState
@@ -170,13 +169,8 @@ public data class MergeBlocks(
         // Only merge text content
         val sourceText = (sourceBlock.content as? BlockContent.Text)?.text ?: return state
         val targetText = (targetBlock.content as? BlockContent.Text)?.text ?: return state
-        loge(
-            tag = "DefaultBlockCallbacks",
-            message = "sourceText: $sourceText targetText: $targetText"
-        )
 
         val mergedText = targetText + sourceText
-        val cursorPosition = targetText.length
 
         // Update target with merged content
         val newBlocks = state.blocks
@@ -188,16 +182,9 @@ public data class MergeBlocks(
                 }
             }
             .filterNot { it.id == sourceId }
-        newBlocks.forEach {
-            loge(
-                tag = "DefaultBlockCallbacks",
-                message = "newBlocks: ${it.content}"
-            )
-        }
         return state.copy(
             blocks = newBlocks,
             focusedBlockId = targetId,
-            cursorPosition = cursorPosition,
             selectedBlockIds = state.selectedBlockIds - sourceId
         )
     }
@@ -328,17 +315,16 @@ public data object SelectAll : EditorAction {
 // =============================================================================
 
 /**
- * Focuses a block with optional cursor position.
+ * Focuses a block.
+ *
+ * Note: Cursor position is managed by BlockTextStates, not EditorState.
+ * Use BlockTextStates.setCursorPosition() for programmatic cursor control.
  */
 public data class FocusBlock(
-    val blockId: BlockId?,
-    val cursorPosition: Int? = null
+    val blockId: BlockId?
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
-        return state.copy(
-            focusedBlockId = blockId,
-            cursorPosition = cursorPosition
-        )
+        return state.copy(focusedBlockId = blockId)
     }
 }
 
@@ -350,10 +336,7 @@ public data object FocusNextBlock : EditorAction {
         val currentIndex = state.focusedBlockId?.let { state.indexOfBlock(it) } ?: -1
         val nextIndex = (currentIndex + 1).coerceAtMost(state.blocks.size - 1)
         if (nextIndex < 0 || state.blocks.isEmpty()) return state
-        return state.copy(
-            focusedBlockId = state.blocks[nextIndex].id,
-            cursorPosition = 0
-        )
+        return state.copy(focusedBlockId = state.blocks[nextIndex].id)
     }
 }
 
@@ -365,12 +348,7 @@ public data object FocusPreviousBlock : EditorAction {
         val currentIndex = state.focusedBlockId?.let { state.indexOfBlock(it) } ?: state.blocks.size
         val prevIndex = (currentIndex - 1).coerceAtLeast(0)
         if (prevIndex < 0 || state.blocks.isEmpty()) return state
-        val prevBlock = state.blocks[prevIndex]
-        val cursorPos = (prevBlock.content as? BlockContent.Text)?.text?.length
-        return state.copy(
-            focusedBlockId = prevBlock.id,
-            cursorPosition = cursorPos
-        )
+        return state.copy(focusedBlockId = state.blocks[prevIndex].id)
     }
 }
 
@@ -379,7 +357,7 @@ public data object FocusPreviousBlock : EditorAction {
  */
 public data object ClearFocus : EditorAction {
     override fun reduce(state: EditorState): EditorState {
-        return state.copy(focusedBlockId = null, cursorPosition = null)
+        return state.copy(focusedBlockId = null)
     }
 }
 
@@ -487,18 +465,30 @@ public data object CloseSlashCommand : EditorAction {
 
 /**
  * Splits a block at the cursor position, creating a new block below.
+ *
+ * When [newBlockText] is provided (from BlockTextStates), it is used directly
+ * for the new block. The source block's content is NOT modified since
+ * TextFieldState is the source of truth during editing.
+ *
+ * When [newBlockText] is null, falls back to computing text from block content.
+ *
+ * @param blockId The block to split
+ * @param atPosition Cursor position where split occurs
+ * @param newBlockText Optional text for the new block (from BlockTextStates)
  */
 public data class SplitBlock(
     val blockId: BlockId,
-    val atPosition: Int
+    val atPosition: Int,
+    val newBlockText: String? = null
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val block = state.getBlock(blockId) ?: return state
         val textContent = block.content as? BlockContent.Text ?: return state
-        val text = textContent.text
+        val blockIndex = state.indexOfBlock(blockId)
 
-        val beforeText = text.take(atPosition)
-        val afterText = text.drop(atPosition)
+        // Use provided text or compute from block content
+        val afterText = newBlockText ?: textContent.text.drop(atPosition)
+        val beforeText = if (newBlockText != null) null else textContent.text.take(atPosition)
 
         val newBlock = Block(
             id = BlockId.generate(),
@@ -506,16 +496,17 @@ public data class SplitBlock(
             content = BlockContent.Text(afterText)
         )
 
-        val blockIndex = state.indexOfBlock(blockId)
         val newBlocks = state.blocks.toMutableList().apply {
-            this[blockIndex] = block.withContent(BlockContent.Text(beforeText))
+            // Only update source block if we computed the split ourselves
+            if (beforeText != null) {
+                this[blockIndex] = block.withContent(BlockContent.Text(beforeText))
+            }
             add(blockIndex + 1, newBlock)
         }
 
         return state.copy(
             blocks = newBlocks,
-            focusedBlockId = newBlock.id,
-            cursorPosition = 0
+            focusedBlockId = newBlock.id
         )
     }
 }

@@ -56,7 +56,6 @@ class EditorStateTest {
             blocks = listOf(block1, block2, block3),
             focusedBlockId = BlockId("2"),
             selectedBlockIds = setOf(BlockId("1"), BlockId("2")),
-            cursorPosition = null,
             dragState = null,
             slashCommandState = null
         )
@@ -98,7 +97,6 @@ class EditorStateTest {
             blocks = listOf(block1, block2),
             focusedBlockId = null,
             selectedBlockIds = setOf(BlockId("1")),
-            cursorPosition = null,
             dragState = null,
             slashCommandState = null
         )
@@ -116,7 +114,6 @@ class EditorStateTest {
             blocks = listOf(block1, block2),
             focusedBlockId = null,
             selectedBlockIds = setOf(BlockId("1")),
-            cursorPosition = null,
             dragState = null,
             slashCommandState = null
         )
@@ -154,7 +151,6 @@ class EditorStateTest {
         assertEquals(1, newState.blocks.size)
         assertEquals("Hello World", (newState.blocks[0].content as BlockContent.Text).text)
         assertEquals(BlockId("1"), newState.focusedBlockId)
-        assertEquals(6, newState.cursorPosition) // Position after "Hello "
     }
 
     @Test
@@ -168,7 +164,6 @@ class EditorStateTest {
         assertEquals("Hello", (newState.blocks[0].content as BlockContent.Text).text)
         assertEquals("World", (newState.blocks[1].content as BlockContent.Text).text)
         assertEquals(newState.blocks[1].id, newState.focusedBlockId)
-        assertEquals(0, newState.cursorPosition)
     }
 
     @Test
@@ -179,7 +174,6 @@ class EditorStateTest {
         val block4 = createTestBlock("4")
         val state = EditorState.withBlocks(listOf(block1, block2, block3, block4))
 
-        // Move block1 and block2 to position 3 (after block4)
         val newState = MoveBlocks(setOf(BlockId("1"), BlockId("2")), toIndex = 2).reduce(state)
 
         assertEquals(listOf(block3, block4, block1, block2).map { it.id }, newState.blocks.map { it.id })
@@ -205,7 +199,6 @@ class EditorStateTest {
             blocks = listOf(block1, block2),
             focusedBlockId = null,
             selectedBlockIds = setOf(BlockId("1"), BlockId("2")),
-            cursorPosition = null,
             dragState = null,
             slashCommandState = null
         )

@@ -28,7 +28,7 @@ class BlockTest {
     @Test
     fun `block creation with text content`() {
         val block = Block(
-            id = "test-1",
+            id = BlockId("test-1"),
             type = BlockType.Paragraph,
             content = BlockContent.Text("Hello, World!")
         )

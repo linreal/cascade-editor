@@ -35,7 +35,6 @@ public data class EditorState(
     val blocks: List<Block>,
     val focusedBlockId: BlockId?,
     val selectedBlockIds: Set<BlockId>,
-    val cursorPosition: Int?,
     val dragState: DragState?,
     val slashCommandState: SlashCommandState?
 ) {
@@ -81,7 +80,6 @@ public data class EditorState(
             blocks = emptyList(),
             focusedBlockId = null,
             selectedBlockIds = emptySet(),
-            cursorPosition = null,
             dragState = null,
             slashCommandState = null
         )
@@ -93,7 +91,6 @@ public data class EditorState(
             blocks = blocks,
             focusedBlockId = null,
             selectedBlockIds = emptySet(),
-            cursorPosition = null,
             dragState = null,
             slashCommandState = null
         )

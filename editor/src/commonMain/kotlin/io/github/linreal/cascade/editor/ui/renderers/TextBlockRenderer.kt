@@ -11,16 +11,20 @@ import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockType
-import io.github.linreal.cascade.editor.loge
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderer
 import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
+import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
 
 /**
  * Renderer for text-supporting block types (paragraph, headings, lists, etc.).
  *
  * Uses [BackspaceAwareTextField] for text editing with backspace detection.
  * Handles focus management internally based on [isFocused] parameter.
+ *
+ * Text state is managed via [LocalBlockTextStates], which provides a
+ * [TextFieldState] per block. This enables direct manipulation of text
+ * for operations like merge without LaunchedEffect syncing.
  */
 public class TextBlockRenderer : BlockRenderer<BlockType> {
 
@@ -32,12 +36,14 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
         modifier: Modifier,
         callbacks: BlockCallbacks
     ) {
-        loge(
-            tag = "DefaultBlockCallbacks",
-            message = "comose: ${block.content}"
-        )
         val textContent = block.content as? BlockContent.Text ?: return
         val focusRequester = remember { FocusRequester() }
+
+        // Get TextFieldState from the shared holder
+        val blockTextStates = LocalBlockTextStates.current
+        val textFieldState = remember(block.id) {
+            blockTextStates.getOrCreate(block.id, textContent.text)
+        }
 
         // Request focus when this block becomes focused
         LaunchedEffect(isFocused) {
@@ -50,19 +56,11 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
             getTextStyleForType(block.type)
         }
 
-        loge(
-            tag = "DefaultBlockCallbacks",
-            message = "comose2: ${textContent.text}"
-        )
-
         BackspaceAwareTextField(
+            state = textFieldState,
             modifier = modifier.fillMaxWidth(),
-            initialText = textContent.text,
             textStyle = textStyle,
             focusRequester = focusRequester,
-            onTextChange = { text, _ ->
-                callbacks.onTextChange(block.id, text)
-            },
             onBackspaceAtStart = {
                 callbacks.onBackspaceAtStart(block.id)
             },

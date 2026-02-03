@@ -5,11 +5,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
+import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorStateHolder
 
 /**
@@ -20,6 +23,10 @@ import io.github.linreal.cascade.editor.state.EditorStateHolder
  * - Block splitting on Enter
  * - Block merging on Backspace at start
  * - Focus management between blocks
+ *
+ * Text state is managed via [BlockTextStates], which provides a single
+ * source of truth for all text content. This enables direct manipulation
+ * of text for operations like merge without LaunchedEffect syncing issues.
  *
  * @param stateHolder The state holder managing editor state
  * @param registry Block registry with renderers. Defaults to [createEditorRegistry].
@@ -33,35 +40,47 @@ public fun CascadeEditor(
 ) {
     val state = stateHolder.state
 
-    // Create callbacks with state access for proper merge/delete handling
-    val callbacks = remember(stateHolder) {
+    // Create and remember the text states holder
+    val blockTextStates = remember { BlockTextStates() }
+
+    // Cleanup stale states when blocks change
+    LaunchedEffect(state.blocks) {
+        val existingIds = state.blocks.map { it.id }.toSet()
+        blockTextStates.cleanup(existingIds)
+    }
+
+    // Create callbacks with state access and text states for proper merge handling
+    val callbacks = remember(stateHolder, blockTextStates) {
         DefaultBlockCallbacks(
             dispatchFn = { action -> stateHolder.dispatch(action) },
-            stateProvider = { stateHolder.state }
+            stateProvider = { stateHolder.state },
+            blockTextStates = blockTextStates
         )
     }
 
-    LazyColumn(
-        modifier = modifier.fillMaxWidth()
-    ) {
-        items(
-            items = state.blocks,
-            key = { block -> block.id.value }
-        ) { block ->
-            val isFocused = state.focusedBlockId == block.id
-            val isSelected = block.id in state.selectedBlockIds
+    CompositionLocalProvider(LocalBlockTextStates provides blockTextStates) {
+        LazyColumn(
+            modifier = modifier.fillMaxWidth()
+        ) {
+            items(
+                items = state.blocks,
+                key = { block -> block.id.value }
+            ) { block ->
+                val isFocused = state.focusedBlockId == block.id
+                val isSelected = block.id in state.selectedBlockIds
 
-            // Look up renderer for this block type
-            val renderer = registry.getRenderer(block.type.typeId)
+                // Look up renderer for this block type
+                val renderer = registry.getRenderer(block.type.typeId)
 
-            renderer?.Render(
-                block = block,
-                isSelected = isSelected,
-                isFocused = isFocused,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                callbacks = callbacks
-            )
-            // Blocks without registered renderers are silently skipped
+                renderer?.Render(
+                    block = block,
+                    isSelected = isSelected,
+                    isFocused = isFocused,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    callbacks = callbacks
+                )
+                // Blocks without registered renderers are silently skipped
+            }
         }
     }
 }

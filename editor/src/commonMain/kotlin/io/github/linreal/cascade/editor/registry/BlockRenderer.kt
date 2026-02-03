@@ -2,20 +2,19 @@ package io.github.linreal.cascade.editor.registry
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import io.github.linreal.cascade.editor.action.DeleteBlock
 import io.github.linreal.cascade.editor.action.EditorAction
 import io.github.linreal.cascade.editor.action.FocusBlock
 import io.github.linreal.cascade.editor.action.FocusNextBlock
 import io.github.linreal.cascade.editor.action.FocusPreviousBlock
-import io.github.linreal.cascade.editor.action.MergeBlocks
 import io.github.linreal.cascade.editor.action.OpenSlashCommand
 import io.github.linreal.cascade.editor.action.SplitBlock
 import io.github.linreal.cascade.editor.action.StartDrag
-import io.github.linreal.cascade.editor.action.UpdateBlockText
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
-import io.github.linreal.cascade.editor.loge
+import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorState
 
 /**
@@ -29,14 +28,9 @@ public interface BlockCallbacks {
     public fun dispatch(action: EditorAction)
 
     /**
-     * Called when text content changes.
-     */
-    public fun onTextChange(blockId: BlockId, text: String)
-
-    /**
      * Called when the block receives focus.
      */
-    public fun onFocus(blockId: BlockId, cursorPosition: Int?)
+    public fun onFocus(blockId: BlockId)
 
     /**
      * Called when the block loses focus.
@@ -80,24 +74,25 @@ public interface BlockCallbacks {
 /**
  * Default implementation of [BlockCallbacks] that delegates to dispatch.
  *
+ * Uses [BlockTextStates] for text operations like merge and split, ensuring
+ * the TextFieldState is the single source of truth for text content.
+ *
  * @param dispatchFn Function to dispatch actions
  * @param stateProvider Optional provider for current editor state, enables merge/delete logic
+ * @param blockTextStates Manager for per-block TextFieldState instances
  */
 public open class DefaultBlockCallbacks(
     private val dispatchFn: (EditorAction) -> Unit,
-    private val stateProvider: (() -> EditorState)? = null
+    private val stateProvider: (() -> EditorState)? = null,
+    private val blockTextStates: BlockTextStates? = null
 ) : BlockCallbacks {
 
     override fun dispatch(action: EditorAction) {
         dispatchFn(action)
     }
 
-    override fun onTextChange(blockId: BlockId, text: String) {
-        dispatch(UpdateBlockText(blockId, text))
-    }
-
-    override fun onFocus(blockId: BlockId, cursorPosition: Int?) {
-        dispatch(FocusBlock(blockId, cursorPosition))
+    override fun onFocus(blockId: BlockId) {
+        dispatch(FocusBlock(blockId))
     }
 
     override fun onBlur(blockId: BlockId) {
@@ -105,18 +100,44 @@ public open class DefaultBlockCallbacks(
     }
 
     override fun onEnter(blockId: BlockId, cursorPosition: Int) {
-        dispatch(SplitBlock(blockId, cursorPosition))
+        val textStates = blockTextStates
+        val state = stateProvider?.invoke()
+
+        if (textStates != null && state != null) {
+            // Get current text from TextFieldState (source of truth)
+            val currentText = textStates.getVisibleText(blockId) ?: ""
+
+            // Split the text
+            val beforeText = currentText.take(cursorPosition)
+            val afterText = currentText.drop(cursorPosition)
+
+            // Update current block's text to only have the "before" portion
+            textStates.setText(blockId, beforeText, beforeText.length)
+
+            // Dispatch split action with the "after" text for the new block
+            dispatch(SplitBlock(blockId, cursorPosition, afterText))
+        } else {
+            // Fallback to original behavior
+            dispatch(SplitBlock(blockId, cursorPosition, null))
+        }
     }
 
     override fun onBackspaceAtStart(blockId: BlockId) {
         val state = stateProvider?.invoke()
+        val textStates = blockTextStates
+
         if (state != null) {
             val blockIndex = state.indexOfBlock(blockId)
             if (blockIndex > 0) {
                 val previousBlock = state.blocks[blockIndex - 1]
                 // Only merge if previous block supports text
                 if (previousBlock.type.supportsText && previousBlock.content is BlockContent.Text) {
-                    dispatch(MergeBlocks(sourceId = blockId, targetId = previousBlock.id))
+                    // Perform text merge in BlockTextStates
+                    textStates?.mergeInto(sourceId = blockId, targetId = previousBlock.id)
+
+                    // Dispatch action to remove source block and update focus
+                    dispatch(DeleteBlock(blockId))
+                    dispatch(FocusBlock(previousBlock.id))
                     return
                 }
             }
@@ -131,13 +152,27 @@ public open class DefaultBlockCallbacks(
 
     override fun onDeleteAtEnd(blockId: BlockId) {
         val state = stateProvider?.invoke()
+        val textStates = blockTextStates
+
         if (state != null) {
             val blockIndex = state.indexOfBlock(blockId)
             if (blockIndex < state.blocks.size - 1) {
                 val nextBlock = state.blocks[blockIndex + 1]
                 // Only merge if next block supports text
                 if (nextBlock.type.supportsText && nextBlock.content is BlockContent.Text) {
-                    dispatch(MergeBlocks(sourceId = nextBlock.id, targetId = blockId))
+                    // Get cursor position before merge (end of current text)
+                    val cursorPos = textStates?.getVisibleText(blockId)?.length
+
+                    // Perform text merge in BlockTextStates (nextBlock into current)
+                    textStates?.mergeInto(sourceId = nextBlock.id, targetId = blockId)
+
+                    // Dispatch action to remove source block
+                    dispatch(DeleteBlock(nextBlock.id))
+
+                    // Restore cursor position if needed
+                    if (cursorPos != null) {
+                        textStates?.setCursorPosition(blockId, cursorPos)
+                    }
                     return
                 }
             }
