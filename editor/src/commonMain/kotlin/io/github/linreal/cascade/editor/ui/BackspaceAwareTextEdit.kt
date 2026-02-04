@@ -11,9 +11,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 
 
@@ -44,7 +46,8 @@ public fun BackspaceAwareTextField(
     textStyle: TextStyle = TextStyle(fontSize = 16.sp),
     focusRequester: FocusRequester? = null,
     onBackspaceAtStart: () -> Unit,
-    onEnterPressed: (cursorPosition: Int) -> Unit
+    onEnterPressed: (cursorPosition: Int) -> Unit,
+    onTextLayout: (Density.(getResult: () -> TextLayoutResult?) -> Unit)? = null,
 ) {
     val sentinelGuard = remember {
         InputTransformation {
@@ -76,6 +79,7 @@ public fun BackspaceAwareTextField(
         inputTransformation = sentinelGuard,
         textStyle = textStyle,
         modifier = baseModifier,
+        onTextLayout = onTextLayout ,
         keyboardOptions = KeyboardOptions(
             imeAction = ImeAction.Next
         ),

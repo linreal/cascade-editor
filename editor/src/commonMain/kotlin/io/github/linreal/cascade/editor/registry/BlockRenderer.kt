@@ -14,6 +14,7 @@ import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
+import io.github.linreal.cascade.editor.loge
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorState
 
@@ -33,11 +34,6 @@ public interface BlockCallbacks {
     public fun onFocus(blockId: BlockId)
 
     /**
-     * Called when the block loses focus.
-     */
-    public fun onBlur(blockId: BlockId)
-
-    /**
      * Called when the user presses Enter.
      * @param cursorPosition Position where Enter was pressed
      */
@@ -55,10 +51,15 @@ public interface BlockCallbacks {
 
     /**
      * Called when the user clicks the block (for selection).
-     * @param isMultiSelect True if Ctrl/Cmd is held
-     * @param isRangeSelect True if Shift is held
      */
-    public fun onClick(blockId: BlockId, isMultiSelect: Boolean, isRangeSelect: Boolean)
+    public fun onClick(blockId: BlockId)
+
+    /**
+     * Called when the user clicks the block (for drag and drop, usually).
+     *
+     */
+    public fun onLongClick(blockId: BlockId)
+
 
     /**
      * Called when a drag operation starts on this block.
@@ -93,10 +94,6 @@ public open class DefaultBlockCallbacks(
 
     override fun onFocus(blockId: BlockId) {
         dispatch(FocusBlock(blockId))
-    }
-
-    override fun onBlur(blockId: BlockId) {
-        // Default: do nothing, focus is managed by incoming focus events
     }
 
     override fun onEnter(blockId: BlockId, cursorPosition: Int) {
@@ -146,8 +143,12 @@ public open class DefaultBlockCallbacks(
         dispatch(FocusPreviousBlock)
     }
 
-    override fun onClick(blockId: BlockId, isMultiSelect: Boolean, isRangeSelect: Boolean) {
-        // Implement based on modifier keys - subclasses can override
+    override fun onClick(blockId: BlockId) {
+        // TODO
+    }
+
+    override fun onLongClick(blockId: BlockId) {
+        loge(message = "Long click on block $blockId")
     }
 
     override fun onDeleteAtEnd(blockId: BlockId) {
