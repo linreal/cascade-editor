@@ -156,6 +156,31 @@ As the user drags, we need to continuously determine where the block would be dr
 - `derivedStateOf` to avoid unnecessary recalculations
 - Stable lambdas to prevent recomposition
 
+**✅ IMPLEMENTED:** Utility functions in `ui/utils/DragUtils.kt`:
+
+**Key Design Decision:** During drag, the item stays in place (semi-transparent) - it is NOT removed until drag completes. Therefore:
+- `DragState.targetIndex` stores the **visual gap position** (where indicator shows)
+- Conversion to MoveBlocks index happens only in `CompleteDrag`
+
+1. **`calculateDropTargetIndex(layoutInfo, dragY, totalCount)`**
+   - Scans visible items, finds gap closest to dragY using item midpoints
+   - Returns **visual gap position** (0 to totalCount) - NOT MoveBlocks index
+   - Gap N means "insert before item N" visually
+
+2. **`convertVisualGapToMoveBlocksIndex(visualGap, originalIndex, totalCount)`**
+   - Converts visual gap to MoveBlocks index (accounts for item removal)
+   - Returns `null` if dropping at original position (no movement needed)
+   - Called by `CompleteDrag` action when finalizing the move
+
+3. **`calculateDropIndicatorY(layoutInfo, visualGap)`**
+   - Returns Y coordinate for the given visual gap
+   - Used by Task 7 (Drop Indicator) for positioning
+
+**Index Conversion (in CompleteDrag only):**
+- Visual gap > originalIndex → MoveBlocks index = gap - 1
+- Visual gap < originalIndex → MoveBlocks index = gap
+- Visual gap == originalIndex or originalIndex+1 → null (no movement)
+
 ---
 
 ### Task 5: Block Transparency During Drag

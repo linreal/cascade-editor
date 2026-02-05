@@ -7,6 +7,7 @@ import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.state.DragState
 import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.SlashCommandState
+import io.github.linreal.cascade.editor.ui.utils.convertVisualGapToMoveBlocksIndex
 import kotlin.math.max
 import kotlin.math.min
 
@@ -425,13 +426,25 @@ public data class UpdateDragTarget(
 
 /**
  * Completes a drag operation, moving blocks to the target.
+ *
+ * The [DragState.targetIndex] stores the visual gap position (where the drop indicator shows).
+ * This is converted to the actual MoveBlocks index here, accounting for the fact that
+ * the dragged item will be removed before insertion.
  */
 public data object CompleteDrag : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val dragState = state.dragState ?: return state
-        val targetIndex = dragState.targetIndex ?: return state.copy(dragState = null)
+        val visualGap = dragState.targetIndex ?: return state.copy(dragState = null)
 
-        return MoveBlocks(dragState.draggingBlockIds, targetIndex)
+        // Convert visual gap to MoveBlocks index
+        // Returns null if dropping at original position (no movement needed)
+        val moveBlocksIndex = convertVisualGapToMoveBlocksIndex(
+            visualGap = visualGap,
+            originalIndex = dragState.primaryBlockOriginalIndex,
+            totalItemCount = state.blocks.size
+        ) ?: return state.copy(dragState = null) // No movement needed
+
+        return MoveBlocks(dragState.draggingBlockIds, moveBlocksIndex)
             .reduce(state)
             .copy(dragState = null)
     }
