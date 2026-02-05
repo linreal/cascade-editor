@@ -15,11 +15,24 @@ public data class SlashCommandState(
 
 /**
  * State for drag-and-drop operations.
+ *
+ * @property draggingBlockIds The IDs of blocks currently being dragged
+ * @property targetIndex The calculated drop position index (null if not over a valid target)
+ * @property dragOffsetY Current Y position of the drag gesture relative to the editor
+ * @property initialTouchOffsetY Y offset from the top of the primary block where touch started.
+ *           Used to prevent the preview from "jumping" - the preview top position is
+ *           calculated as (dragOffsetY - initialTouchOffsetY).
+ * @property primaryBlockOriginalIndex Original list index of the primary dragged block
+ *           (the block the user actually touched to initiate drag). Used for visual
+ *           calculations like placeholder rendering.
  */
 @Immutable
 public data class DragState(
     val draggingBlockIds: Set<BlockId>,
-    val targetIndex: Int?
+    val targetIndex: Int?,
+    val dragOffsetY: Float = 0f,
+    val initialTouchOffsetY: Float = 0f,
+    val primaryBlockOriginalIndex: Int = -1
 )
 
 /**
