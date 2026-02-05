@@ -39,6 +39,11 @@ Current `DragState` only has `draggingBlockIds` and `targetIndex`. For visual fe
 - State hoisting patterns
 - `derivedStateOf` for computed values from state
 
+**✅ IMPLEMENTED:** Enhanced `DragState` in `state/EditorState.kt` with:
+- `dragOffsetY: Float` - current Y position relative to editor
+- `initialTouchOffsetY: Float` - touch offset within the block (for preview positioning)
+- `primaryBlockOriginalIndex: Int` - original index of the touched block
+
 ---
 
 ### Task 2: Drag Gesture Detection Modifier
@@ -63,6 +68,41 @@ We need a unified mechanism that can be applied to any block type. Using a modif
 - Key parameter importance for gesture state reset
 - `Modifier.onGloballyPositioned` - to capture block's size and absolute position for drop target calculations
 
+**✅ IMPLEMENTED - Design Decision:**
+The `draggableAfterLongPress` modifier (in `ui/DragModifier.kt`) focuses **only on gesture detection**:
+- Reports touch position in element's **local coordinates** via `onDragStart(Offset)`
+- Reports drag **delta** (not cumulative) via `onDrag(Offset)`
+- Reports `onDragEnd()` and `onDragCancel()`
+
+**Position tracking is NOT included in the modifier.** Instead, Task 10 (Integration) should use `LazyListState.layoutInfo.visibleItemsInfo` to get block positions because:
+1. More efficient for lazy lists (positions already tracked by LazyColumn)
+2. Keeps the modifier simple and reusable
+3. Coordinate conversion is an integration concern
+
+**Task 10 Integration Pattern:**
+```kotlin
+val lazyListState = rememberLazyListState()
+var cumulativeDragY by remember { mutableFloatStateOf(0f) }
+
+Modifier.draggableAfterLongPress(
+    key = block.id,
+    onDragStart = { touchPosition ->
+        val itemInfo = lazyListState.layoutInfo.visibleItemsInfo
+            .find { it.key == block.id.value }
+        val blockY = itemInfo?.offset ?: 0
+        val dragOffsetY = blockY + touchPosition.y
+        cumulativeDragY = dragOffsetY
+        dispatch(StartDrag(block.id, dragOffsetY, touchPosition.y))
+    },
+    onDrag = { delta ->
+        cumulativeDragY += delta.y
+        dispatch(UpdateDrag(cumulativeDragY))
+    },
+    onDragEnd = { dispatch(CompleteDrag) },
+    onDragCancel = { dispatch(CancelDrag) }
+)
+```
+
 ---
 
 ### Task 3: Drag Actions and Reducers
@@ -84,6 +124,15 @@ Following the existing unidirectional data flow pattern, all state changes go th
 - Sealed class hierarchies for actions
 - Reducer pattern: `(State, Action) -> State`
 - Immutable state updates with `copy()`
+
+**✅ IMPLEMENTED:** All actions in `action/EditorAction.kt`:
+- `StartDrag(blockId, dragOffsetY, touchOffsetY)` - initiates drag, computes `primaryBlockOriginalIndex`
+- `UpdateDrag(currentY)` - updates `dragOffsetY` during movement
+- `UpdateDragTarget(targetIndex?)` - already existed
+- `CompleteDrag` - already existed, uses `MoveBlocks` internally
+- `CancelDrag` - already existed
+
+Also updated `BlockCallbacks.onDragStart` signature in `registry/BlockRenderer.kt` to include position parameters.
 
 ---
 
