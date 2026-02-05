@@ -4,7 +4,8 @@ This document provides an overview of the block editor architecture for new deve
 
 ## Overview
 
-CascadeEditor is a block-based editor for Compose Multiplatform. It follows a unidirectional data flow pattern where state changes only through dispatched actions.
+CascadeEditor is a block-based editor (similiar to Craft on iOS, or Notion) for Compose Multiplatform.
+It follows a unidirectional data flow pattern where state changes only through dispatched actions.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
