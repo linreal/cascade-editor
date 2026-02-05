@@ -227,7 +227,8 @@ All state changes go through actions. This ensures:
 - `ClearFocus` - Remove focus
 
 **Drag & Drop**
-- `StartDrag(blockIds)` - Begin drag
+- `StartDrag(blockId, dragOffsetY, touchOffsetY)` - Begin drag with position info
+- `UpdateDrag(currentY)` - Update current drag Y position
 - `UpdateDragTarget(targetIndex?)` - Update drop position
 - `CompleteDrag` - Execute move
 - `CancelDrag` - Abort
@@ -312,7 +313,7 @@ interface BlockCallbacks {
     fun onBackspaceAtStart(blockId: BlockId)
     fun onDeleteAtEnd(blockId: BlockId)
     fun onClick(blockId: BlockId, isMultiSelect: Boolean, isRangeSelect: Boolean)
-    fun onDragStart(blockId: BlockId)
+    fun onDragStart(blockId: BlockId, dragOffsetY: Float, touchOffsetY: Float)
     fun onSlashCommand(blockId: BlockId)
 }
 ```

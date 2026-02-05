@@ -366,14 +366,45 @@ public data object ClearFocus : EditorAction {
 // =============================================================================
 
 /**
- * Starts dragging the specified blocks.
+ * Starts dragging a block.
+ *
+ * @param blockId The ID of the block being dragged (the one user touched)
+ * @param dragOffsetY Initial Y position of the drag gesture relative to the editor
+ * @param touchOffsetY Y offset from the top of the block where the touch occurred
  */
 public data class StartDrag(
-    val blockIds: Set<BlockId>
+    val blockId: BlockId,
+    val dragOffsetY: Float,
+    val touchOffsetY: Float
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
+        val originalIndex = state.indexOfBlock(blockId)
+        if (originalIndex == -1) return state // Block not found
+
         return state.copy(
-            dragState = DragState(draggingBlockIds = blockIds, targetIndex = null)
+            dragState = DragState(
+                draggingBlockIds = setOf(blockId),
+                targetIndex = null,
+                dragOffsetY = dragOffsetY,
+                initialTouchOffsetY = touchOffsetY,
+                primaryBlockOriginalIndex = originalIndex
+            )
+        )
+    }
+}
+
+/**
+ * Updates the current drag position during a drag operation.
+ *
+ * @param currentY Current Y position of the drag gesture relative to the editor
+ */
+public data class UpdateDrag(
+    val currentY: Float
+) : EditorAction {
+    override fun reduce(state: EditorState): EditorState {
+        val currentDrag = state.dragState ?: return state
+        return state.copy(
+            dragState = currentDrag.copy(dragOffsetY = currentY)
         )
     }
 }
