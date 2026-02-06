@@ -9,6 +9,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
@@ -68,6 +69,7 @@ public fun CascadeEditor(
             ) { block ->
                 val isFocused = state.focusedBlockId == block.id
                 val isSelected = block.id in state.selectedBlockIds
+                val isDragging = state.dragState?.draggingBlockIds?.contains(block.id) == true
 
                 // Look up renderer for this block type
                 val renderer = registry.getRenderer(block.type.typeId)
@@ -76,7 +78,14 @@ public fun CascadeEditor(
                     block = block,
                     isSelected = isSelected,
                     isFocused = isFocused,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .graphicsLayer {
+                            // Apply 50% transparency to blocks being dragged
+                            // Using graphicsLayer (not alpha()) for performance:
+                            // only triggers re-draw, not re-layout
+                            alpha = if (isDragging) 0.5f else 1f
+                        },
                     callbacks = callbacks
                 )
                 // Blocks without registered renderers are silently skipped

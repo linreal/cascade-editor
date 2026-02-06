@@ -202,6 +202,13 @@ Visual feedback that indicates which block is being moved. The block stays in pl
 - Recomposition scope optimization
 - `remember` + `derivedStateOf` for alpha calculation
 
+**✅ IMPLEMENTED:** Block transparency in `ui/CascadeEditor.kt`:
+- Added `isDragging` check: `state.dragState?.draggingBlockIds?.contains(block.id) == true`
+- Applied `Modifier.graphicsLayer { alpha = if (isDragging) 0.5f else 1f }` to block items
+- Uses `graphicsLayer` (not `alpha()`) for performance - only triggers re-draw, not re-layout
+- Transparency is applied at the editor level, so all block types automatically get the same behavior
+- No changes needed in individual renderers
+
 ---
 
 ### Task 6: Dragging Preview Overlay
@@ -375,7 +382,7 @@ When users have multi-selected blocks, they should be able to drag all of them a
 
 ## Performance Checklist
 
-- [ ] Use `graphicsLayer` instead of `alpha()` modifier for transparency
+- [x] Use `graphicsLayer` instead of `alpha()` modifier for transparency (Task 5)
 - [ ] Use `Modifier.offset { }` (lambda) instead of `Modifier.offset(dp)` for animated positions
 - [ ] Use `derivedStateOf` for computed values from drag state
 - [ ] Avoid reading entire state in tight loops - read only what's needed
