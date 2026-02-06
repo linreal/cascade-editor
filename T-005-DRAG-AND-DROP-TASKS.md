@@ -264,6 +264,24 @@ An alternative approach would be inserting a real "Divider" item into the `block
 - `animateFloatAsState` for smooth indicator movement
 - `LazyListState.layoutInfo.visibleItemsInfo` for position calculation
 
+**✅ IMPLEMENTED:** Drop indicator in `ui/DropIndicator.kt` and `ui/CascadeEditor.kt`:
+
+1. **`DropIndicator` composable** (`ui/DropIndicator.kt`):
+   - Uses `Canvas` with a single `drawLine()` call - no layout overhead
+   - `derivedStateOf(keyed on targetIndex)` wraps `calculateDropIndicatorY()` to prevent unnecessary recompositions when `layoutInfo` updates don't change the Y position
+   - `animateFloatAsState` with 150ms `tween(FastOutSlowInEasing)` smooths transitions between gap positions
+   - Does not consume touch events - all gestures pass through to LazyColumn
+   - Configurable: `color` (default blue), `strokeWidth` (2dp), `horizontalPadding` (16dp, matches block padding)
+   - `StrokeCap.Round` for clean line ends
+
+2. **`CascadeEditor` changes** (`ui/CascadeEditor.kt`):
+   - Added `rememberLazyListState()` (also needed for future Task 8 auto-scroll and Task 10 integration)
+   - Wrapped `LazyColumn` in a `Box` to enable overlay composition
+   - `DropIndicator` rendered as last child in Box (draws on top of list)
+   - Only composed when `dragState != null` - zero overhead when not dragging
+
+**Coordinate system:** `calculateDropIndicatorY()` returns Y relative to LazyList viewport. Canvas fills the same Box as LazyColumn, so Y values map directly with no adjustment.
+
 ---
 
 ### Task 8: Auto-Scroll During Drag
@@ -384,9 +402,9 @@ When users have multi-selected blocks, they should be able to drag all of them a
 
 - [x] Use `graphicsLayer` instead of `alpha()` modifier for transparency (Task 5)
 - [ ] Use `Modifier.offset { }` (lambda) instead of `Modifier.offset(dp)` for animated positions
-- [ ] Use `derivedStateOf` for computed values from drag state
+- [x] Use `derivedStateOf` for computed values from drag state (Task 7 - DropIndicator)
 - [ ] Avoid reading entire state in tight loops - read only what's needed
-- [ ] Use `LazyListState.layoutInfo` instead of measuring composables
+- [x] Use `LazyListState.layoutInfo` instead of measuring composables (Task 7 - DropIndicator)
 - [ ] Consider bitmap caching for drag preview if re-composition causes jank
 - [ ] Use `animateItem()` modifier for smooth reorder animation
 - [ ] Profile with Layout Inspector to verify minimal recomposition

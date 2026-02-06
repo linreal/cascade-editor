@@ -1,9 +1,11 @@
 package io.github.linreal.cascade.editor.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -60,35 +62,49 @@ public fun CascadeEditor(
     }
 
     CompositionLocalProvider(LocalBlockTextStates provides blockTextStates) {
-        LazyColumn(
-            modifier = modifier.fillMaxWidth()
-        ) {
-            items(
-                items = state.blocks,
-                key = { block -> block.id.value }
-            ) { block ->
-                val isFocused = state.focusedBlockId == block.id
-                val isSelected = block.id in state.selectedBlockIds
-                val isDragging = state.dragState?.draggingBlockIds?.contains(block.id) == true
+        val lazyListState = rememberLazyListState()
 
-                // Look up renderer for this block type
-                val renderer = registry.getRenderer(block.type.typeId)
+        Box(modifier = modifier.fillMaxWidth()) {
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(
+                    items = state.blocks,
+                    key = { block -> block.id.value }
+                ) { block ->
+                    val isFocused = state.focusedBlockId == block.id
+                    val isSelected = block.id in state.selectedBlockIds
+                    val isDragging = state.dragState?.draggingBlockIds?.contains(block.id) == true
 
-                renderer?.Render(
-                    block = block,
-                    isSelected = isSelected,
-                    isFocused = isFocused,
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
-                        .graphicsLayer {
-                            // Apply 50% transparency to blocks being dragged
-                            // Using graphicsLayer (not alpha()) for performance:
-                            // only triggers re-draw, not re-layout
-                            alpha = if (isDragging) 0.5f else 1f
-                        },
-                    callbacks = callbacks
+                    // Look up renderer for this block type
+                    val renderer = registry.getRenderer(block.type.typeId)
+
+                    renderer?.Render(
+                        block = block,
+                        isSelected = isSelected,
+                        isFocused = isFocused,
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .graphicsLayer {
+                                // Apply 50% transparency to blocks being dragged
+                                // Using graphicsLayer (not alpha()) for performance:
+                                // only triggers re-draw, not re-layout
+                                alpha = if (isDragging) 0.5f else 1f
+                            },
+                        callbacks = callbacks
+                    )
+                    // Blocks without registered renderers are silently skipped
+                }
+            }
+
+            // Drop indicator overlay - rendered on top of LazyColumn.
+            // Canvas does not consume touch events, so gestures pass through.
+            state.dragState?.let { dragState ->
+                DropIndicator(
+                    targetIndex = dragState.targetIndex,
+                    lazyListState = lazyListState
                 )
-                // Blocks without registered renderers are silently skipped
             }
         }
     }
