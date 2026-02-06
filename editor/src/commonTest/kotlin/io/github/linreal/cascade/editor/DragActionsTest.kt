@@ -349,7 +349,7 @@ class DragActionsTest {
     // =========================================================================
 
     @Test
-    fun `full drag lifecycle - start, target, complete`() {
+    fun `full drag lifecycle - start target complete`() {
         val state = createFiveBlockState()
 
         // Start drag on C
@@ -375,7 +375,7 @@ class DragActionsTest {
     }
 
     @Test
-    fun `full drag lifecycle - start, target, cancel`() {
+    fun `full drag lifecycle - start target cancel`() {
         val state = createFiveBlockState()
 
         val s1 = StartDrag(BlockId("C"), touchOffsetY = 10f).reduce(state)

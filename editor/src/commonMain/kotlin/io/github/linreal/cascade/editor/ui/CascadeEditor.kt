@@ -94,6 +94,14 @@ public fun CascadeEditor(
                         isSelected = isSelected,
                         isFocused = isFocused,
                         modifier = Modifier
+                            // Smooth placement animation for reorder, insert, delete.
+                            // Fade disabled: during block merge, TextFieldState text moves
+                            // to target before DeleteBlock runs — a fade-out would briefly
+                            // show an empty block. Placement-only is clean.
+                            .animateItem(
+                                fadeInSpec = null,
+                                fadeOutSpec = null
+                            )
                             .padding(horizontal = 16.dp, vertical = 4.dp)
                             .graphicsLayer {
                                 // Apply 50% transparency to blocks being dragged

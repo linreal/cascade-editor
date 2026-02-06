@@ -372,6 +372,36 @@ This is the actual reordering operation that persists the user's intent.
 - This enables other (non-dragged) items to smoothly slide out of the way during reorder
 - State immutability - create new list, don't mutate
 
+**✅ IMPLEMENTED:**
+
+**State logic (actions + reducers):** Implemented in earlier tasks (Task 3):
+- `CompleteDrag` converts visual gap → MoveBlocks index via `convertVisualGapToMoveBlocksIndex()`
+- Returns null (no-op) when dropping at original position or gap immediately after
+- Delegates to `MoveBlocks` for the actual reorder, then clears `dragState`
+- `CancelDrag` simply clears `dragState`
+- `MoveBlocks` filters blocks to move, removes from original positions, inserts at target index
+- 25+ tests in `DragActionsTest.kt` covering forward/backward moves, start/end, edge cases,
+  two-item lists, full lifecycle, focus/selection preservation
+
+**Placement animation (this task):** Added in `CascadeEditor.kt`:
+- `Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)` on every LazyColumn item
+- **Placement-only** — blocks smoothly slide to new positions on reorder, insert, delete
+- **Fade disabled** — during block merge, `BlockTextStates.mergeInto()` moves text to the target
+  before `DeleteBlock` removes the source. A fade-out would briefly show an empty/stale block.
+  Placement-only animation avoids this glitch.
+- Applied as first modifier in chain (before padding/graphicsLayer) so it wraps the entire item
+- Requires `key` parameter on `items()` — already set to `block.id.value`
+- Benefits ALL list mutations, not just drag: SplitBlock, DeleteBlock, etc.
+
+**Visual flow on drag complete:**
+```
+CompleteDrag dispatched
+     │
+     ├─ dragState = null → DragPreview disappears, alpha snaps 0.5→1.0
+     ├─ blocks list reordered
+     └─ animateItem() detects position changes → all blocks slide smoothly
+```
+
 ---
 
 ### Task 10: Integrate Drag System into CascadeEditor
@@ -447,7 +477,7 @@ When users have multi-selected blocks, they should be able to drag all of them a
 - [x] Drag Y position kept as local `mutableFloatStateOf`, NOT in EditorState (Task 6 - DragPreview)
 - [x] Use `LazyListState.layoutInfo` instead of measuring composables (Task 7 - DropIndicator)
 - [ ] Consider bitmap caching for drag preview if re-composition causes jank
-- [ ] Use `animateItem()` modifier for smooth reorder animation
+- [x] Use `animateItem()` modifier for smooth reorder animation (Task 9 - placement only, fade disabled)
 - [ ] Profile with Layout Inspector to verify minimal recomposition
 
 ---
