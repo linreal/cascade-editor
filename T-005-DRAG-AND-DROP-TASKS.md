@@ -40,9 +40,13 @@ Current `DragState` only has `draggingBlockIds` and `targetIndex`. For visual fe
 - `derivedStateOf` for computed values from state
 
 **✅ IMPLEMENTED:** Enhanced `DragState` in `state/EditorState.kt` with:
-- `dragOffsetY: Float` - current Y position relative to editor
-- `initialTouchOffsetY: Float` - touch offset within the block (for preview positioning)
+- `initialTouchOffsetY: Float` - touch offset within the block (for preview positioning, set once)
 - `primaryBlockOriginalIndex: Int` - original index of the touched block
+
+**Performance note:** `dragOffsetY` (current drag position) is intentionally NOT in `DragState`.
+It updates at ~60-120fps during drag and would trigger full-tree recomposition if stored in
+`EditorState`. Instead, it should be tracked as a local `mutableFloatStateOf` at the integration
+point (Task 10). Only the infrequent `targetIndex` changes flow through the action system.
 
 ---
 
@@ -82,6 +86,7 @@ The `draggableAfterLongPress` modifier (in `ui/DragModifier.kt`) focuses **only 
 **Task 10 Integration Pattern:**
 ```kotlin
 val lazyListState = rememberLazyListState()
+// Drag Y is LOCAL state — NOT in EditorState — to avoid full-tree recomposition at 60fps
 var cumulativeDragY by remember { mutableFloatStateOf(0f) }
 
 Modifier.draggableAfterLongPress(
@@ -90,13 +95,16 @@ Modifier.draggableAfterLongPress(
         val itemInfo = lazyListState.layoutInfo.visibleItemsInfo
             .find { it.key == block.id.value }
         val blockY = itemInfo?.offset ?: 0
-        val dragOffsetY = blockY + touchPosition.y
-        cumulativeDragY = dragOffsetY
-        dispatch(StartDrag(block.id, dragOffsetY, touchPosition.y))
+        cumulativeDragY = blockY + touchPosition.y
+        callbacks.onDragStart(block.id, touchPosition.y)
     },
     onDrag = { delta ->
         cumulativeDragY += delta.y
-        dispatch(UpdateDrag(cumulativeDragY))
+        // Only dispatch when target changes (infrequent) — not on every frame
+        val newTarget = calculateDropTargetIndex(
+            lazyListState.layoutInfo, cumulativeDragY, state.blocks.size
+        )
+        dispatch(UpdateDragTarget(newTarget))
     },
     onDragEnd = { dispatch(CompleteDrag) },
     onDragCancel = { dispatch(CancelDrag) }
@@ -114,11 +122,13 @@ Implement the EditorAction handlers for drag operations: `StartDrag`, `UpdateDra
 Following the existing unidirectional data flow pattern, all state changes go through actions. This ensures predictability and enables potential undo/redo.
 
 **Actions to implement:**
-- `StartDrag(blockId: BlockId, initialOffset: Float, touchOffset: Float)`
-- `UpdateDrag(currentY: Float)` - updates drag position
+- `StartDrag(blockId: BlockId, touchOffset: Float)` - initiates drag state
 - `UpdateDragTarget(targetIndex: Int?)` - updates drop indicator position
 - `CompleteDrag` - commits the reorder
 - `CancelDrag` - aborts and resets
+
+**Note:** There is no `UpdateDrag(currentY)` action. The drag Y position is tracked as local
+`mutableFloatStateOf` at the integration point to avoid per-frame recomposition of the full state tree.
 
 **Compose Concepts:**
 - Sealed class hierarchies for actions
@@ -126,13 +136,12 @@ Following the existing unidirectional data flow pattern, all state changes go th
 - Immutable state updates with `copy()`
 
 **✅ IMPLEMENTED:** All actions in `action/EditorAction.kt`:
-- `StartDrag(blockId, dragOffsetY, touchOffsetY)` - initiates drag, computes `primaryBlockOriginalIndex`
-- `UpdateDrag(currentY)` - updates `dragOffsetY` during movement
+- `StartDrag(blockId, touchOffsetY)` - initiates drag, computes `primaryBlockOriginalIndex`
 - `UpdateDragTarget(targetIndex?)` - already existed
-- `CompleteDrag` - already existed, uses `MoveBlocks` internally
+- `CompleteDrag` - already existed, uses `MoveBlocks` internally with visual-gap-to-index conversion
 - `CancelDrag` - already existed
 
-Also updated `BlockCallbacks.onDragStart` signature in `registry/BlockRenderer.kt` to include position parameters.
+Also updated `BlockCallbacks.onDragStart(blockId, touchOffsetY)` signature in `registry/BlockRenderer.kt`.
 
 ---
 

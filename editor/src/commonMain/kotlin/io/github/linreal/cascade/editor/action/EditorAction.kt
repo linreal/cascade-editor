@@ -369,13 +369,17 @@ public data object ClearFocus : EditorAction {
 /**
  * Starts dragging a block.
  *
+ * The current drag Y position (high-frequency, updated every frame) is intentionally
+ * NOT stored in [DragState]/[EditorState]. It should be tracked as a local
+ * `mutableFloatStateOf` at the integration point (CascadeEditor) to avoid triggering
+ * full-tree recomposition on every pointer move (~60-120fps).
+ *
  * @param blockId The ID of the block being dragged (the one user touched)
- * @param dragOffsetY Initial Y position of the drag gesture relative to the editor
- * @param touchOffsetY Y offset from the top of the block where the touch occurred
+ * @param touchOffsetY Y offset from the top of the block where the touch occurred.
+ *        Stored in DragState for preview positioning.
  */
 public data class StartDrag(
     val blockId: BlockId,
-    val dragOffsetY: Float,
     val touchOffsetY: Float
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
@@ -386,26 +390,9 @@ public data class StartDrag(
             dragState = DragState(
                 draggingBlockIds = setOf(blockId),
                 targetIndex = null,
-                dragOffsetY = dragOffsetY,
                 initialTouchOffsetY = touchOffsetY,
                 primaryBlockOriginalIndex = originalIndex
             )
-        )
-    }
-}
-
-/**
- * Updates the current drag position during a drag operation.
- *
- * @param currentY Current Y position of the drag gesture relative to the editor
- */
-public data class UpdateDrag(
-    val currentY: Float
-) : EditorAction {
-    override fun reduce(state: EditorState): EditorState {
-        val currentDrag = state.dragState ?: return state
-        return state.copy(
-            dragState = currentDrag.copy(dragOffsetY = currentY)
         )
     }
 }

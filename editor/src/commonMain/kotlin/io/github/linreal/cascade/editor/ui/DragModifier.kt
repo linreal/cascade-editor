@@ -54,9 +54,8 @@ public fun Modifier.draggableAfterLongPress(
     onDragEnd: () -> Unit,
     onDragCancel: () -> Unit = onDragEnd
 ): Modifier {
-    if (!enabled) return this
-
-    return this.pointerInput(key) {
+    return this.pointerInput(key, enabled) {
+        if (!enabled) return@pointerInput
         detectDragGesturesAfterLongPress(
             onDragStart = { offset ->
                 onDragStart(offset)
