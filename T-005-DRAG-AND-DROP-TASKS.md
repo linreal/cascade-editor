@@ -248,6 +248,38 @@ Provides direct visual feedback of what's being moved and where it will go.
 - `drawWithCache` for bitmap caching (advanced)
 - Z-ordering with `Modifier.zIndex`
 
+**✅ IMPLEMENTED — Option A (re-composition) chosen over Option B (bitmap):**
+
+**Why Option A:** Bitmap capture (`GraphicsLayer.toImageBitmap()`) has unreliable cross-platform
+behavior in Compose Multiplatform. Option A avoids jank because the block content is composed
+**once** — position updates use `graphicsLayer { translationY }` which runs in the draw phase
+only, with no re-composition or re-layout during drag movement. If jank is observed with complex
+blocks later, bitmap caching can be added as an optimization.
+
+1. **`DragPreview` composable** (`ui/DragPreview.kt`):
+   - Accepts `dragOffsetY: () -> Float` as a lambda — State read happens inside `graphicsLayer`,
+     keeping position updates in the draw phase (no recomposition at 60fps)
+   - Preview top = `dragOffsetY() - initialTouchOffsetY` (touch point stays under finger)
+   - `graphicsLayer { translationY; alpha = 0.7f; shadowElevation = 8f }` for positioning,
+     transparency, and "floating" appearance
+   - Looks up renderer from `BlockRegistry` — exact same visual as the original block
+   - Same padding as regular blocks (`horizontal = 16.dp, vertical = 4.dp`)
+   - Zero overhead when not dragging — only composed when `dragState != null`
+
+2. **`CascadeEditor` changes** (`ui/CascadeEditor.kt`):
+   - Added `dragOffsetY` local state (`mutableFloatStateOf`) — NOT in EditorState to avoid
+     full-tree recomposition at 60fps. Task 10 will connect this to the gesture modifier.
+   - `DragPreview` rendered as last child in Box (draws on top of both list and indicator)
+   - Finds the dragged block from `state.blocks` using `dragState.draggingBlockIds`
+
+**Rendering pipeline during drag:**
+```
+graphicsLayer { translationY = dragOffsetY() - touchOffset }
+     │
+     ▼ (draw phase only — no recomposition)
+Box with rendered block content (composed once at drag start)
+```
+
 ---
 
 ### Task 7: Drop Position Indicator (Horizontal Divider)
@@ -410,9 +442,9 @@ When users have multi-selected blocks, they should be able to drag all of them a
 ## Performance Checklist
 
 - [x] Use `graphicsLayer` instead of `alpha()` modifier for transparency (Task 5)
-- [ ] Use `Modifier.offset { }` (lambda) instead of `Modifier.offset(dp)` for animated positions
+- [x] Use `graphicsLayer { translationY }` instead of `Modifier.offset(dp)` for animated positions (Task 6 - DragPreview)
 - [x] Use `derivedStateOf` for computed values from drag state (Task 7 - DropIndicator)
-- [ ] Avoid reading entire state in tight loops - read only what's needed
+- [x] Drag Y position kept as local `mutableFloatStateOf`, NOT in EditorState (Task 6 - DragPreview)
 - [x] Use `LazyListState.layoutInfo` instead of measuring composables (Task 7 - DropIndicator)
 - [ ] Consider bitmap caching for drag preview if re-composition causes jank
 - [ ] Use `animateItem()` modifier for smooth reorder animation

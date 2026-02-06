@@ -9,7 +9,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
@@ -64,6 +67,12 @@ public fun CascadeEditor(
     CompositionLocalProvider(LocalBlockTextStates provides blockTextStates) {
         val lazyListState = rememberLazyListState()
 
+        // Current drag Y position — local state, NOT in EditorState.
+        // Updated at ~60-120fps during drag; keeping it local avoids full-tree
+        // recomposition on every pointer move. Task 10 will connect this to
+        // the drag gesture modifier.
+        var dragOffsetY by remember { mutableFloatStateOf(0f) }
+
         Box(modifier = modifier.fillMaxWidth()) {
             LazyColumn(
                 state = lazyListState,
@@ -105,6 +114,25 @@ public fun CascadeEditor(
                     targetIndex = dragState.targetIndex,
                     lazyListState = lazyListState
                 )
+            }
+
+            // Drag preview overlay - semi-transparent block following the finger.
+            // Rendered last in Box so it draws on top of both list and indicator.
+            // Position updates happen in graphicsLayer (draw phase only).
+            state.dragState?.let { dragState ->
+                val primaryBlockId = dragState.draggingBlockIds.firstOrNull()
+                val draggedBlock = primaryBlockId?.let { id ->
+                    state.blocks.find { it.id == id }
+                }
+                if (draggedBlock != null) {
+                    DragPreview(
+                        block = draggedBlock,
+                        dragOffsetY = { dragOffsetY },
+                        initialTouchOffsetY = dragState.initialTouchOffsetY,
+                        registry = registry,
+                        callbacks = callbacks
+                    )
+                }
             }
         }
     }

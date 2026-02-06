@@ -37,8 +37,13 @@ editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/
 └── ui/             # UI components
     ├── CascadeEditor.kt           # Main editor composable
     ├── BackspaceAwareTextEdit.kt  # Text field with backspace detection
+    ├── DragModifier.kt            # Long-press drag gesture modifier
+    ├── DragPreview.kt             # Semi-transparent drag preview overlay
+    ├── DropIndicator.kt           # Horizontal drop position indicator
     ├── LocalBlockTextStates.kt    # CompositionLocal for text states
     ├── EditorRegistry.kt          # Registry with built-in renderers
+    ├── utils/
+    │   └── DragUtils.kt           # Drop target calculation utilities
     └── renderers/
         └── TextBlockRenderer.kt   # Renderer for text-supporting blocks
 ```
