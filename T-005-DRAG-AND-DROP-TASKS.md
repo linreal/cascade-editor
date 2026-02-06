@@ -425,6 +425,56 @@ The final integration that makes drag-and-drop functional in the editor.
 - State reading optimization (read state close to where it's used)
 - Modifier ordering importance
 
+**✅ IMPLEMENTED:** Drag integration in `ui/CascadeEditor.kt`:
+
+Added `draggableAfterLongPress` modifier to every block item in the LazyColumn, wiring all
+gesture callbacks to the action system:
+
+1. **Modifier chain order** (important for correct behavior):
+   - `.animateItem()` — must be first for LazyColumn placement animation
+   - `.draggableAfterLongPress()` — before padding so the entire item area (including padding) is draggable
+   - `.padding()` — visual padding
+   - `.graphicsLayer { alpha }` — drag transparency
+
+2. **Gesture callbacks:**
+   - `onDragStart` — gets block's viewport Y from `lazyListState.layoutInfo.visibleItemsInfo`,
+     sets `dragOffsetY = blockY + touchPosition.y`, dispatches `StartDrag` via `callbacks.onDragStart()`
+   - `onDrag` — accumulates `dragOffsetY += delta.y`, computes drop target via
+     `calculateDropTargetIndex()`, dispatches `UpdateDragTarget`
+   - `onDragEnd` — dispatches `CompleteDrag`
+   - `onDragCancel` — dispatches `CancelDrag`
+
+3. **Performance:** `UpdateDragTarget` dispatches on every drag frame, but `EditorStateHolder`
+   uses `mutableStateOf` with structural equality — when the target index hasn't changed,
+   the identical `EditorState` produced by `copy()` is detected as equal and skips recomposition.
+
+**Previously implemented (Tasks 5-7, 9) — already present in CascadeEditor:**
+- `rememberLazyListState()` — shared by drag modifier, DropIndicator, and future auto-scroll
+- `dragOffsetY` local state — NOT in EditorState to avoid full-tree recomposition at 60fps
+- `DropIndicator` overlay — rendered when `dragState != null`
+- `DragPreview` overlay — rendered when `dragState != null`
+- Block transparency via `graphicsLayer { alpha }`
+- `animateItem()` for smooth placement animation on reorder
+
+**Full data flow during drag:**
+```
+Long press detected (draggableAfterLongPress)
+    │
+    ├─ onDragStart: dragOffsetY = blockY + touchY
+    │   └─ callbacks.onDragStart → StartDrag → DragState created
+    │       └─ Recomposition: transparency applied, DragPreview + DropIndicator composed
+    │
+    ├─ onDrag (per frame): dragOffsetY += delta.y
+    │   ├─ calculateDropTargetIndex(layoutInfo, dragOffsetY, blockCount) → visual gap
+    │   ├─ dispatch(UpdateDragTarget) → DragState.targetIndex updated (only recomposes when changed)
+    │   └─ DragPreview follows finger (graphicsLayer.translationY, draw phase only)
+    │
+    └─ onDragEnd: dispatch(CompleteDrag)
+        ├─ Visual gap → MoveBlocks index conversion
+        ├─ Blocks reordered, dragState = null
+        └─ animateItem() slides blocks to new positions
+```
+
 ---
 
 ### Task 11: Haptic Feedback
@@ -478,6 +528,7 @@ When users have multi-selected blocks, they should be able to drag all of them a
 - [x] Use `LazyListState.layoutInfo` instead of measuring composables (Task 7 - DropIndicator)
 - [ ] Consider bitmap caching for drag preview if re-composition causes jank
 - [x] Use `animateItem()` modifier for smooth reorder animation (Task 9 - placement only, fade disabled)
+- [x] `UpdateDragTarget` dispatch is safe at 60fps — structural equality in `mutableStateOf` skips recomposition when target unchanged (Task 10)
 - [ ] Profile with Layout Inspector to verify minimal recomposition
 
 ---

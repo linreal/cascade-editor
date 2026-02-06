@@ -16,10 +16,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import io.github.linreal.cascade.editor.action.CancelDrag
+import io.github.linreal.cascade.editor.action.CompleteDrag
+import io.github.linreal.cascade.editor.action.UpdateDragTarget
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorStateHolder
+import io.github.linreal.cascade.editor.ui.utils.calculateDropTargetIndex
 
 /**
  * Main editor composable for CascadeEditor.
@@ -69,8 +73,8 @@ public fun CascadeEditor(
 
         // Current drag Y position — local state, NOT in EditorState.
         // Updated at ~60-120fps during drag; keeping it local avoids full-tree
-        // recomposition on every pointer move. Task 10 will connect this to
-        // the drag gesture modifier.
+        // recomposition on every pointer move. Connected to draggableAfterLongPress
+        // gesture callbacks below.
         var dragOffsetY by remember { mutableFloatStateOf(0f) }
 
         Box(modifier = modifier.fillMaxWidth()) {
@@ -101,6 +105,31 @@ public fun CascadeEditor(
                             .animateItem(
                                 fadeInSpec = null,
                                 fadeOutSpec = null
+                            )
+                            // Long-press drag gesture detection.
+                            // Placed before padding so the entire item area is draggable.
+                            .draggableAfterLongPress(
+                                key = block.id,
+                                onDragStart = { touchPosition ->
+                                    // Get block's viewport position from LazyColumn layout info
+                                    val itemInfo = lazyListState.layoutInfo.visibleItemsInfo
+                                        .find { it.key == block.id.value }
+                                    val blockY = itemInfo?.offset ?: 0
+                                    // Set initial drag Y = block top + touch offset within block
+                                    dragOffsetY = blockY.toFloat() + touchPosition.y
+                                    callbacks.onDragStart(block.id, touchPosition.y)
+                                },
+                                onDrag = { delta ->
+                                    dragOffsetY += delta.y
+                                    val newTarget = calculateDropTargetIndex(
+                                        lazyListState.layoutInfo,
+                                        dragOffsetY,
+                                        state.blocks.size
+                                    )
+                                    callbacks.dispatch(UpdateDragTarget(newTarget))
+                                },
+                                onDragEnd = { callbacks.dispatch(CompleteDrag) },
+                                onDragCancel = { callbacks.dispatch(CancelDrag) }
                             )
                             .padding(horizontal = 16.dp, vertical = 4.dp)
                             .graphicsLayer {

@@ -1,6 +1,5 @@
 package io.github.linreal.cascade.editor.ui.renderers
 
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,7 +20,6 @@ import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockType
-import io.github.linreal.cascade.editor.loge
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderer
 import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
@@ -66,12 +64,11 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
             getTextStyleForType(block.type)
         }
         var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-        Box {
-
-
+   
+        Box(modifier = modifier) {
             BackspaceAwareTextField(
                 state = textFieldState,
-                modifier = modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth()
                     .onFocusChanged { focusState ->
                         if (focusState.isFocused && !isFocused) {
                             callbacks.onFocus(block.id)
@@ -94,9 +91,6 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
                         .matchParentSize()
                         .pointerInput(block.id) {
                             detectTapGestures(
-                                onLongPress = {
-                                    callbacks.onLongClick(block.id)
-                                },
                                 onTap = { offset ->
                                     val cursorIndex = textLayoutResult?.getOffsetForPosition(offset)
                                         ?: textFieldState.text.length
