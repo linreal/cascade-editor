@@ -348,6 +348,37 @@ Essential for reordering in lists that don't fit on screen. Without this, users 
 - Coroutine cancellation for stopping scroll when leaving hot zone
 - `while(true)` loop with `delay()` inside `LaunchedEffect` for continuous scrolling
 
+**✅ IMPLEMENTED:** Auto-scroll in `ui/AutoScrollEffect.kt` + integration in `ui/CascadeEditor.kt`:
+
+1. **`calculateAutoScrollAmount` pure function** (`ui/AutoScrollEffect.kt`):
+   - Takes `dragY`, `viewportHeight`, `hotZonePx`, `maxSpeedPxPerFrame`
+   - Top hot zone (`dragY < hotZonePx`): returns negative value (scroll up)
+   - Bottom hot zone (`dragY > viewportHeight - hotZonePx`): returns positive value (scroll down)
+   - Speed scales linearly with depth into the hot zone, clamped to `[0, 1]`
+   - Returns `0f` outside hot zones or for invalid inputs (zero/negative viewport or hot zone)
+
+2. **`AutoScrollDuringDrag` composable** (`ui/AutoScrollEffect.kt`):
+   - `LaunchedEffect(isDragging)` — starts loop when drag begins, cancels via coroutine
+     cancellation when drag ends
+   - Loop runs every ~16ms: reads `dragOffsetY()`, calculates scroll amount, calls
+     `lazyListState.scroll { scrollBy(amount) }`, then recalculates drop target and
+     dispatches `UpdateDragTarget`
+   - `LocalDensity` captured before `LaunchedEffect` for dp-to-px conversion
+   - Default constants: hot zone = 80dp, max speed = 1500dp/sec, frame delay = 16ms
+
+3. **`CascadeEditor` integration** (`ui/CascadeEditor.kt`):
+   - `AutoScrollDuringDrag` called inside the `Box`, after `LazyColumn` and before overlays
+   - No changes to modifier chain, DragPreview, DropIndicator, or actions/state
+
+4. **Unit tests** (`AutoScrollTest.kt`):
+   - 16 tests covering: top/bottom hot zones at various depths, outside zones,
+     edge cases (zero/negative viewport and hot zone), linear speed progression
+
+**Key design decision:** No coordinate compensation needed. `dragOffsetY` and
+`LazyListLayoutInfo` item offsets are both viewport-relative. When auto-scroll shifts items,
+their viewport offsets change but `dragOffsetY` stays fixed (finger hasn't moved). The
+drop target naturally shifts through the list as items scroll — only recalculation is needed.
+
 ---
 
 ### Task 9: Complete Drag - Reorder Blocks
