@@ -1,15 +1,40 @@
 # CascadeEditor Architecture
 
-This document provides an overview of the block editor architecture for new developers.
+Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional data flow: actions → reducers → state → recomposition.
 
-## Overview
+## Quick Reference
 
-CascadeEditor is a block-based editor (similiar to Craft on iOS, or Notion) for Compose Multiplatform.
-It follows a unidirectional data flow pattern where state changes only through dispatched actions.
+| Concept | File | Key Symbol |
+|---------|------|------------|
+| Main composable | `ui/CascadeEditor.kt` | `CascadeEditor()` |
+| Text input | `ui/BackspaceAwareTextEdit.kt` | `BackspaceAwareTextField()` |
+| Text renderer | `ui/renderers/TextBlockRenderer.kt` | `TextBlockRenderer` |
+| Editor registry setup | `ui/EditorRegistry.kt` | `createEditorRegistry()` |
+| Drop indicator | `ui/DropIndicator.kt` | `DropIndicator()` |
+| Drag preview | `ui/DragPreview.kt` | `DragPreview()` |
+| Drag gesture | `ui/DragModifier.kt` | — |
+| Auto-scroll | `ui/AutoScrollEffect.kt` | `AutoScrollDuringDrag()` |
+| Drop target calc | `ui/utils/DragUtils.kt` | `calculateDropTargetIndex()` |
+| Text state local | `ui/LocalBlockTextStates.kt` | `LocalBlockTextStates` |
+| State snapshot | `state/EditorState.kt` | `EditorState`, `DragState` |
+| State holder | `state/EditorStateHolder.kt` | `EditorStateHolder`, `rememberEditorState()` |
+| Text state manager | `state/BlockTextStates.kt` | `BlockTextStates` |
+| All actions | `action/EditorAction.kt` | `sealed class EditorAction` |
+| Block model | `core/Block.kt` | `Block`, factory methods |
+| Block types | `core/BlockType.kt` | `sealed interface BlockType` |
+| Block content | `core/BlockContent.kt` | `sealed interface BlockContent` |
+| Block ID | `core/BlockId.kt` | `BlockId` |
+| Registry | `registry/BlockRegistry.kt` | `BlockRegistry` |
+| Descriptors | `registry/BlockDescriptor.kt` | `BlockDescriptor`, `BlockCategory` |
+| Renderer interface | `registry/BlockRenderer.kt` | `BlockRenderer<T>`, `BlockCallbacks`, `DefaultBlockCallbacks` |
+
+All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
+
+## Layer Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  UI Layer (CascadeEditor, BlockItem, renderers)         │
+│  UI Layer (CascadeEditor, renderers, drag overlays)     │
 ├─────────────────────────────────────────────────────────┤
 │  Text State Layer (BlockTextStates, TextFieldState)     │
 ├─────────────────────────────────────────────────────────┤
@@ -23,463 +48,114 @@ It follows a unidirectional data flow pattern where state changes only through d
 └─────────────────────────────────────────────────────────┘
 ```
 
-## Project Structure
-
-```
-editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/
-├── core/           # Core data types
-├── state/          # State management
-│   ├── EditorState.kt        # Immutable editor state snapshot
-│   ├── EditorStateHolder.kt  # Compose-friendly state holder
-│   └── BlockTextStates.kt    # Per-block TextFieldState manager
-├── action/         # All editor actions
-├── registry/       # Block type registry and renderers
-└── ui/             # UI components
-    ├── CascadeEditor.kt           # Main editor composable
-    ├── BackspaceAwareTextEdit.kt  # Text field with backspace detection
-    ├── DragModifier.kt            # Long-press drag gesture modifier
-    ├── DragPreview.kt             # Semi-transparent drag preview overlay
-    ├── DropIndicator.kt           # Horizontal drop position indicator
-    ├── LocalBlockTextStates.kt    # CompositionLocal for text states
-    ├── EditorRegistry.kt          # Registry with built-in renderers
-    ├── utils/
-    │   └── DragUtils.kt           # Drop target calculation utilities
-    └── renderers/
-        └── TextBlockRenderer.kt   # Renderer for text-supporting blocks
-```
-
 ## Core Concepts
 
-### Block
+**Block** = id (`BlockId`) + type (`BlockType`) + content (`BlockContent`). Factory methods: `Block.paragraph()`, `Block.heading()`, `Block.todo()`, etc.
 
-A block is the fundamental unit of content. Each block has:
+**BlockType** — sealed interface:
 
-- **id** (`BlockId`) - Unique identifier
-- **type** (`BlockType`) - Determines behavior and rendering (paragraph, heading, todo, etc.)
-- **content** (`BlockContent`) - The actual data (text, image, etc.)
+| Type | Supports Text | Notes |
+|------|:---:|-------|
+| `Paragraph` | Yes | Default block type |
+| `Heading(level)` | Yes | H1-H6 |
+| `Todo(checked)` | Yes | Has `checked` boolean |
+| `BulletList` | Yes | |
+| `NumberedList` | Yes | |
+| `Quote` | Yes | |
+| `Code(language)` | Yes | Has `language` string |
+| `Divider` | No | |
+| `Image` | No | |
 
-```kotlin
-// Example: Creating blocks
-val paragraph = Block.paragraph("Hello world")
-val heading = Block.heading(1, "Title")
-val todo = Block.todo("Task item", checked = false)
-```
+Custom blocks: implement `CustomBlockType` interface.
 
-Location: `core/Block.kt`
-
-### BlockType
-
-Sealed interface defining what kind of block it is. Built-in types:
-
-| Type | Description | Supports Text |
-|------|-------------|---------------|
-| `Paragraph` | Plain text | Yes |
-| `Heading(level)` | H1-H6 headings | Yes |
-| `Todo(checked)` | Checkbox item | Yes |
-| `BulletList` | Unordered list item | Yes |
-| `NumberedList` | Ordered list item | Yes |
-| `Quote` | Blockquote | Yes |
-| `Code(language)` | Code block | Yes |
-| `Divider` | Horizontal line | No |
-| `Image` | Embedded image | No |
-
-Custom blocks implement `CustomBlockType`.
-
-Location: `core/BlockType.kt`
-
-### BlockContent
-
-Sealed interface for block data:
-
-- `Text(text: String)` - Text content
-- `Image(uri: String, altText: String?)` - Image content
-- `Empty` - No content (dividers)
-- `Custom(typeId: String, data: Map)` - Extension point
-
-Location: `core/BlockContent.kt`
+**BlockContent** — `Text(text)` | `Image(uri, altText?)` | `Empty` | `Custom(typeId, data)`.
 
 ## State Management
 
-### EditorState
+**EditorState** — immutable snapshot: `blocks`, `focusedBlockId`, `selectedBlockIds`, `dragState`, `slashCommandState`. Cursor position is NOT in EditorState — it lives in `TextFieldState` managed by `BlockTextStates`.
 
-Immutable snapshot of the entire editor state:
+**EditorStateHolder** — Compose-friendly mutable wrapper. Use `rememberEditorState(initialBlocks)` to create. Call `stateHolder.dispatch(action)` to modify state.
 
-```kotlin
-data class EditorState(
-    val blocks: List<Block>,           // All blocks in order
-    val focusedBlockId: BlockId?,      // Currently focused block
-    val selectedBlockIds: Set<BlockId>, // Multi-selection
-    val dragState: DragState?,         // Active drag operation
-    val slashCommandState: SlashCommandState?  // Slash menu state
-)
-```
+**BlockTextStates** — single source of truth for text content. One `TextFieldState` per block. Key methods: `getOrCreate()`, `getVisibleText()`, `mergeInto()`, `setText()`, `extractAllText()`, `cleanup()`. Provided to renderers via `LocalBlockTextStates` CompositionLocal.
 
-Note: Cursor position is managed by `BlockTextStates` via `TextFieldState`, not stored in `EditorState`. This avoids dual-state synchronization issues.
-
-Location: `state/EditorState.kt`
-
-### EditorStateHolder
-
-Compose-friendly mutable wrapper that triggers recomposition:
-
-```kotlin
-@Composable
-fun MyEditor() {
-    val stateHolder = rememberEditorState(initialBlocks)
-
-    // Read state
-    val state = stateHolder.state
-
-    // Modify state via actions
-    stateHolder.dispatch(InsertBlock(newBlock))
-}
-```
-
-Location: `state/EditorStateHolder.kt`
-
-### BlockTextStates
-
-Manages `TextFieldState` instances for text-capable blocks. This is the **single source of truth** for text content during editing.
-
-```kotlin
-class BlockTextStates {
-    // Get or create TextFieldState for a block (cursor defaults to position 0)
-    fun getOrCreate(blockId: BlockId, initialText: String, initialCursorPosition: Int = 0): TextFieldState
-
-    // Get current text (for persistence)
-    fun getVisibleText(blockId: BlockId): String?
-
-    // Merge text from source into target block
-    fun mergeInto(sourceId: BlockId, targetId: BlockId): Int?
-
-    // Programmatic text updates
-    fun setText(blockId: BlockId, text: String, cursorPosition: Int?)
-
-    // Extract all text for persistence
-    fun extractAllText(): Map<BlockId, String>
-
-    // Cleanup states for deleted blocks
-    fun cleanup(existingBlockIds: Set<BlockId>)
-}
-```
-
-**Why BlockTextStates?**
-
-Compose's `TextFieldState` is designed to be the source of truth for text input. Syncing external state into it via `LaunchedEffect` causes issues:
-- Cursor position loss on external updates
-- Race conditions between user input and sync
-- Double-initialization on first render
-
-`BlockTextStates` solves this by:
-- Creating one `TextFieldState` per block
-- Allowing direct manipulation for operations like merge/split
-- Providing the state to renderers via `LocalBlockTextStates`
-
-Location: `state/BlockTextStates.kt`
-
-### LocalBlockTextStates
-
-CompositionLocal that provides `BlockTextStates` to renderers:
-
-```kotlin
-@Composable
-fun TextBlockRenderer.Render(...) {
-    val blockTextStates = LocalBlockTextStates.current
-    val textFieldState = blockTextStates.getOrCreate(block.id, initialText)
-
-    BackspaceAwareTextField(
-        state = textFieldState,
-        ...
-    )
-}
-```
-
-Location: `ui/LocalBlockTextStates.kt`
+> **Why not sync text via LaunchedEffect?** Causes cursor jumps, race conditions, and double-init. `BlockTextStates` avoids all of this by owning the `TextFieldState` directly.
 
 ## Action System
 
-All state changes go through actions. This ensures:
-- Predictable state mutations
-- Easy debugging (log all actions)
-- Potential for undo/redo
+All state changes go through `EditorAction.reduce(state) → newState`.
 
-### Action Categories
+**Block Manipulation:** `InsertBlock`, `InsertBlockAfter`, `DeleteBlocks`, `DeleteBlock`, `UpdateBlockContent`, `UpdateBlockText`, `ConvertBlockType`, `MoveBlocks`, `MergeBlocks`, `SplitBlock`, `ReplaceBlock`
 
-**Block Manipulation**
-- `InsertBlock(block, atIndex?)` - Add block
-- `InsertBlockAfter(block, afterBlockId?)` - Add after specific block
-- `DeleteBlocks(blockIds)` - Remove blocks
-- `DeleteBlock(blockId)` - Remove single block
-- `UpdateBlockContent(blockId, content)` - Change content
-- `UpdateBlockText(blockId, text)` - Convenience for text (for programmatic use)
-- `ConvertBlockType(blockId, newType)` - Change type (e.g., paragraph to heading)
-- `MoveBlocks(blockIds, toIndex)` - Reorder blocks
-- `MergeBlocks(sourceId, targetId)` - Combine two blocks (for programmatic use)
-- `SplitBlock(blockId, atPosition, newBlockText?)` - Split at cursor (Enter key)
-- `ReplaceBlock(blockId, newBlock)` - Swap block
+**Selection:** `SelectBlock`, `ToggleBlockSelection`, `SelectBlockRange`, `AddBlockRangeToSelection`, `ClearSelection`, `SelectAll`, `DeleteSelectedOrFocused`
 
-**Selection**
-- `SelectBlock(blockId)` - Select single (clears others)
-- `ToggleBlockSelection(blockId)` - Add/remove from selection (Ctrl+click)
-- `SelectBlockRange(fromId, toId)` - Range select (Shift+click)
-- `ClearSelection` - Deselect all
-- `SelectAll` - Select all blocks
+**Focus:** `FocusBlock`, `FocusNextBlock`, `FocusPreviousBlock`, `ClearFocus`
 
-**Focus**
-- `FocusBlock(blockId?)` - Focus a block
-- `FocusNextBlock` - Move to next block
-- `FocusPreviousBlock` - Move to previous block
-- `ClearFocus` - Remove focus
+**Drag & Drop:** `StartDrag`, `UpdateDragTarget`, `CompleteDrag`, `CancelDrag`
 
-**Drag & Drop**
-- `StartDrag(blockId, dragOffsetY, touchOffsetY)` - Begin drag with position info
-- `UpdateDrag(currentY)` - Update current drag Y position
-- `UpdateDragTarget(targetIndex?)` - Update drop position
-- `CompleteDrag` - Execute move
-- `CancelDrag` - Abort
-
-**Slash Commands**
-- `OpenSlashCommand(anchorBlockId)` - Show menu
-- `UpdateSlashCommandQuery(query)` - Filter
-- `CloseSlashCommand` - Hide menu
-
-Location: `action/EditorAction.kt`
-
-## Registry System
-
-The registry enables extensibility by decoupling block types from their UI.
-
-### BlockDescriptor
-
-Metadata for a block type:
-
-```kotlin
-data class BlockDescriptor(
-    val typeId: String,          // Matches BlockType.typeId
-    val displayName: String,     // "Heading 1"
-    val description: String,     // For slash command menu
-    val keywords: List<String>,  // Search terms
-    val category: BlockCategory, // BASIC, MEDIA, ADVANCED, CUSTOM
-    val factory: (BlockId) -> Block  // Creates new instance
-)
-```
-
-Location: `registry/BlockDescriptor.kt`
-
-### BlockRenderer
-
-Interface for rendering a block type:
-
-```kotlin
-interface BlockRenderer<T : BlockType> {
-    @Composable
-    fun Render(
-        block: Block,
-        isSelected: Boolean,
-        isFocused: Boolean,
-        modifier: Modifier,
-        callbacks: BlockCallbacks
-    )
-}
-```
-
-Location: `registry/BlockRenderer.kt`
-
-### BlockRegistry
-
-Central registration point:
-
-```kotlin
-// Create with built-in types
-val registry = BlockRegistry.createDefault()
-
-// Search for slash commands
-val results = registry.search("head") // Returns heading_1 through heading_6
-
-// Create block by type
-val block = registry.createBlock("paragraph")
-
-// Register custom type
-registry.register(customDescriptor, customRenderer)
-```
-
-Location: `registry/BlockRegistry.kt`
-
-### BlockCallbacks
-
-Interface for handling user interactions within a block:
-
-```kotlin
-interface BlockCallbacks {
-    fun dispatch(action: EditorAction)
-    fun onFocus(blockId: BlockId)
-    fun onBlur(blockId: BlockId)
-    fun onEnter(blockId: BlockId, cursorPosition: Int)
-    fun onBackspaceAtStart(blockId: BlockId)
-    fun onDeleteAtEnd(blockId: BlockId)
-    fun onClick(blockId: BlockId, isMultiSelect: Boolean, isRangeSelect: Boolean)
-    fun onDragStart(blockId: BlockId, dragOffsetY: Float, touchOffsetY: Float)
-    fun onSlashCommand(blockId: BlockId)
-}
-```
-
-`DefaultBlockCallbacks` provides standard implementations. It accepts:
-- `stateProvider` - Access to current state for merge/delete logic
-- `blockTextStates` - For text operations (merge, split)
-
-Location: `registry/BlockRenderer.kt`
+**Slash Commands:** `OpenSlashCommand`, `UpdateSlashCommandQuery`, `CloseSlashCommand`
 
 ## Data Flow
 
-### Standard Flow (Focus, Selection, etc.)
+**Standard flow:** User Input → `BlockCallbacks` → `EditorAction` → `dispatch()` → `reduce()` → recomposition.
 
-```
-User Input
-    │
-    ▼
-BlockCallbacks (in renderer)
-    │
-    ▼
-EditorAction created
-    │
-    ▼
-stateHolder.dispatch(action)
-    │
-    ▼
-action.reduce(currentState) → newState
-    │
-    ▼
-Compose recomposes affected UI
-```
+**Text operations (merge/split):** `BlockCallbacks` performs dual update — manipulates `BlockTextStates` directly (text content) AND dispatches action (block structure). Both converge in recomposition.
 
-### Text Operations Flow (Merge, Split)
+## Registry System
 
-```
-User Input (Backspace at start / Enter)
-    │
-    ▼
-BlockCallbacks.onBackspaceAtStart / onEnter
-    │
-    ├──────────────────────────────┐
-    ▼                              ▼
-BlockTextStates                EditorAction
-(text manipulation)            (block structure)
-    │                              │
-    ▼                              ▼
-TextFieldState updated         EditorState updated
-    │                              │
-    └──────────────────────────────┘
-                    │
-                    ▼
-        Compose recomposes UI
-```
+**BlockRegistry** — maps `typeId` string to `BlockDescriptor` (metadata + factory) and `BlockRenderer` (UI). Use `registry.search(query)` for slash command filtering. Use `registry.getRenderer(typeId)` for rendering. `createEditorRegistry()` pre-registers all built-in types with `TextBlockRenderer`.
 
-## Using CascadeEditor
+**BlockCallbacks** — interface passed to renderers for interaction handling. `DefaultBlockCallbacks` wires `onEnter` → split, `onBackspaceAtStart` → merge, `onDeleteAtEnd` → forward-merge, `onDragStart` → drag initiation, `onSlashCommand` → open menu. Stubs: `onClick`, `onLongClick`.
 
-The main entry point is the `CascadeEditor` composable:
+## Conventions
 
-```kotlin
-@Composable
-fun MyScreen() {
-    val initialBlocks = remember {
-        listOf(
-            Block.paragraph("Hello world"),
-            Block.paragraph("Start typing...")
-        )
-    }
-    val stateHolder = rememberEditorState(initialBlocks)
+- **Explicit API mode** — all public declarations need explicit `public`/`internal` visibility
+- **`@Immutable` data classes** for state objects
+- **`internal`** for implementation details, **`public`** for API surface
+- **New actions** must be a data class/object extending `EditorAction` with a `reduce()` override
+- **Renderers** access text via `LocalBlockTextStates.current`, never from `BlockContent` directly during editing
+- **High-frequency updates** (drag position, scroll) use `mutableFloatStateOf` locally, NOT in `EditorState`
+- **Performance**: prefer `graphicsLayer { }` lambdas over Modifier params for draw-phase-only changes (e.g., alpha, translationY)
+- **Drag gesture** lives on the Box wrapper, NOT on LazyColumn items (survives recycling)
+- **Auto-scroll** uses `dispatchRawDelta` to avoid MutatorMutex contention with gesture scroll
+- **Tests** go in `editor/src/commonTest/`. Run: `./gradlew :editor:allTests`
 
-    CascadeEditor(
-        stateHolder = stateHolder,
-        modifier = Modifier.fillMaxSize()
-    )
-}
-```
+## Implementation Status
 
-### Key Features
-
-- **Enter key**: Splits the current block at cursor position
-- **Backspace at start**: Merges with the previous block (cursor at merge point)
-- **Focus management**: Automatic focus transitions between blocks
-
-### Custom Registry
-
-To use custom block types, create a registry with your renderers:
-
-```kotlin
-val registry = createEditorRegistry().apply {
-    register(myCustomDescriptor, MyCustomRenderer())
-}
-
-CascadeEditor(
-    stateHolder = stateHolder,
-    registry = registry
-)
-```
-
-Location: `ui/CascadeEditor.kt`
-
-## Adding a Custom Block Type
-
-1. **Define the type** (optional if using existing type):
-```kotlin
-data class CalloutBlock(val variant: Variant) : CustomBlockType {
-    override val typeId = "custom:callout"
-    override val displayName = "Callout"
-    override val supportsText = true
-
-    enum class Variant { INFO, WARNING, ERROR }
-}
-```
-
-2. **Create the renderer**:
-```kotlin
-class CalloutRenderer : BlockRenderer<CalloutBlock> {
-    @Composable
-    override fun Render(block, isSelected, isFocused, modifier, callbacks) {
-        val blockTextStates = LocalBlockTextStates.current
-        val textContent = block.content as? BlockContent.Text ?: return
-        val textFieldState = blockTextStates.getOrCreate(block.id, textContent.text)
-
-        // Your composable UI here using textFieldState
-    }
-}
-```
-
-3. **Register**:
-```kotlin
-registry.register(
-    BlockDescriptor(
-        typeId = "custom:callout",
-        displayName = "Callout",
-        description = "Highlighted information box",
-        keywords = listOf("alert", "tip", "note"),
-        category = BlockCategory.CUSTOM,
-        factory = { id ->
-            Block(id, CalloutBlock(INFO), BlockContent.Text(""))
-        }
-    ),
-    CalloutRenderer()
-)
-```
+| Feature | Status | Notes |
+|---------|:------:|-------|
+| Core architecture (Block, State, Actions) | Done | |
+| Text editing (split, merge, cursor) | Done | |
+| Focus management | Done | |
+| Selection (single, multi, range) | Done | Actions done; UI triggers partial (`onClick` is a stub) |
+| Drag & drop (gesture, preview, indicator, auto-scroll) | Done | Single-block drag only |
+| Block registry & search | Done | |
+| TextBlockRenderer | Done | All text-supporting types use this |
+| Heading font sizes | Done | No bold weight yet |
+| Code monospace font | Done | No syntax highlighting |
+| Slash commands (backend) | Done | Actions + state + search |
+| Slash commands (UI) | Not done | No popup, no "/" detection |
+| Todo checkbox UI | Not done | Type exists, no checkbox rendering |
+| Bullet/numbered list prefixes | Not done | Render as plain paragraphs |
+| Quote visual styling | Not done | No left border / background |
+| Divider renderer | Not done | Type exists, no UI |
+| Image renderer | Not done | Type exists, no UI |
+| Rich text spans (B/I/U) | Not done | No AnnotatedString usage |
+| Text transformation panel | Not done | |
+| Block anchor / action menu | Not done | |
+| Serialization (JSON export/import) | Not done | `extractAllText()` helper exists |
+| Undo / Redo | Not done | |
+| Theming / styling API | Not done | Colors and sizes hardcoded |
+| Block nesting / indentation | Not done | Flat list only |
+| Multi-block drag | Not done | `DragState` supports it, UI doesn't |
+| Keyboard shortcuts | Not done | Only Enter/Backspace handled |
 
 ## Testing
 
-Tests are in `editor/src/commonTest/`:
-
-- `BlockTest.kt` - Core type tests
-- `EditorStateTest.kt` - Action/state tests
-- `BlockRegistryTest.kt` - Registry tests
-
-Run tests:
-```bash
-./gradlew :editor:allTests
-```
-
-## Future Additions (Not Yet Implemented)
-
-- **HistoryManager** - Undo/redo stack
-- **EditorSerializer** - JSON import/export
-- **Rich text spans** - Bold, italic, links within text
-- **DividerRenderer** - Renderer for horizontal line blocks
-- **ImageRenderer** - Renderer for image blocks
+| Test File | Coverage |
+|-----------|----------|
+| `EditorStateTest.kt` | All action reducers (~65 tests) |
+| `DragActionsTest.kt` | Drag state transitions |
+| `AutoScrollTest.kt` | Hot zones, speed calculation |
+| `DragUtilsTest.kt` | Drop target coordinate math |
+| `BlockRegistryTest.kt` | Descriptor search, block creation |
+| `BlockTest.kt` | Core block creation |
