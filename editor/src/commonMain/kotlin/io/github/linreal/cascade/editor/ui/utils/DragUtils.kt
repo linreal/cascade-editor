@@ -1,6 +1,23 @@
 package io.github.linreal.cascade.editor.ui.utils
 
+import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
+
+/**
+ * Finds the LazyList item at the given Y position within the viewport.
+ *
+ * @param layoutInfo The layout info from LazyListState
+ * @param y Y position relative to the list viewport
+ * @return The item at that position, or null if no item is found
+ */
+internal fun findItemAtPosition(
+    layoutInfo: LazyListLayoutInfo,
+    y: Float
+): LazyListItemInfo? {
+    return layoutInfo.visibleItemsInfo.find { info ->
+        y >= info.offset && y < info.offset + info.size
+    }
+}
 
 /**
  * Calculates the visual drop target index based on the current drag Y position.

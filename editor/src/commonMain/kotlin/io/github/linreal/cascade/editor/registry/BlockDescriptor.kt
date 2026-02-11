@@ -3,16 +3,6 @@ package io.github.linreal.cascade.editor.registry
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockId
 
-/**
- * Categories for organizing block types in the slash command menu.
- */
-public enum class BlockCategory {
-    BASIC,
-    MEDIA,
-    ADVANCED,
-    INLINE,
-    CUSTOM
-}
 
 /**
  * Metadata describing a block type for registration, slash commands, and serialization.
@@ -30,7 +20,6 @@ public data class BlockDescriptor(
     val displayName: String,
     val description: String,
     val keywords: List<String> = emptyList(),
-    val category: BlockCategory = BlockCategory.BASIC,
     val icon: String? = null,
     val factory: (BlockId) -> Block
 ) {

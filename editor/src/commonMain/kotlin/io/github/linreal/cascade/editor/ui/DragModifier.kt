@@ -1,9 +1,77 @@
 package io.github.linreal.cascade.editor.ui
 
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.MutableFloatState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
+import io.github.linreal.cascade.editor.action.CancelDrag
+import io.github.linreal.cascade.editor.action.CompleteDrag
+import io.github.linreal.cascade.editor.action.UpdateDragTarget
+import io.github.linreal.cascade.editor.core.BlockId
+import io.github.linreal.cascade.editor.registry.BlockCallbacks
+import io.github.linreal.cascade.editor.state.EditorState
+import io.github.linreal.cascade.editor.ui.utils.calculateDropTargetIndex
+import io.github.linreal.cascade.editor.ui.utils.findItemAtPosition
+
+/**
+ * Block-level drag gesture for the editor.
+ *
+ * Detects a long-press drag, identifies which block is under the touch
+ * point via [LazyListState.layoutInfo], tracks drag position, computes
+ * drop targets, and dispatches drag actions through [callbacks].
+ *
+ * Applied to the editor's outer Box (not individual LazyColumn items)
+ * so the gesture coroutine survives item recycling during auto-scroll.
+ *
+ * @param lazyListState LazyColumn state for hit-testing and layout queries
+ * @param dragOffsetY Mutable state tracking the current drag Y position.
+ *        Updated during drag; read by [AutoScrollDuringDrag] and [DragPreview].
+ * @param stateProvider Provides the current [EditorState] for drag status
+ *        and block count.
+ * @param callbacks Block callbacks for dispatching drag actions.
+ */
+internal fun Modifier.blockDragGesture(
+    lazyListState: LazyListState,
+    dragOffsetY: MutableFloatState,
+    stateProvider: () -> EditorState,
+    callbacks: BlockCallbacks,
+): Modifier = this.pointerInput(Unit) {
+    detectDragGesturesAfterLongPress(
+        onDragStart = { offset ->
+            val item = findItemAtPosition(lazyListState.layoutInfo, offset.y)
+            if (item != null) {
+                val blockId = BlockId(item.key as String)
+                val touchWithinBlock = offset.y - item.offset
+                dragOffsetY.floatValue = offset.y
+                callbacks.onDragStart(blockId, touchWithinBlock)
+            }
+        },
+        onDrag = { change, dragAmount ->
+            change.consume()
+            if (stateProvider().dragState != null) {
+                dragOffsetY.floatValue += dragAmount.y
+                val newTarget = calculateDropTargetIndex(
+                    lazyListState.layoutInfo,
+                    dragOffsetY.floatValue,
+                    stateProvider().blocks.size
+                )
+                callbacks.dispatch(UpdateDragTarget(newTarget))
+            }
+        },
+        onDragEnd = {
+            if (stateProvider().dragState != null) {
+                callbacks.dispatch(CompleteDrag)
+            }
+        },
+        onDragCancel = {
+            if (stateProvider().dragState != null) {
+                callbacks.dispatch(CancelDrag)
+            }
+        }
+    )
+}
 
 /**
  * Makes an element draggable after a long press gesture.
@@ -15,27 +83,6 @@ import androidx.compose.ui.input.pointer.pointerInput
  * ## Coordinate System
  * - `onDragStart` receives the touch position in the element's local coordinates
  * - `onDrag` receives the drag delta (movement since last callback)
- *
- * ## Usage
- * ```kotlin
- * Box(
- *     modifier = Modifier.draggableAfterLongPress(
- *         key = itemId,
- *         onDragStart = { touchPosition ->
- *             // touchPosition is where the long press occurred within this element
- *         },
- *         onDrag = { delta ->
- *             // delta is the movement since last callback
- *         },
- *         onDragEnd = {
- *             // Drag completed - commit the operation
- *         },
- *         onDragCancel = {
- *             // Drag cancelled - abort the operation
- *         }
- *     )
- * )
- * ```
  *
  * @param key Key for the pointer input scope. Should change when drag-relevant
  *        state changes to reset the gesture detector.
