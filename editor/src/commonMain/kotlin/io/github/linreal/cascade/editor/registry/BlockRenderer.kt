@@ -2,6 +2,7 @@ package io.github.linreal.cascade.editor.registry
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import io.github.linreal.cascade.editor.action.ClearFocus
 import io.github.linreal.cascade.editor.action.DeleteBlock
 import io.github.linreal.cascade.editor.action.EditorAction
 import io.github.linreal.cascade.editor.action.FocusBlock
@@ -186,6 +187,7 @@ public open class DefaultBlockCallbacks(
     }
 
     override fun onDragStart(blockId: BlockId, touchOffsetY: Float) {
+        dispatch(ClearFocus)
         dispatch(StartDrag(blockId, touchOffsetY))
     }
 
