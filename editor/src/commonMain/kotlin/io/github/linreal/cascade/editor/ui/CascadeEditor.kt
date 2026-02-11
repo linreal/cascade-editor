@@ -1,6 +1,5 @@
 package io.github.linreal.cascade.editor.ui
 
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,23 +9,16 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import io.github.linreal.cascade.editor.action.CancelDrag
-import io.github.linreal.cascade.editor.action.CompleteDrag
 import io.github.linreal.cascade.editor.action.UpdateDragTarget
-import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorStateHolder
-import io.github.linreal.cascade.editor.ui.utils.calculateDropTargetIndex
 
 /**
  * Main editor composable for CascadeEditor.
@@ -88,56 +80,17 @@ public fun CascadeEditor(
         // Current drag Y position — local state, NOT in EditorState.
         // Updated at ~60-120fps during drag; keeping it local avoids full-tree
         // recomposition on every pointer move.
-        var dragOffsetY by remember { mutableFloatStateOf(0f) }
+        val dragOffsetY = remember { mutableFloatStateOf(0f) }
 
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                // Long-press drag gesture detected at the Box level.
-                // This keeps the gesture coroutine alive regardless of
-                // LazyColumn item recycling or layout changes from auto-scroll.
-                .pointerInput(Unit) {
-                    detectDragGesturesAfterLongPress(
-                        onDragStart = { offset ->
-                            // Find which block is under the touch point
-                            val item = lazyListState.layoutInfo.visibleItemsInfo
-                                .find { info ->
-                                    offset.y >= info.offset &&
-                                        offset.y < info.offset + info.size
-                                }
-                            if (item != null) {
-                                val blockId = BlockId(item.key as String)
-                                val touchWithinBlock = offset.y - item.offset
-                                dragOffsetY = offset.y
-                                callbacks.onDragStart(blockId, touchWithinBlock)
-                            }
-                        },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            // Guard: only process if a drag was actually started
-                            // (long press may have landed on empty space)
-                            if (stateHolder.state.dragState != null) {
-                                dragOffsetY += dragAmount.y
-                                val newTarget = calculateDropTargetIndex(
-                                    lazyListState.layoutInfo,
-                                    dragOffsetY,
-                                    stateHolder.state.blocks.size
-                                )
-                                callbacks.dispatch(UpdateDragTarget(newTarget))
-                            }
-                        },
-                        onDragEnd = {
-                            if (stateHolder.state.dragState != null) {
-                                callbacks.dispatch(CompleteDrag)
-                            }
-                        },
-                        onDragCancel = {
-                            if (stateHolder.state.dragState != null) {
-                                callbacks.dispatch(CancelDrag)
-                            }
-                        }
-                    )
-                }
+                .blockDragGesture(
+                    lazyListState = lazyListState,
+                    dragOffsetY = dragOffsetY,
+                    stateProvider = { stateHolder.state },
+                    callbacks = callbacks,
+                )
         ) {
             LazyColumn(
                 state = lazyListState,
@@ -182,7 +135,7 @@ public fun CascadeEditor(
             // Runs a coroutine loop during drag; cancels automatically when drag ends.
             AutoScrollDuringDrag(
                 lazyListState = lazyListState,
-                dragOffsetY = { dragOffsetY },
+                dragOffsetY = { dragOffsetY.floatValue },
                 isDragging = state.dragState != null,
                 blockCount = state.blocks.size,
                 onDropTargetChanged = { newTarget ->
@@ -210,7 +163,7 @@ public fun CascadeEditor(
                 if (draggedBlock != null) {
                     DragPreview(
                         block = draggedBlock,
-                        dragOffsetY = { dragOffsetY },
+                        dragOffsetY = { dragOffsetY.floatValue },
                         initialTouchOffsetY = dragState.initialTouchOffsetY,
                         registry = registry,
                         callbacks = callbacks

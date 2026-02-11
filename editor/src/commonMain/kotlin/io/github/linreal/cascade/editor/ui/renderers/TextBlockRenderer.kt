@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -20,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockType
+
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderer
 import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
@@ -47,6 +49,8 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
     ) {
         val textContent = block.content as? BlockContent.Text ?: return
         val focusRequester = remember { FocusRequester() }
+        val focusManager = LocalFocusManager.current
+        var hasComposeFocus by remember { mutableStateOf(false) }
 
         // Get TextFieldState from the shared holder
         val blockTextStates = LocalBlockTextStates.current
@@ -57,6 +61,8 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
         LaunchedEffect(isFocused) {
             if (isFocused) {
                 focusRequester.requestFocus()
+            } else if (hasComposeFocus) {
+                focusManager.clearFocus()
             }
         }
 
@@ -64,12 +70,13 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
             getTextStyleForType(block.type)
         }
         var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-   
+
         Box(modifier = modifier) {
             BackspaceAwareTextField(
                 state = textFieldState,
                 modifier = Modifier.fillMaxWidth()
                     .onFocusChanged { focusState ->
+                        hasComposeFocus = focusState.isFocused
                         if (focusState.isFocused && !isFocused) {
                             callbacks.onFocus(block.id)
                         }

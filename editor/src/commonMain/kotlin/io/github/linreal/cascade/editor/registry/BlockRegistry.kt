@@ -64,19 +64,6 @@ public class BlockRegistry {
             .sortedByDescending { it.relevanceScore(query) }
     }
 
-    /**
-     * Searches within a specific category.
-     */
-    public fun searchInCategory(query: String, category: BlockCategory): List<BlockDescriptor> {
-        return search(query).filter { it.category == category }
-    }
-
-    /**
-     * Gets all descriptors in a category.
-     */
-    public fun getByCategory(category: BlockCategory): List<BlockDescriptor> {
-        return descriptors.values.filter { it.category == category }
-    }
 
     /**
      * Creates a block by type ID using the registered factory.
@@ -118,7 +105,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             displayName = "Paragraph",
             description = "Plain text paragraph",
             keywords = listOf("text", "p"),
-            category = BlockCategory.BASIC,
             factory = { id ->
                 Block(id, BlockType.Paragraph, BlockContent.Text(""))
             }
@@ -133,7 +119,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
                 displayName = "Heading $level",
                 description = "Heading level $level",
                 keywords = listOf("h$level", "heading", "title"),
-                category = BlockCategory.BASIC,
                 factory = { id ->
                     Block(id, BlockType.Heading(level), BlockContent.Text(""))
                 }
@@ -148,7 +133,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             displayName = "To-do",
             description = "Task with checkbox",
             keywords = listOf("checkbox", "task", "check", "todo"),
-            category = BlockCategory.BASIC,
             factory = { id ->
                 Block(id, BlockType.Todo(checked = false), BlockContent.Text(""))
             }
@@ -162,7 +146,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             displayName = "Bullet List",
             description = "Unordered list item",
             keywords = listOf("list", "bullet", "ul", "unordered"),
-            category = BlockCategory.BASIC,
             factory = { id ->
                 Block(id, BlockType.BulletList, BlockContent.Text(""))
             }
@@ -176,7 +159,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             displayName = "Numbered List",
             description = "Ordered list item",
             keywords = listOf("list", "number", "ol", "ordered"),
-            category = BlockCategory.BASIC,
             factory = { id ->
                 Block(id, BlockType.NumberedList, BlockContent.Text(""))
             }
@@ -190,7 +172,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             displayName = "Quote",
             description = "Quoted text block",
             keywords = listOf("blockquote", "citation"),
-            category = BlockCategory.BASIC,
             factory = { id ->
                 Block(id, BlockType.Quote, BlockContent.Text(""))
             }
@@ -204,7 +185,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             displayName = "Code",
             description = "Code block with syntax highlighting",
             keywords = listOf("code", "snippet", "programming"),
-            category = BlockCategory.ADVANCED,
             factory = { id ->
                 Block(id, BlockType.Code(), BlockContent.Text(""))
             }
@@ -218,7 +198,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             displayName = "Divider",
             description = "Horizontal line separator",
             keywords = listOf("hr", "line", "separator", "horizontal"),
-            category = BlockCategory.BASIC,
             factory = { id ->
                 Block(id, BlockType.Divider, BlockContent.Empty)
             }
@@ -232,7 +211,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             displayName = "Image",
             description = "Embedded image",
             keywords = listOf("picture", "photo", "img"),
-            category = BlockCategory.MEDIA,
             factory = { id ->
                 Block(id, BlockType.Image, BlockContent.Image("", null))
             }
