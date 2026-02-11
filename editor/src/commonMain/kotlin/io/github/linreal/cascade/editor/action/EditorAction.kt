@@ -7,6 +7,7 @@ import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.state.DragState
 import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.SlashCommandState
+import io.github.linreal.cascade.editor.ui.utils.convertVisualGapToMoveBlocksIndex
 import kotlin.math.max
 import kotlin.math.min
 
@@ -366,14 +367,32 @@ public data object ClearFocus : EditorAction {
 // =============================================================================
 
 /**
- * Starts dragging the specified blocks.
+ * Starts dragging a block.
+ *
+ * The current drag Y position (high-frequency, updated every frame) is intentionally
+ * NOT stored in [DragState]/[EditorState]. It should be tracked as a local
+ * `mutableFloatStateOf` at the integration point (CascadeEditor) to avoid triggering
+ * full-tree recomposition on every pointer move (~60-120fps).
+ *
+ * @param blockId The ID of the block being dragged (the one user touched)
+ * @param touchOffsetY Y offset from the top of the block where the touch occurred.
+ *        Stored in DragState for preview positioning.
  */
 public data class StartDrag(
-    val blockIds: Set<BlockId>
+    val blockId: BlockId,
+    val touchOffsetY: Float
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
+        val originalIndex = state.indexOfBlock(blockId)
+        if (originalIndex == -1) return state // Block not found
+
         return state.copy(
-            dragState = DragState(draggingBlockIds = blockIds, targetIndex = null)
+            dragState = DragState(
+                draggingBlockIds = setOf(blockId),
+                targetIndex = null,
+                initialTouchOffsetY = touchOffsetY,
+                primaryBlockOriginalIndex = originalIndex
+            )
         )
     }
 }
@@ -394,13 +413,25 @@ public data class UpdateDragTarget(
 
 /**
  * Completes a drag operation, moving blocks to the target.
+ *
+ * The [DragState.targetIndex] stores the visual gap position (where the drop indicator shows).
+ * This is converted to the actual MoveBlocks index here, accounting for the fact that
+ * the dragged item will be removed before insertion.
  */
 public data object CompleteDrag : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val dragState = state.dragState ?: return state
-        val targetIndex = dragState.targetIndex ?: return state.copy(dragState = null)
+        val visualGap = dragState.targetIndex ?: return state.copy(dragState = null)
 
-        return MoveBlocks(dragState.draggingBlockIds, targetIndex)
+        // Convert visual gap to MoveBlocks index
+        // Returns null if dropping at original position (no movement needed)
+        val moveBlocksIndex = convertVisualGapToMoveBlocksIndex(
+            visualGap = visualGap,
+            originalIndex = dragState.primaryBlockOriginalIndex,
+            totalItemCount = state.blocks.size
+        ) ?: return state.copy(dragState = null) // No movement needed
+
+        return MoveBlocks(dragState.draggingBlockIds, moveBlocksIndex)
             .reduce(state)
             .copy(dragState = null)
     }

@@ -63,8 +63,11 @@ public interface BlockCallbacks {
 
     /**
      * Called when a drag operation starts on this block.
+     *
+     * @param blockId The ID of the block being dragged
+     * @param touchOffsetY Y offset from the top of the block where touch occurred
      */
-    public fun onDragStart(blockId: BlockId)
+    public fun onDragStart(blockId: BlockId, touchOffsetY: Float)
 
     /**
      * Called when the user types '/' to open slash commands.
@@ -182,8 +185,8 @@ public open class DefaultBlockCallbacks(
         dispatch(FocusNextBlock)
     }
 
-    override fun onDragStart(blockId: BlockId) {
-        dispatch(StartDrag(setOf(blockId)))
+    override fun onDragStart(blockId: BlockId, touchOffsetY: Float) {
+        dispatch(StartDrag(blockId, touchOffsetY))
     }
 
     override fun onSlashCommand(blockId: BlockId) {
