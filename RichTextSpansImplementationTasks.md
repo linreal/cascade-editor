@@ -31,7 +31,7 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 
 `Completed`: All files created/modified. `TextSpan` validates `start >= 0` and `end >= start`. All existing call sites use default `spans = emptyList()`. No runtime behavior changes. Pending build verification.
 
-## Task 2. Define Span Serialization Contract (JSON Canonical)
+## Task 2. Define Span Serialization Contract (JSON Canonical) — DONE
 
 `Objective`: Lock persistence shape for future save/load and guarantee round-trip safety.
 
@@ -52,6 +52,8 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Done when`:
 - Serialization tests verify lossless round-trip for built-in and custom styles.
 - Invalid/out-of-bounds span data from input is rejected or normalized per defined rules.
+
+`Completed`: Added `kotlinx-serialization-json` dependency (runtime library only, no compiler plugin). `RichTextSchema` uses manual `buildJsonObject`/`buildJsonArray` API — core domain types stay annotation-free. Schema version 1 with forward-compatible version switch. Decode normalizes: clamps out-of-bounds coordinates, drops empty spans, drops unknown style types gracefully. Custom payload canonicalization: embedded as structured JSON on encode, serialized to canonical string on decode. 27 test cases covering round-trips for all style types, normalization edge cases, version handling, and malformed data resilience. Pending build verification.
 
 ## Task 3. Implement Core Span Algorithms (Pure, Tested Utilities)
 

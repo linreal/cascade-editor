@@ -29,6 +29,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Registry | `registry/BlockRegistry.kt` | `BlockRegistry` |
 | Descriptors | `registry/BlockDescriptor.kt` | `BlockDescriptor`, `BlockCategory` |
 | Renderer interface | `registry/BlockRenderer.kt` | `BlockRenderer<T>`, `BlockCallbacks`, `DefaultBlockCallbacks` |
+| Rich text serialization | `serialization/RichTextSchema.kt` | `RichTextSchema` |
 
 All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
 
@@ -149,7 +150,8 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Rich text spans — rendering/editing | Not done | No AnnotatedString usage yet |
 | Text transformation panel | Not done | |
 | Block anchor / action menu | Not done | |
-| Serialization (JSON export/import) | Not done | `extractAllText()` helper exists |
+| Serialization — rich text spans | Done | `RichTextSchema` encode/decode with version switch |
+| Serialization — full document | Not done | `extractAllText()` helper exists |
 | Undo / Redo | Not done | |
 | Theming / styling API | Not done | Colors and sizes hardcoded |
 | Block nesting / indentation | Not done | Flat list only |
@@ -166,3 +168,4 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `DragUtilsTest.kt` | Drop target coordinate math |
 | `BlockRegistryTest.kt` | Descriptor search, block creation |
 | `BlockTest.kt` | Core block creation |
+| `RichTextSchemaTest.kt` | Span serialization round-trips, normalization, version handling |
