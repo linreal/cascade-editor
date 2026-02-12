@@ -1,6 +1,6 @@
 # Rich Text Spans V1 - Decomposed Implementation Tasks
 
-This task list is derived from `cassist/RichTextSpans.md`.
+This task list is derived from `cassist/RichTextSpans.md`, read it for better understanding.
 Tasks are ordered by implementation sequence and are scoped for one-shot delivery.
 
 ## Task 1. Extend Domain Model for Spans (Compile-Safe Foundation)
@@ -60,6 +60,7 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 
 `Implementation`:
 - Add normalization (`sort`, `clamp`, `drop empty`, merge same-style overlaps).
+- Ensure different-style overlaps (e.g. Bold + Italic) are preserved (cumulative application).
 - Add edit adjustment helpers for insert/delete/replace in visible coordinates.
 - Add split and merge transfer helpers.
 - Add style toggle/apply/remove helpers.
@@ -156,6 +157,7 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 - Route changes into `BlockSpanStates.adjustForUserEdit`.
 - Apply pending styles for collapsed-cursor typing.
 - Ensure plain-text paste inherits active/pending style policy from cursor context.
+- **Verification**: Verify if internal clipboard operations (Rich Text -> Copy -> Paste) preserve styles automatically via serialization.
 
 `Restrictions and considerations`:
 - Never allow span coordinates to include sentinel index.
@@ -200,6 +202,7 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 - Add `ApplySpanStyle` and `RemoveSpanStyle` actions with `TextRange`.
 - Implement reducer-side updates to `BlockContent.Text.spans` as immutable snapshot sync only.
 - Add integration path so runtime `BlockSpanStates` and snapshot state stay consistent after action dispatch.
+- **Critical**: Ensure snapshot synchronization happens **before** any potential Undo stack capture to prevent state drift.
 
 `Restrictions and considerations`:
 - No side effects inside reducers.
@@ -244,6 +247,7 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 
 `Implementation`:
 - Add algorithm unit tests: normalization, offsets, style status, continuation, split/merge transfer.
+- Add specific test case for overlapping different styles (e.g. `[0,5) Bold` + `[3,8) Italic`) to ensure they apply cumulatively.
 - Add integration tests for enter split, backspace merge, forward-delete merge, action dispatch flows.
 - Add sentinel-specific tests for coordinate conversions.
 - Add composition-sensitive tests where feasible.
