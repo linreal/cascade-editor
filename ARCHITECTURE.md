@@ -30,6 +30,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Descriptors | `registry/BlockDescriptor.kt` | `BlockDescriptor`, `BlockCategory` |
 | Renderer interface | `registry/BlockRenderer.kt` | `BlockRenderer<T>`, `BlockCallbacks`, `DefaultBlockCallbacks` |
 | Rich text serialization | `serialization/RichTextSchema.kt` | `RichTextSchema` |
+| Span algorithms | `richtext/SpanAlgorithms.kt` | `SpanAlgorithms`, `StyleStatus` |
 
 All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
 
@@ -147,6 +148,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Divider renderer | Not done | Type exists, no UI |
 | Image renderer | Not done | Type exists, no UI |
 | Rich text spans — domain model | Done | `TextSpan`, `SpanStyle`, `BlockContent.Text.spans` |
+| Rich text spans — algorithms | Done | `SpanAlgorithms`: normalize, adjust, split/merge, apply/remove/toggle, query |
 | Rich text spans — rendering/editing | Not done | No AnnotatedString usage yet |
 | Text transformation panel | Not done | |
 | Block anchor / action menu | Not done | |
@@ -169,3 +171,4 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `BlockRegistryTest.kt` | Descriptor search, block creation |
 | `BlockTest.kt` | Core block creation |
 | `RichTextSchemaTest.kt` | Span serialization round-trips, normalization, version handling |
+| `SpanAlgorithmsTest.kt` | Normalize, edit adjust, split/merge, apply/remove/toggle, style queries (~62 tests) |
