@@ -93,7 +93,7 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `StyleStatus` is a `public` enum (needed by Task 10 toolbar UI). Algorithms object is `internal`.
 62 test cases covering normalization, insertions, deletions, replacements, split/merge, apply/remove/toggle, style queries (collapsed + ranged), and composite integration scenarios. Pending build verification.
 
-## Task 4. Add `BlockSpanStates` Runtime Holder
+## Task 4. Add `BlockSpanStates` Runtime Holder — DONE
 
 `Objective`: Create live mutable span state holder parallel to `BlockTextStates`.
 
@@ -102,7 +102,7 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 - New: `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/LocalBlockSpanStates.kt`
 
 `Implementation`:
-- Implement per-block span storage and lifecycle APIs: `getOrCreate`, `get`, `set`, `remove`, `cleanup`.
+- Implement per-block span storage and lifecycle APIs: `getOrCreate(..., textLength)`, `get`, `set(..., textLength)`, `remove`, `cleanup`.
 - Implement transfer/update APIs: `mergeInto`, `split`, `applyStyle`, `removeStyle`, `adjustForUserEdit`.
 - Implement pending continuation style APIs.
 - Integrate pure algorithm utilities from Task 3.
@@ -114,6 +114,8 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 
 `Done when`:
 - Holder unit tests confirm invariant preservation and transfer correctness.
+
+`Completed`: `@Stable` class using `MutableState<List<TextSpan>>` per block for Compose snapshot reactivity. Full API surface: lifecycle (`getOrCreate(..., textLength)` / `get` / `getSpans` / `set(..., textLength)` / `remove` / `cleanup` / `clear`), edit adjustment (`adjustForUserEdit`), transfer (`split`/`mergeInto`), style ops (`applyStyle`/`removeStyle`/`toggleStyle`), queries (`queryStyleStatus`/`activeStylesAt`), and pending styles (`get`/`set`/`clear`/`resolveStylesForInsertion`). Invariant enforcement is strict at API ingress: `getOrCreate` and `set` now normalize+clamp spans against current visible `textLength`. Defensive copies are applied for incoming span/pending-style collections. Pending styles use snapshot-aware state map semantics, and `cleanup` prunes pending-only stale IDs (not just IDs with span state). `split` reuses existing target state instance instead of replacing map entry identity. `resolveStylesForInsertion` uses `position - 1` fallback for natural style continuation. `LocalBlockSpanStates` CompositionLocal follows `LocalBlockTextStates` pattern. Tests expanded to cover aliasing defenses, strict normalization/clamping, stale pending cleanup, and split target-state identity preservation. Pending build verification.
 
 ## Task 5. Wire Span Holder Lifecycle Into Editor Composition
 
@@ -281,26 +283,11 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 - `./gradlew :editor:allTests` passes with new coverage.
 - No regressions in existing editor tests.
 
-## Task 12. Final Hardening and Agent Readiness Pass
+## Task 12. Final Hardening 
 
-`Objective`: Ensure implementation matches spec constraints and is safe for downstream agent-driven work.
+`Objective`: Ensure implementation matches spec constraints 
 
 `Primary files`:
 - `cassist/RichTextSpans.md`
 - `ARCHITECTURE.md`
 - Code touched by Tasks 1-11
-
-`Implementation`:
-- Run full checklist from spec section "Agent Checklist Before Merging".
-- Verify API docs/comments for new public types and actions.
-- Update architecture docs to include rich text runtime layer and action contracts.
-- Record deferred items as explicit TODOs: floating toolbar, rich clipboard import, undo/redo integration.
-
-`Restrictions and considerations`:
-- No undocumented behavioral deltas.
-- No unresolved ambiguity in action or coordinate semantics.
-- Keep follow-up backlog explicit to avoid accidental scope creep in later tasks.
-
-`Done when`:
-- Checklist is satisfied and documented.
-- Another engineer/agent can implement or review from docs alone without rediscovery work.
