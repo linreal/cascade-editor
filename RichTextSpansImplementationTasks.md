@@ -55,12 +55,13 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 
 `Completed`: Added `kotlinx-serialization-json` dependency (runtime library only, no compiler plugin). `RichTextSchema` uses manual `buildJsonObject`/`buildJsonArray` API — core domain types stay annotation-free. Schema version 1 with forward-compatible version switch. Decode normalizes: clamps out-of-bounds coordinates, drops empty spans, drops unknown style types gracefully. Custom payload canonicalization: embedded as structured JSON on encode, serialized to canonical string on decode. 27 test cases covering round-trips for all style types, normalization edge cases, version handling, and malformed data resilience. Pending build verification.
 
-## Task 3. Implement Core Span Algorithms (Pure, Tested Utilities)
+## Task 3. Implement Core Span Algorithms (Pure, Tested Utilities) — DONE
 
 `Objective`: Implement all range math in pure functions before UI/runtime integration.
 
 `Primary files`:
 - New: `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/SpanAlgorithms.kt`
+- New: `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/StyleStatus.kt` (enum in same file as algorithms)
 - New tests: `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/SpanAlgorithmsTest.kt`
 
 `Implementation`:
@@ -78,6 +79,19 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 
 `Done when`:
 - Unit tests cover edge cases: overlaps, clipping, exact-boundary edits, full-delete collapse, and partial-style ranges.
+
+`Completed`: `SpanAlgorithms` internal object with 9 pure functions:
+- **normalize**: clamp, filter empty, merge same-style overlaps/adjacents, sort output.
+- **adjustForEdit**: models any edit as `replace [editStart, editStart+deletedLen) with insertedLen chars`. Start uses "after" bias (insertions at span start push right → new char NOT styled). End uses "before" bias (insertions at span end don't extend). Collapsed spans dropped.
+- **splitAt**: clips crossing spans, shifts second block to zero-based coordinates.
+- **mergeSpans**: shifts second block spans, then merges adjacent same-style at boundary.
+- **applyStyle**: adds span + normalizes (auto-merges with existing same-style).
+- **removeStyle**: clips/splits matching spans around removal range; other styles untouched.
+- **toggleStyle**: FullyActive → remove, else → apply.
+- **queryStyleStatus**: collapsed cursor checks containment; ranged selection computes union coverage.
+- **activeStylesAt**: returns all styles at a position.
+`StyleStatus` is a `public` enum (needed by Task 10 toolbar UI). Algorithms object is `internal`.
+62 test cases covering normalization, insertions, deletions, replacements, split/merge, apply/remove/toggle, style queries (collapsed + ranged), and composite integration scenarios. Pending build verification.
 
 ## Task 4. Add `BlockSpanStates` Runtime Holder
 
