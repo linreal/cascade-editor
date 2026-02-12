@@ -16,9 +16,11 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Auto-scroll | `ui/AutoScrollEffect.kt` | `AutoScrollDuringDrag()` |
 | Drop target calc | `ui/utils/DragUtils.kt` | `calculateDropTargetIndex()` |
 | Text state local | `ui/LocalBlockTextStates.kt` | `LocalBlockTextStates` |
+| Span state local | `ui/LocalBlockSpanStates.kt` | `LocalBlockSpanStates` |
 | State snapshot | `state/EditorState.kt` | `EditorState`, `DragState` |
 | State holder | `state/EditorStateHolder.kt` | `EditorStateHolder`, `rememberEditorState()` |
 | Text state manager | `state/BlockTextStates.kt` | `BlockTextStates` |
+| Span state manager | `state/BlockSpanStates.kt` | `BlockSpanStates` |
 | All actions | `action/EditorAction.kt` | `sealed class EditorAction` |
 | Block model | `core/Block.kt` | `Block`, factory methods |
 | Block types | `core/BlockType.kt` | `sealed interface BlockType` |
@@ -86,6 +88,8 @@ Custom blocks: implement `CustomBlockType` interface.
 
 **BlockTextStates** — single source of truth for text content. One `TextFieldState` per block. Key methods: `getOrCreate()`, `getVisibleText()`, `mergeInto()`, `setText()`, `extractAllText()`, `cleanup()`. Provided to renderers via `LocalBlockTextStates` CompositionLocal.
 
+**BlockSpanStates** — single source of truth for rich text spans during editing. One `MutableState<List<TextSpan>>` per block plus snapshot-aware pending-style state. Key methods: `getOrCreate(..., textLength)`, `getSpans()`, `set(..., textLength)`, `adjustForUserEdit()`, `split()`, `mergeInto()`, `applyStyle()`, `removeStyle()`, `toggleStyle()`, `queryStyleStatus()`, `activeStylesAt()`, `resolveStylesForInsertion()`. Invariants are enforced at API ingress (`getOrCreate` / `set`) by normalizing and clamping spans with current visible text length. Provided to renderers via `LocalBlockSpanStates` CompositionLocal.
+
 > **Why not sync text via LaunchedEffect?** Causes cursor jumps, race conditions, and double-init. `BlockTextStates` avoids all of this by owning the `TextFieldState` directly.
 
 ## Action System
@@ -149,6 +153,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Image renderer | Not done | Type exists, no UI |
 | Rich text spans — domain model | Done | `TextSpan`, `SpanStyle`, `BlockContent.Text.spans` |
 | Rich text spans — algorithms | Done | `SpanAlgorithms`: normalize, adjust, split/merge, apply/remove/toggle, query |
+| Rich text spans — runtime holder | Done | `BlockSpanStates` + `LocalBlockSpanStates`, strict ingress normalization/clamping |
 | Rich text spans — rendering/editing | Not done | No AnnotatedString usage yet |
 | Text transformation panel | Not done | |
 | Block anchor / action menu | Not done | |
@@ -172,3 +177,4 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `BlockTest.kt` | Core block creation |
 | `RichTextSchemaTest.kt` | Span serialization round-trips, normalization, version handling |
 | `SpanAlgorithmsTest.kt` | Normalize, edit adjust, split/merge, apply/remove/toggle, style queries (~62 tests) |
+| `BlockSpanStatesTest.kt` | Lifecycle, edit adjustment, split/merge transfer, style ops, queries, pending styles, aliasing/invariant edge cases (~57 tests) |
