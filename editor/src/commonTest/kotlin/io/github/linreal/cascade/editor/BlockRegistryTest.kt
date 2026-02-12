@@ -3,7 +3,6 @@ package io.github.linreal.cascade.editor
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockType
-import io.github.linreal.cascade.editor.registry.BlockCategory
 import io.github.linreal.cascade.editor.registry.BlockDescriptor
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import kotlin.test.Test
@@ -84,7 +83,6 @@ class BlockRegistryTest {
             displayName = "Callout",
             description = "A callout box for important information",
             keywords = listOf("alert", "tip", "note"),
-            category = BlockCategory.CUSTOM,
             factory = { id ->
                 Block(id, BlockType.Quote, BlockContent.Text(""))
             }
@@ -97,22 +95,12 @@ class BlockRegistryTest {
     }
 
     @Test
-    fun `search by category`() {
-        val registry = BlockRegistry.createDefault()
-
-        val mediaResults = registry.getByCategory(BlockCategory.MEDIA)
-
-        assertTrue(mediaResults.any { it.typeId == "image" })
-    }
-
-    @Test
     fun `descriptor relevance scoring`() {
         val descriptor = BlockDescriptor(
             typeId = "test",
             displayName = "Paragraph",
             description = "A text paragraph",
             keywords = listOf("text", "body"),
-            category = BlockCategory.BASIC,
             factory = { id -> Block(id, BlockType.Paragraph, BlockContent.Text("")) }
         )
 

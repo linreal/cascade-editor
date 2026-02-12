@@ -6,8 +6,15 @@ package io.github.linreal.cascade.editor.core
 public sealed interface BlockContent {
     /**
      * Text content for blocks like paragraphs, headings, lists.
+     *
+     * @property text The plain text content
+     * @property spans Rich text style spans applied to ranges within [text].
+     *   Uses visible-coordinate half-open ranges. Default is empty (plain text).
      */
-    public data class Text(val text: String) : BlockContent
+    public data class Text(
+        val text: String,
+        val spans: List<TextSpan> = emptyList(),
+    ) : BlockContent
 
     /**
      * Image content with URI and optional alt text.

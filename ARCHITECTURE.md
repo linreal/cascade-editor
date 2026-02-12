@@ -23,6 +23,8 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Block model | `core/Block.kt` | `Block`, factory methods |
 | Block types | `core/BlockType.kt` | `sealed interface BlockType` |
 | Block content | `core/BlockContent.kt` | `sealed interface BlockContent` |
+| Span style | `core/SpanStyle.kt` | `sealed interface SpanStyle` |
+| Text span | `core/TextSpan.kt` | `TextSpan` |
 | Block ID | `core/BlockId.kt` | `BlockId` |
 | Registry | `registry/BlockRegistry.kt` | `BlockRegistry` |
 | Descriptors | `registry/BlockDescriptor.kt` | `BlockDescriptor`, `BlockCategory` |
@@ -44,7 +46,7 @@ All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/ed
 ├─────────────────────────────────────────────────────────┤
 │  Registry Layer (BlockRegistry, BlockDescriptor)        │
 ├─────────────────────────────────────────────────────────┤
-│  Core Layer (Block, BlockType, BlockContent, BlockId)   │
+│  Core Layer (Block, BlockType, BlockContent, TextSpan)   │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -68,7 +70,11 @@ All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/ed
 
 Custom blocks: implement `CustomBlockType` interface.
 
-**BlockContent** — `Text(text)` | `Image(uri, altText?)` | `Empty` | `Custom(typeId, data)`.
+**BlockContent** — `Text(text, spans)` | `Image(uri, altText?)` | `Empty` | `Custom(typeId, data)`.
+
+**TextSpan** — `TextSpan(start, end, style)` with half-open `[start, end)` visible coordinates. Validates `start >= 0` and `end >= start`.
+
+**SpanStyle** — sealed interface: `Bold`, `Italic`, `Underline`, `StrikeThrough`, `InlineCode`, `Highlight(colorArgb)`, `Link(url)`, `Custom(typeId, payload?)`. `Custom.payload` is opaque `String?` (raw JSON); core layer must not parse it.
 
 ## State Management
 
@@ -139,7 +145,8 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Quote visual styling | Not done | No left border / background |
 | Divider renderer | Not done | Type exists, no UI |
 | Image renderer | Not done | Type exists, no UI |
-| Rich text spans (B/I/U) | Not done | No AnnotatedString usage |
+| Rich text spans — domain model | Done | `TextSpan`, `SpanStyle`, `BlockContent.Text.spans` |
+| Rich text spans — rendering/editing | Not done | No AnnotatedString usage yet |
 | Text transformation panel | Not done | |
 | Block anchor / action menu | Not done | |
 | Serialization (JSON export/import) | Not done | `extractAllText()` helper exists |

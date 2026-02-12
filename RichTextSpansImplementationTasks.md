@@ -3,7 +3,7 @@
 This task list is derived from `cassist/RichTextSpans.md`, read it for better understanding.
 Tasks are ordered by implementation sequence and are scoped for one-shot delivery.
 
-## Task 1. Extend Domain Model for Spans (Compile-Safe Foundation)
+## Task 1. Extend Domain Model for Spans (Compile-Safe Foundation) — DONE
 
 `Objective`: Introduce rich text span types into the core model without changing runtime behavior yet.
 
@@ -20,13 +20,16 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 - Keep all existing block factory functions source-compatible by relying on default `spans`.
 
 `Restrictions and considerations`:
-- Use `kotlinx.serialization.json.JsonElement?` for `Custom.payload`; do not use `Map<String, Any?>`.
+- ~~Use `kotlinx.serialization.json.JsonElement?` for `Custom.payload`; do not use `Map<String, Any?>`.~~
+  **Decision**: Used `String?` (opaque JSON) instead to keep core layer free of serialization dependencies. Core must not parse/inspect the payload. Serialization layer (Task 2) owns `String` <-> `JsonElement` conversion and must canonicalize (parse then re-encode to normalized JSON) at the persistence boundary to avoid equality/toggle bugs from formatting differences.
 - Preserve explicit API mode (`public`/`internal` declarations).
 - Do not alter runtime editor behavior in this task.
 
 `Done when`:
 - Project compiles.
 - Existing tests compile without behavior regressions.
+
+`Completed`: All files created/modified. `TextSpan` validates `start >= 0` and `end >= start`. All existing call sites use default `spans = emptyList()`. No runtime behavior changes. Pending build verification.
 
 ## Task 2. Define Span Serialization Contract (JSON Canonical)
 
