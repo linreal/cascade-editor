@@ -15,8 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import io.github.linreal.cascade.editor.action.UpdateDragTarget
+import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockContent
+import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
+import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorStateHolder
 
@@ -58,11 +62,14 @@ public fun CascadeEditor(
 
     // Create and remember the text states holder
     val blockTextStates = remember { BlockTextStates() }
+    val blockSpanStates = remember { BlockSpanStates() }
 
     // Cleanup stale states when blocks change
     LaunchedEffect(state.blocks) {
-        val existingIds = state.blocks.map { it.id }.toSet()
-        blockTextStates.cleanup(existingIds)
+        val allBlockIds = state.blocks.map { it.id }.toSet()
+        val textBlockIds = collectTextBlockIds(state.blocks)
+        blockTextStates.cleanup(allBlockIds)
+        blockSpanStates.cleanup(textBlockIds)
     }
 
     // Create callbacks with state access and text states for proper merge handling
@@ -74,7 +81,10 @@ public fun CascadeEditor(
         )
     }
 
-    CompositionLocalProvider(LocalBlockTextStates provides blockTextStates) {
+    CompositionLocalProvider(
+        LocalBlockTextStates provides blockTextStates,
+        LocalBlockSpanStates provides blockSpanStates,
+    ) {
         val lazyListState = rememberLazyListState()
 
         // Current drag Y position — local state, NOT in EditorState.
@@ -172,4 +182,12 @@ public fun CascadeEditor(
             }
         }
     }
+}
+
+internal fun collectTextBlockIds(blocks: List<Block>): Set<BlockId> {
+    return blocks
+        .asSequence()
+        .filter { block -> block.type.supportsText && block.content is BlockContent.Text }
+        .map { block -> block.id }
+        .toSet()
 }

@@ -117,7 +117,7 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 
 `Completed`: `@Stable` class using `MutableState<List<TextSpan>>` per block for Compose snapshot reactivity. Full API surface: lifecycle (`getOrCreate(..., textLength)` / `get` / `getSpans` / `set(..., textLength)` / `remove` / `cleanup` / `clear`), edit adjustment (`adjustForUserEdit`), transfer (`split`/`mergeInto`), style ops (`applyStyle`/`removeStyle`/`toggleStyle`), queries (`queryStyleStatus`/`activeStylesAt`), and pending styles (`get`/`set`/`clear`/`resolveStylesForInsertion`). Invariant enforcement is strict at API ingress: `getOrCreate` and `set` now normalize+clamp spans against current visible `textLength`. Defensive copies are applied for incoming span/pending-style collections. Pending styles use snapshot-aware state map semantics, and `cleanup` prunes pending-only stale IDs (not just IDs with span state). `split` reuses existing target state instance instead of replacing map entry identity. `resolveStylesForInsertion` uses `position - 1` fallback for natural style continuation. `LocalBlockSpanStates` CompositionLocal follows `LocalBlockTextStates` pattern. Tests expanded to cover aliasing defenses, strict normalization/clamping, stale pending cleanup, and split target-state identity preservation. Pending build verification.
 
-## Task 5. Wire Span Holder Lifecycle Into Editor Composition
+## Task 5. Wire Span Holder Lifecycle Into Editor Composition — DONE
 
 `Objective`: Make `BlockSpanStates` available where text fields render and ensure cleanup policy matches blocks list lifecycle.
 
@@ -139,6 +139,8 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Done when`:
 - Spans are available in renderers for all text-supporting blocks.
 - No regressions in current text editing and drag/drop behavior.
+
+`Completed`: `BlockSpanStates` is now created and remembered in `CascadeEditor`, cleaned up in the existing `LaunchedEffect(state.blocks)` alongside `BlockTextStates`, and provided via `CompositionLocalProvider` with `LocalBlockSpanStates`. Cleanup is now scoped to active text blocks only (`collectTextBlockIds`), so stale span runtime state is dropped when a block transitions to non-text while keeping the same `blockId`. `TextBlockRenderer` initializes per-block span state via `blockSpanStates.getOrCreate(block.id, textContent.spans, textContent.text.length)`. Lifecycle integration coverage added in `SpanLifecycleIntegrationTest` (text-id collection, non-text transition cleanup, same-id re-initialization from snapshot spans). All changes are recomposition-neutral — no high-frequency snapshot reads and no new effects. Pending build verification.
 
 ## Task 6. Add Span Rendering Through `OutputTransformation`
 
