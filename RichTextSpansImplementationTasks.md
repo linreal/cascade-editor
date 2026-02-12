@@ -33,8 +33,8 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Objective`: Lock persistence shape for future save/load and guarantee round-trip safety.
 
 `Primary files`:
-- New: `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/serialization/RichTextSchema.kt`
-- New tests: `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/RichTextSchemaTest.kt`
+- New: `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/serialization/RichTextSchema.kt`
+- New tests: `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/RichTextSchemaTest.kt`
 
 `Implementation`:
 - Define a schema with explicit version field.
@@ -55,8 +55,8 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Objective`: Implement all range math in pure functions before UI/runtime integration.
 
 `Primary files`:
-- New: `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/SpanAlgorithms.kt`
-- New tests: `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/SpanAlgorithmsTest.kt`
+- New: `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/SpanAlgorithms.kt`
+- New tests: `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/SpanAlgorithmsTest.kt`
 
 `Implementation`:
 - Add normalization (`sort`, `clamp`, `drop empty`, merge same-style overlaps).
@@ -79,8 +79,8 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Objective`: Create live mutable span state holder parallel to `BlockTextStates`.
 
 `Primary files`:
-- New: `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockSpanStates.kt`
-- New: `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/LocalBlockSpanStates.kt`
+- New: `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockSpanStates.kt`
+- New: `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/LocalBlockSpanStates.kt`
 
 `Implementation`:
 - Implement per-block span storage and lifecycle APIs: `getOrCreate`, `get`, `set`, `remove`, `cleanup`.
@@ -101,9 +101,9 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Objective`: Make `BlockSpanStates` available where text fields render and ensure cleanup policy matches blocks list lifecycle.
 
 `Primary files`:
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/CascadeEditor.kt`
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/LocalBlockTextStates.kt`
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/renderers/TextBlockRenderer.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/CascadeEditor.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/LocalBlockTextStates.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/renderers/TextBlockRenderer.kt`
 
 `Implementation`:
 - Create and remember `BlockSpanStates` in `CascadeEditor`.
@@ -124,9 +124,9 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Objective`: Visually render spans without changing raw text storage.
 
 `Primary files`:
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/BackspaceAwareTextEdit.kt`
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/renderers/TextBlockRenderer.kt`
-- New: `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/SpanMapper.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/BackspaceAwareTextEdit.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/renderers/TextBlockRenderer.kt`
+- New: `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/SpanMapper.kt`
 
 `Implementation`:
 - Extend `BackspaceAwareTextField` to accept optional `outputTransformation`.
@@ -147,9 +147,9 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Objective`: Keep spans coherent during typing, deletion, and plain-text paste.
 
 `Primary files`:
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/BackspaceAwareTextEdit.kt`
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/renderers/TextBlockRenderer.kt`
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockSpanStates.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/BackspaceAwareTextEdit.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/renderers/TextBlockRenderer.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockSpanStates.kt`
 
 `Implementation`:
 - Chain span-maintenance `InputTransformation` with sentinel guard using `then(...)`.
@@ -172,9 +172,9 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Objective`: Ensure span updates happen for non-user edits that bypass input transformations.
 
 `Primary files`:
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/registry/BlockRenderer.kt`
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockTextStates.kt`
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockSpanStates.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/registry/BlockRenderer.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockTextStates.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockSpanStates.kt`
 
 `Implementation`:
 - Update `DefaultBlockCallbacks.onEnter` split flow to split spans in runtime holder.
@@ -195,8 +195,8 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Objective`: Provide external API for formatting while keeping immutable state snapshots aligned.
 
 `Primary files`:
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/action/EditorAction.kt`
-- Optional helper: new `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/SpanActionDispatcher.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/action/EditorAction.kt`
+- Optional helper: new `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/SpanActionDispatcher.kt`
 
 `Implementation`:
 - Add `ApplySpanStyle` and `RemoveSpanStyle` actions with `TextRange`.
@@ -217,9 +217,9 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Objective`: Expose style state for internal/external formatting UIs without EditorState churn.
 
 `Primary files`:
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/CascadeEditor.kt`
-- New optional UI: `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/RichTextToolbar.kt`
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockSpanStates.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/CascadeEditor.kt`
+- New optional UI: `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/RichTextToolbar.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockSpanStates.kt`
 
 `Implementation`:
 - Add `StyleStatus` query usage from focused block selection (`TextFieldState.selection`).
@@ -243,7 +243,7 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Objective`: Lock correctness and prevent regressions for rich text behavior.
 
 `Primary files`:
-- New tests in `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/`
+- New tests in `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/`
 
 `Implementation`:
 - Add algorithm unit tests: normalization, offsets, style status, continuation, split/merge transfer.
@@ -267,8 +267,8 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Objective`: Ensure implementation matches spec constraints and is safe for downstream agent-driven work.
 
 `Primary files`:
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/cassist/RichTextSpans.md`
-- `/Users/sergeydrymchenko/Projects/Android/CascadeEditor/ARCHITECTURE.md`
+- `cassist/RichTextSpans.md`
+- `ARCHITECTURE.md`
 - Code touched by Tasks 1-11
 
 `Implementation`:
