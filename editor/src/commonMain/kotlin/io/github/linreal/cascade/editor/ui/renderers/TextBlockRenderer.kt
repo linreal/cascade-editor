@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,9 +22,9 @@ import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockType
-
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderer
+import io.github.linreal.cascade.editor.richtext.SpanMapper
 import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
 import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
@@ -61,8 +62,13 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
 
         // Get span state from the shared holder
         val blockSpanStates = LocalBlockSpanStates.current
-        remember(block.id) {
+        val spanState = remember(block.id) {
             blockSpanStates.getOrCreate(block.id, textContent.spans, textContent.text.length)
+        }
+        val outputTransformation by remember(block.id) {
+            derivedStateOf {
+                SpanMapper.toOutputTransformation(spanState.value)
+            }
         }
 
         LaunchedEffect(isFocused) {
@@ -89,6 +95,7 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
                         }
                     },
                 textStyle = textStyle,
+                outputTransformation = outputTransformation,
                 onTextLayout = { result -> textLayoutResult = result() },
                 focusRequester = focusRequester,
                 onBackspaceAtStart = {

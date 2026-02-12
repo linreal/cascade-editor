@@ -142,7 +142,7 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 
 `Completed`: `BlockSpanStates` is now created and remembered in `CascadeEditor`, cleaned up in the existing `LaunchedEffect(state.blocks)` alongside `BlockTextStates`, and provided via `CompositionLocalProvider` with `LocalBlockSpanStates`. Cleanup is now scoped to active text blocks only (`collectTextBlockIds`), so stale span runtime state is dropped when a block transitions to non-text while keeping the same `blockId`. `TextBlockRenderer` initializes per-block span state via `blockSpanStates.getOrCreate(block.id, textContent.spans, textContent.text.length)`. Lifecycle integration coverage added in `SpanLifecycleIntegrationTest` (text-id collection, non-text transition cleanup, same-id re-initialization from snapshot spans). All changes are recomposition-neutral — no high-frequency snapshot reads and no new effects. Pending build verification.
 
-## Task 6. Add Span Rendering Through `OutputTransformation`
+## Task 6. Add Span Rendering Through `OutputTransformation` — DONE
 
 `Objective`: Visually render spans without changing raw text storage.
 
@@ -164,6 +164,8 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 
 `Done when`:
 - Hardcoded span data renders correctly in focused/unfocused text fields across text block types.
+
+`Completed`: Added `SpanMapper` (`editor/.../richtext/SpanMapper.kt`) as the domain-to-Compose styling bridge plus `OutputTransformation` builder. `BackspaceAwareTextField` now accepts optional `outputTransformation` and forwards it to `BasicTextField` while preserving existing sentinel guard behavior. `TextBlockRenderer` now observes per-block span `State<List<TextSpan>>`, builds a memoized `OutputTransformation` from current runtime spans via `SpanMapper`, and passes it into `BackspaceAwareTextField`. Rendering path defensively clamps every span to current visible text length on every transform pass and skips invalid/empty ranges (and non-renderable custom styles), so bad data cannot crash draw. Runtime model remains non-lossy: unsupported/custom span payloads are retained in state/snapshots even if not visually decorated. Pending build verification.
 
 ## Task 7. User-Edit Span Maintenance via `InputTransformation`
 
