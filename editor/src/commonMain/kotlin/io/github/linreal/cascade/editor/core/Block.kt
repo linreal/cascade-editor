@@ -27,12 +27,15 @@ public data class Block(
     
     public companion object {
         /**
-         * Creates a new paragraph block with the given text.
+         * Creates a new paragraph block with the given text and optional spans.
          */
-        public fun paragraph(text: String = ""): Block = Block(
+        public fun paragraph(
+            text: String = "",
+            spans: List<TextSpan> = emptyList(),
+        ): Block = Block(
             id = BlockId.generate(),
             type = BlockType.Paragraph,
-            content = BlockContent.Text(text)
+            content = BlockContent.Text(text = text, spans = spans)
         )
 
         /**
