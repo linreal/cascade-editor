@@ -25,6 +25,7 @@ import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderer
 import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
+import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
 
 /**
@@ -56,6 +57,12 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
         val blockTextStates = LocalBlockTextStates.current
         val textFieldState = remember(block.id) {
             blockTextStates.getOrCreate(block.id, textContent.text)
+        }
+
+        // Get span state from the shared holder
+        val blockSpanStates = LocalBlockSpanStates.current
+        remember(block.id) {
+            blockSpanStates.getOrCreate(block.id, textContent.spans, textContent.text.length)
         }
 
         LaunchedEffect(isFocused) {
