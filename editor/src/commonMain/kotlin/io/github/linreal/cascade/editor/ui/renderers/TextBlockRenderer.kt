@@ -3,13 +3,14 @@ package io.github.linreal.cascade.editor.ui.renderers
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -25,9 +26,12 @@ import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderer
 import io.github.linreal.cascade.editor.richtext.SpanMapper
+import io.github.linreal.cascade.editor.richtext.SpanMaintenanceTextObserver
 import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
 import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
+import io.github.linreal.cascade.editor.ui.visibleText
+import kotlinx.coroutines.flow.collect
 
 /**
  * Renderer for text-supporting block types (paragraph, headings, lists, etc.).
@@ -65,10 +69,17 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
         val spanState = remember(block.id) {
             blockSpanStates.getOrCreate(block.id, textContent.spans, textContent.text.length)
         }
-        val outputTransformation by remember(block.id) {
-            derivedStateOf {
-                SpanMapper.toOutputTransformation(spanState.value)
+        val outputTransformation = remember(block.id, spanState) {
+            OutputTransformation {
+                SpanMapper.run { applyStyles(spanState.value) }
             }
+        }
+        val spanTextObserver = remember(block.id, blockSpanStates) {
+            SpanMaintenanceTextObserver(
+                blockId = block.id,
+                blockSpanStates = blockSpanStates,
+                initialVisibleText = textFieldState.visibleText(),
+            )
         }
 
         LaunchedEffect(isFocused) {
@@ -76,6 +87,11 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
                 focusRequester.requestFocus()
             } else if (hasComposeFocus) {
                 focusManager.clearFocus()
+            }
+        }
+        LaunchedEffect(textFieldState, spanTextObserver) {
+            snapshotFlow { textFieldState.visibleText() }.collect { currentVisibleText ->
+                spanTextObserver.onCommittedVisibleText(currentVisibleText)
             }
         }
 

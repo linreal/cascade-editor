@@ -167,21 +167,25 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 
 `Completed`: Added `SpanMapper` (`editor/.../richtext/SpanMapper.kt`) as the domain-to-Compose styling bridge plus `OutputTransformation` builder. `BackspaceAwareTextField` now accepts optional `outputTransformation` and forwards it to `BasicTextField` while preserving existing sentinel guard behavior. `TextBlockRenderer` now observes per-block span `State<List<TextSpan>>`, builds a memoized `OutputTransformation` from current runtime spans via `SpanMapper`, and passes it into `BackspaceAwareTextField`. Rendering path defensively clamps every span to current visible text length on every transform pass and skips invalid/empty ranges (and non-renderable custom styles), so bad data cannot crash draw. Runtime model remains non-lossy: unsupported/custom span payloads are retained in state/snapshots even if not visually decorated. Pending build verification.
 
-## Task 7. User-Edit Span Maintenance via `InputTransformation`
+## Task 7. User-Edit Span Maintenance (Committed-Text Observer) — DONE
 
 `Objective`: Keep spans coherent during typing, deletion, and plain-text paste.
 
 `Primary files`:
-- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/BackspaceAwareTextEdit.kt`
+- New: `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/SpanMaintenanceTextObserver.kt`
 - `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/renderers/TextBlockRenderer.kt`
 - `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockSpanStates.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/SpanMapper.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/BackspaceAwareTextEdit.kt`
 
 `Implementation`:
-- Chain span-maintenance `InputTransformation` with sentinel guard using `then(...)`.
-- Convert edit change ranges from text-field buffer coordinates to visible coordinates (exclude ZWSP).
-- Route changes into `BlockSpanStates.adjustForUserEdit`.
-- Apply pending styles for collapsed-cursor typing.
+- Keep `sentinelGuard` as the only `InputTransformation` (no external-state mutation during input transform).
+- Observe committed visible text with `snapshotFlow { textFieldState.visibleText() }`.
+- Diff previous/current visible text per block to compute one replace edit (`start`, `deletedLength`, `insertedLength`).
+- Route diff results into `BlockSpanStates.adjustForUserEdit`.
+- Apply pending/continuation style policy for inserted ranges (including override via pending styles).
 - Ensure plain-text paste inherits active/pending style policy from cursor context.
+- Keep `OutputTransformation` instance stable per block while reading latest runtime spans each pass (to avoid composition/IME instability from transformation identity churn).
 - **Verification**: Verify if internal clipboard operations (Rich Text -> Copy -> Paste) preserve styles automatically via serialization.
 
 `Restrictions and considerations`:
@@ -191,6 +195,8 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 
 `Done when`:
 - Typing/delete/paste preserves expected style ranges with no cursor jumps or crashes.
+
+`Completed`: Implemented `SpanMaintenanceTextObserver` (new `richtext` utility) as the Task 7 integration point. `TextBlockRenderer` now feeds committed visible text changes into this observer via `snapshotFlow`, and the observer performs block-local diffing, calls `BlockSpanStates.adjustForUserEdit`, and applies pending/continuation style updates for inserted ranges. `BackspaceAwareTextField` remains sentinel-only on input transformation path (no chained span-maintenance transform), avoiding the runtime typing corruption seen when external mutable state was touched during input transformation. Additionally, span rendering was stabilized by using a stable per-block `OutputTransformation` instance that reads current span state on each transform pass through `SpanMapper.applyStyles(...)`; this removed transformation-identity churn during typing. Pending build verification.
 
 ## Task 8. Programmatic Edit Sync: Split/Merge/SetText Paths
 

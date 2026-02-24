@@ -1,6 +1,7 @@
 package io.github.linreal.cascade.editor.richtext
 
 import androidx.compose.foundation.text.input.OutputTransformation
+import androidx.compose.foundation.text.input.TextFieldBuffer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle as ComposeSpanStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -42,18 +43,40 @@ internal object SpanMapper {
         if (mapped.isEmpty()) return null
 
         return OutputTransformation {
-            val visibleLength = (length - sentinelOffset).coerceAtLeast(0)
-            for (span in mapped) {
-                val clampedStart = span.start.coerceIn(0, visibleLength)
-                val clampedEnd = span.end.coerceIn(clampedStart, visibleLength)
-                if (clampedStart >= clampedEnd) continue
+            applyMappedStyles(mapped)
+        }
+    }
 
-                addStyle(
-                    spanStyle = span.style,
-                    start = clampedStart + sentinelOffset,
-                    end = clampedEnd + sentinelOffset,
-                )
-            }
+    /**
+     * Applies rich-text styles to the current [TextFieldBuffer] from runtime spans.
+     *
+     * Unlike [toOutputTransformation], this is suitable for a stable OutputTransformation
+     * instance that reads the latest span list on each invocation.
+     */
+    fun TextFieldBuffer.applyStyles(spans: List<TextSpan>) {
+        if (spans.isEmpty()) return
+
+        val mapped = spans.mapNotNull { span ->
+            val composeStyle = toComposeSpanStyle(span.style) ?: return@mapNotNull null
+            MappedSpan(start = span.start, end = span.end, style = composeStyle)
+        }
+        if (mapped.isEmpty()) return
+
+        applyMappedStyles(mapped)
+    }
+
+    private fun TextFieldBuffer.applyMappedStyles(mapped: List<MappedSpan>) {
+        val visibleLength = (length - sentinelOffset).coerceAtLeast(0)
+        for (span in mapped) {
+            val clampedStart = span.start.coerceIn(0, visibleLength)
+            val clampedEnd = span.end.coerceIn(clampedStart, visibleLength)
+            if (clampedStart >= clampedEnd) continue
+
+            addStyle(
+                spanStyle = span.style,
+                start = clampedStart + sentinelOffset,
+                end = clampedEnd + sentinelOffset,
+            )
         }
     }
 
