@@ -99,7 +99,7 @@ fun App() {
                 textAlign = TextAlign.Center
             )
             Spacers.Vertical(40.dp)
-            CascadeEditor(stateHolder = editorState, enableRichTextToolbar = true, modifier = Modifier.fillMaxSize())
+            CascadeEditor(stateHolder = editorState, modifier = Modifier.fillMaxSize())
         }
     }
 }
