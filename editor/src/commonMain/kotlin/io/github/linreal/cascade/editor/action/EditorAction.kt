@@ -4,6 +4,9 @@ import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
+import io.github.linreal.cascade.editor.core.SpanStyle
+import io.github.linreal.cascade.editor.core.TextSpan
+import io.github.linreal.cascade.editor.richtext.SpanAlgorithms
 import io.github.linreal.cascade.editor.state.DragState
 import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.SlashCommandState
@@ -112,6 +115,10 @@ public data class UpdateBlockContent(
 /**
  * Updates the text content of a block.
  * Convenience action for text-based blocks.
+ *
+ * **Span policy: reset.** This action replaces text content and clears all spans.
+ * If you need to preserve or transform spans, use [UpdateBlockContent] with a
+ * [BlockContent.Text] that includes the desired spans.
  */
 public data class UpdateBlockText(
     val blockId: BlockId,
@@ -168,16 +175,21 @@ public data class MergeBlocks(
         val targetBlock = state.getBlock(targetId) ?: return state
 
         // Only merge text content
-        val sourceText = (sourceBlock.content as? BlockContent.Text)?.text ?: return state
-        val targetText = (targetBlock.content as? BlockContent.Text)?.text ?: return state
+        val sourceContent = sourceBlock.content as? BlockContent.Text ?: return state
+        val targetContent = targetBlock.content as? BlockContent.Text ?: return state
 
-        val mergedText = targetText + sourceText
+        val mergedText = targetContent.text + sourceContent.text
+        val mergedSpans = SpanAlgorithms.mergeSpans(
+            firstSpans = targetContent.spans,
+            secondSpans = sourceContent.spans,
+            firstTextLength = targetContent.text.length,
+        )
 
         // Update target with merged content
         val newBlocks = state.blocks
             .map { block ->
                 if (block.id == targetId) {
-                    block.withContent(BlockContent.Text(mergedText))
+                    block.withContent(BlockContent.Text(mergedText, mergedSpans))
                 } else {
                     block
                 }
@@ -507,33 +519,49 @@ public data object CloseSlashCommand : EditorAction {
  * @param atPosition Cursor position where split occurs
  * @param newBlockText Optional text for the new block (from BlockTextStates)
  * @param newBlockId Optional pre-generated ID for deterministic runtime split handoff
+ * @param newBlockSpans Optional runtime spans for the new block snapshot.
+ * @param sourceBlockText Optional runtime source text for source block snapshot.
+ * @param sourceBlockSpans Optional runtime source spans for source block snapshot.
  */
 public data class SplitBlock(
     val blockId: BlockId,
     val atPosition: Int,
     val newBlockText: String? = null,
     val newBlockId: BlockId? = null,
+    val newBlockSpans: List<TextSpan>? = null,
+    val sourceBlockText: String? = null,
+    val sourceBlockSpans: List<TextSpan>? = null,
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val block = state.getBlock(blockId) ?: return state
         val textContent = block.content as? BlockContent.Text ?: return state
         val blockIndex = state.indexOfBlock(blockId)
 
-        // Use provided text or compute from block content
-        val afterText = newBlockText ?: textContent.text.drop(atPosition)
-        val beforeText = if (newBlockText != null) null else textContent.text.take(atPosition)
+        val clampedPosition = atPosition.coerceIn(0, textContent.text.length)
+        val afterText = newBlockText ?: textContent.text.drop(clampedPosition)
+        val beforeText = sourceBlockText ?: textContent.text.take(clampedPosition)
+
+        // Split snapshot spans at cursor position
+        val (beforeSpans, afterSpansFallback) = SpanAlgorithms.splitAt(textContent.spans, clampedPosition)
+        // Use runtime-provided spans for new block when available
+        val resolvedBeforeSpans = SpanAlgorithms.normalize(
+            sourceBlockSpans ?: beforeSpans,
+            beforeText.length,
+        )
+        val resolvedAfterSpans = SpanAlgorithms.normalize(
+            newBlockSpans ?: afterSpansFallback,
+            afterText.length,
+        )
 
         val newBlock = Block(
             id = newBlockId ?: BlockId.generate(),
             type = BlockType.Paragraph,
-            content = BlockContent.Text(afterText)
+            content = BlockContent.Text(afterText, resolvedAfterSpans)
         )
 
         val newBlocks = state.blocks.toMutableList().apply {
-            // Only update source block if we computed the split ourselves
-            if (beforeText != null) {
-                this[blockIndex] = block.withContent(BlockContent.Text(beforeText))
-            }
+            // Always update source block snapshot for consistency
+            this[blockIndex] = block.withContent(BlockContent.Text(beforeText, resolvedBeforeSpans))
             add(blockIndex + 1, newBlock)
         }
 
@@ -555,5 +583,83 @@ public data object DeleteSelectedOrFocused : EditorAction {
             state.focusedBlockId?.let { setOf(it) } ?: return state
         }
         return DeleteBlocks(toDelete).reduce(state)
+    }
+}
+
+// =============================================================================
+// Span Style Actions
+// =============================================================================
+
+/**
+ * Applies a span style to the specified range in a block's snapshot.
+ *
+ * **Warning: snapshot-only operation.** This reducer operates on the immutable
+ * [EditorState] snapshot and does NOT update runtime [BlockSpanStates]. The text
+ * length used for clamping comes from the snapshot, which may be stale during
+ * active editing.
+ *
+ * For interactive formatting, always use `SpanActionDispatcher` which coordinates
+ * runtime updates with snapshot sync via [UpdateBlockContent].
+ *
+ * No-op if the block does not exist or is not text-based.
+ */
+public data class ApplySpanStyle(
+    val blockId: BlockId,
+    val rangeStart: Int,
+    val rangeEnd: Int,
+    val style: SpanStyle,
+) : EditorAction {
+    override fun reduce(state: EditorState): EditorState {
+        val block = state.getBlock(blockId) ?: return state
+        val textContent = block.content as? BlockContent.Text ?: return state
+        val newSpans = SpanAlgorithms.applyStyle(
+            spans = textContent.spans,
+            rangeStart = rangeStart,
+            rangeEnd = rangeEnd,
+            style = style,
+            textLength = textContent.text.length,
+        )
+        return state.copy(
+            blocks = state.blocks.map { b ->
+                if (b.id == blockId) b.withContent(textContent.copy(spans = newSpans)) else b
+            }
+        )
+    }
+}
+
+/**
+ * Removes a span style from the specified range in a block's snapshot.
+ *
+ * **Warning: snapshot-only operation.** This reducer operates on the immutable
+ * [EditorState] snapshot and does NOT update runtime [BlockSpanStates]. The text
+ * length used for clamping comes from the snapshot, which may be stale during
+ * active editing.
+ *
+ * For interactive formatting, always use `SpanActionDispatcher` which coordinates
+ * runtime updates with snapshot sync via [UpdateBlockContent].
+ *
+ * No-op if the block does not exist or is not text-based.
+ */
+public data class RemoveSpanStyle(
+    val blockId: BlockId,
+    val rangeStart: Int,
+    val rangeEnd: Int,
+    val style: SpanStyle,
+) : EditorAction {
+    override fun reduce(state: EditorState): EditorState {
+        val block = state.getBlock(blockId) ?: return state
+        val textContent = block.content as? BlockContent.Text ?: return state
+        val removed = SpanAlgorithms.removeStyle(
+            spans = textContent.spans,
+            rangeStart = rangeStart,
+            rangeEnd = rangeEnd,
+            style = style,
+        )
+        val normalized = SpanAlgorithms.normalize(removed, textContent.text.length)
+        return state.copy(
+            blocks = state.blocks.map { b ->
+                if (b.id == blockId) b.withContent(textContent.copy(spans = normalized)) else b
+            }
+        )
     }
 }

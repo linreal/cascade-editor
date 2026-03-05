@@ -35,6 +35,8 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Span algorithms | `richtext/SpanAlgorithms.kt` | `SpanAlgorithms`, `StyleStatus` |
 | Span mapper | `richtext/SpanMapper.kt` | `SpanMapper` |
 | Span edit observer | `richtext/SpanMaintenanceTextObserver.kt` | `SpanMaintenanceTextObserver` |
+| Span action dispatcher | `richtext/SpanActionDispatcher.kt` | `SpanActionDispatcher` |
+| Span dispatcher local | `ui/LocalSpanActionDispatcher.kt` | `LocalSpanActionDispatcher` |
 
 All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
 
@@ -90,7 +92,7 @@ Custom blocks: implement `CustomBlockType` interface.
 
 **BlockTextStates** — single source of truth for text content. One `TextFieldState` per block. Key methods: `getOrCreate()`, `getVisibleText()`, `mergeInto()`, `setText()`, `consumeProgrammaticCommit()`, `extractAllText()`, `cleanup()`. Programmatic text mutations (`mergeInto` / `setText`) register per-block expected committed text so `SpanMaintenanceTextObserver` can skip/rebase non-user commits and avoid duplicate span adjustment. Provided to renderers via `LocalBlockTextStates` CompositionLocal.
 
-**BlockSpanStates** — single source of truth for rich text spans during editing. One `MutableState<List<TextSpan>>` per block plus snapshot-aware pending-style state. Key methods: `getOrCreate(..., textLength)`, `getSpans()`, `set(..., textLength)`, `adjustForUserEdit()`, `split()`, `mergeInto()`, `applyStyle()`, `removeStyle()`, `toggleStyle()`, `queryStyleStatus()`, `activeStylesAt()`, `resolveStylesForInsertion()`. Invariants are enforced at API ingress (`getOrCreate` / `set`) by normalizing and clamping spans with current visible text length. Created and remembered in `CascadeEditor`, cleaned up in `LaunchedEffect(state.blocks)` with text-only IDs (`collectTextBlockIds`) to prevent stale span state on non-text transitions, and provided to renderers via `LocalBlockSpanStates` CompositionLocal. Per-block span state is initialized in `TextBlockRenderer` from `BlockContent.Text.spans`. Rendering is applied through a stable per-block `BasicTextField` `outputTransformation` that reads latest spans at render time via `SpanMapper.applyStyles(...)` with defensive clamping in visible coordinates. User-edit span maintenance runs post-commit via `SpanMaintenanceTextObserver`, which consumes/rebases programmatic commit baselines from `BlockTextStates` before applying diff-based user edit maintenance. Programmatic split/merge runtime transfer is executed in `DefaultBlockCallbacks`, and `mergeInto(...)` clears pending styles on both source and target to avoid pending-style bleed after merge.
+**BlockSpanStates** — single source of truth for rich text spans during editing. One `MutableState<List<TextSpan>>` per block plus snapshot-aware pending-style state. Key methods: `getOrCreate(..., textLength)`, `getSpans()`, `set(..., textLength)`, `adjustForUserEdit()`, `split()`, `mergeInto()`, `applyStyle()`, `removeStyle()`, `toggleStyle()`, `queryStyleStatus()`, `activeStylesAt()`, `resolveStylesForInsertion()`. Invariants are enforced at API ingress (`getOrCreate` / `set`) by normalizing and clamping spans with current visible text length. Created and remembered in `CascadeEditor`, cleaned up in `LaunchedEffect(state.blocks)` with text-only IDs (`collectTextBlockIds`) to prevent stale span state on non-text transitions, and provided to renderers via `LocalBlockSpanStates` CompositionLocal. Per-block span state is initialized in `TextBlockRenderer` from `BlockContent.Text.spans`. Rendering is applied through a stable per-block `BasicTextField` `outputTransformation` that reads latest spans at render time via `SpanMapper.applyStyles(...)` with defensive clamping in visible coordinates. User-edit span maintenance runs post-commit via `SpanMaintenanceTextObserver`, which consumes/rebases programmatic commit baselines from `BlockTextStates` before applying diff-based user edit maintenance. Programmatic split/merge runtime transfer is executed in `DefaultBlockCallbacks`, and `mergeInto(...)` clears pending styles on both source and target to avoid pending-style bleed after merge. External formatting operations (toolbar, keyboard shortcuts) should use `SpanActionDispatcher` (provided via `LocalSpanActionDispatcher`) which coordinates runtime `BlockSpanStates` update (immediate visual) with full snapshot sync via `UpdateBlockContent` (avoids stale-text-length mismatch). Collapsed-cursor `toggleStyle` toggles pending styles instead of applying zero-width spans. `ApplySpanStyle`/`RemoveSpanStyle` actions are snapshot-only and should not be dispatched directly during active editing. Snapshot span reducers use the same `SpanAlgorithms` normalization contract as runtime for canonical output. `SplitBlock` accepts `newBlockSpans` parameter for runtime-provided spans and always updates source block snapshot. `MergeBlocks` reducer merges snapshot spans alongside text. `DefaultBlockCallbacks` syncs merged text+spans to snapshot via `UpdateBlockContent` before `DeleteBlock` dispatch on merge paths. `UpdateBlockText` explicitly resets spans (callers needing span preservation use `UpdateBlockContent`).
 
 > **Why not sync text via LaunchedEffect?** Causes cursor jumps, race conditions, and double-init. `BlockTextStates` avoids all of this by owning the `TextFieldState` directly.
 
@@ -99,6 +101,8 @@ Custom blocks: implement `CustomBlockType` interface.
 All state changes go through `EditorAction.reduce(state) → newState`.
 
 **Block Manipulation:** `InsertBlock`, `InsertBlockAfter`, `DeleteBlocks`, `DeleteBlock`, `UpdateBlockContent`, `UpdateBlockText`, `ConvertBlockType`, `MoveBlocks`, `MergeBlocks`, `SplitBlock`, `ReplaceBlock`
+
+**Span Styles:** `ApplySpanStyle`, `RemoveSpanStyle`
 
 **Selection:** `SelectBlock`, `ToggleBlockSelection`, `SelectBlockRange`, `AddBlockRangeToSelection`, `ClearSelection`, `SelectAll`, `DeleteSelectedOrFocused`
 
@@ -112,7 +116,9 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 
 **Standard flow:** User Input → `BlockCallbacks` → `EditorAction` → `dispatch()` → `reduce()` → recomposition.
 
-**Text operations (merge/split):** `BlockCallbacks` performs runtime transfer first (`BlockTextStates` + `BlockSpanStates`) and then dispatches block-structure actions. `onEnter` pre-generates `newBlockId` and passes it into `SplitBlock` for deterministic text/span split target identity. Merge flows use captured pre-merge target length from `BlockTextStates.mergeInto(...)` to shift source spans exactly once.
+**Text operations (merge/split):** `BlockCallbacks` performs runtime transfer first (`BlockTextStates` + `BlockSpanStates`) and then dispatches block-structure actions. `onEnter` pre-generates `newBlockId`, passes runtime payload (`newBlockSpans`, `sourceBlockText`, `sourceBlockSpans`) into `SplitBlock` for deterministic runtime/snapshot alignment. Merge flows use captured pre-merge target length from `BlockTextStates.mergeInto(...)` to shift source spans exactly once, then sync merged content to snapshot via `UpdateBlockContent` before dispatching `DeleteBlock`. `SplitBlock` and `MergeBlocks` reducers split/merge snapshot spans using `SpanAlgorithms` for snapshot consistency.
+
+**Style formatting:** External code uses `SpanActionDispatcher` (via `LocalSpanActionDispatcher`) which first updates runtime `BlockSpanStates` (immediate visual), then syncs snapshot via `UpdateBlockContent` (full text + spans). Collapsed-cursor toggle updates pending styles instead of dispatching actions.
 
 ## Registry System
 
@@ -160,6 +166,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Rich text spans — rendering | Done | `OutputTransformation` path wired in `TextBlockRenderer` via `SpanMapper` |
 | Rich text spans — edit maintenance | Done | Implemented via committed visible-text observer (`SpanMaintenanceTextObserver`) + `BlockSpanStates.adjustForUserEdit`/pending continuation style application |
 | Rich text spans — programmatic split/merge/setText sync | Done | Programmatic commit signaling in `BlockTextStates`, observer consume/rebase path, deterministic `SplitBlock.newBlockId`, callback-side span transfer for split/merge |
+| Rich text spans — public actions & snapshot sync | Done | `ApplySpanStyle`/`RemoveSpanStyle` actions, `SpanActionDispatcher`, `SplitBlock`/`MergeBlocks` reducers preserve spans, `UpdateBlockText` explicit reset policy |
 | Text transformation panel | Not done | |
 | Block anchor / action menu | Not done | |
 | Serialization — rich text spans | Done | `RichTextSchema` encode/decode with version switch |
@@ -174,7 +181,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 
 | Test File | Coverage |
 |-----------|----------|
-| `EditorStateTest.kt` | All action reducers (~65 tests) |
+| `EditorStateTest.kt` | All action reducers incl. span actions, split/merge span transfer, snapshot stability (~87 tests) |
 | `DragActionsTest.kt` | Drag state transitions |
 | `AutoScrollTest.kt` | Hot zones, speed calculation |
 | `DragUtilsTest.kt` | Drop target coordinate math |
@@ -186,3 +193,4 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `SpanLifecycleIntegrationTest.kt` | Task 5 wiring behavior: text-id collection, non-text transition cleanup, same-id re-init |
 | `SpanMapperTest.kt` | Style mapping (all variants, property isolation), OutputTransformation null/non-null contract, stability |
 | `SpanMaintenanceTextObserverTest.kt` | Programmatic commit exact-skip and rebase behavior (observer-safe split/merge/setText path) |
+| `SpanActionDispatcherTest.kt` | Runtime + snapshot coordination via UpdateBlockContent for apply/remove/toggle, no-op guards, multi-dispatch accumulation, collapsed-cursor pending style toggle |

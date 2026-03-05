@@ -12,6 +12,7 @@ import io.github.linreal.cascade.editor.action.MergeBlocks
 import io.github.linreal.cascade.editor.action.OpenSlashCommand
 import io.github.linreal.cascade.editor.action.SplitBlock
 import io.github.linreal.cascade.editor.action.StartDrag
+import io.github.linreal.cascade.editor.action.UpdateBlockContent
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
@@ -127,14 +128,19 @@ public open class DefaultBlockCallbacks(
 
             // Update current block's text to only have the "before" portion
             textStates.setText(blockId, beforeText, beforeText.length)
+            val sourceRuntimeText = textStates.getVisibleText(blockId) ?: beforeText
+            val sourceRuntimeSpans = blockSpanStates?.getSpans(blockId)
 
-            // Dispatch split action with the "after" text for the new block
+            // Dispatch split action with the "after" text and runtime spans for the new block
             dispatch(
                 SplitBlock(
                     blockId = blockId,
                     atPosition = splitPosition,
                     newBlockText = afterText,
                     newBlockId = newBlockId,
+                    newBlockSpans = blockSpanStates?.getSpans(newBlockId),
+                    sourceBlockText = sourceRuntimeText,
+                    sourceBlockSpans = sourceRuntimeSpans,
                 )
             )
         } else {
@@ -174,6 +180,13 @@ public open class DefaultBlockCallbacks(
                                 targetId = previousBlock.id,
                                 targetTextLength = targetTextLength,
                             )
+
+                            // Sync snapshot with merged content before deleting source
+                            val mergedText = textStates.getVisibleText(previousBlock.id)
+                            if (mergedText != null) {
+                                val mergedSpans = blockSpanStates?.getSpans(previousBlock.id).orEmpty()
+                                dispatch(UpdateBlockContent(previousBlock.id, BlockContent.Text(mergedText, mergedSpans)))
+                            }
 
                             // Dispatch action to remove source block and update focus
                             dispatch(DeleteBlock(blockId))
@@ -235,6 +248,13 @@ public open class DefaultBlockCallbacks(
                                 targetId = blockId,
                                 targetTextLength = targetTextLength,
                             )
+
+                            // Sync snapshot with merged content before deleting source
+                            val mergedText = textStates.getVisibleText(blockId)
+                            if (mergedText != null) {
+                                val mergedSpans = blockSpanStates?.getSpans(blockId).orEmpty()
+                                dispatch(UpdateBlockContent(blockId, BlockContent.Text(mergedText, mergedSpans)))
+                            }
 
                             // Dispatch action to remove source block
                             dispatch(DeleteBlock(nextBlock.id))

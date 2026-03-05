@@ -20,6 +20,7 @@ import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
+import io.github.linreal.cascade.editor.richtext.SpanActionDispatcher
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorStateHolder
@@ -72,6 +73,15 @@ public fun CascadeEditor(
         blockSpanStates.cleanup(textBlockIds)
     }
 
+    // Create span action dispatcher for coordinated runtime + snapshot style updates
+    val spanActionDispatcher = remember(stateHolder, blockTextStates, blockSpanStates) {
+        SpanActionDispatcher(
+            dispatchFn = { action -> stateHolder.dispatch(action) },
+            blockTextStates = blockTextStates,
+            blockSpanStates = blockSpanStates,
+        )
+    }
+
     // Create callbacks with state access and text states for proper merge handling
     val callbacks = remember(stateHolder, blockTextStates, blockSpanStates) {
         DefaultBlockCallbacks(
@@ -85,6 +95,7 @@ public fun CascadeEditor(
     CompositionLocalProvider(
         LocalBlockTextStates provides blockTextStates,
         LocalBlockSpanStates provides blockSpanStates,
+        LocalSpanActionDispatcher provides spanActionDispatcher,
     ) {
         val lazyListState = rememberLazyListState()
 
