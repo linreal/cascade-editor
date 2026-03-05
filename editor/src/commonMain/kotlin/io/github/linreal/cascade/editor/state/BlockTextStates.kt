@@ -1,7 +1,6 @@
 package io.github.linreal.cascade.editor.state
 
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.text.TextRange
@@ -20,6 +19,10 @@ private const val ZWSP = "\u200B"
 @Stable
 public class BlockTextStates {
     private val states = mutableMapOf<BlockId, TextFieldState>()
+    // Last-write-wins: only the most recent programmatic text per block is tracked.
+    // Current callers (mergeInto, setText) never issue multiple programmatic edits
+    // on the same block before the observer consumes the entry.
+    private val pendingProgrammaticCommits = mutableMapOf<BlockId, String>()
 
     /**
      * Gets existing state or creates new one with initial text.
@@ -57,6 +60,7 @@ public class BlockTextStates {
      */
     public fun remove(blockId: BlockId) {
         states.remove(blockId)
+        pendingProgrammaticCommits.remove(blockId)
     }
 
     /**
@@ -91,6 +95,7 @@ public class BlockTextStates {
 
         val sourceText = sourceState.text.toString().removePrefix(ZWSP)
         val targetText = targetState.text.toString().removePrefix(ZWSP)
+        val mergedText = targetText + sourceText
         val cursorPosition = targetText.length // Position in visible text
 
         targetState.edit {
@@ -99,6 +104,7 @@ public class BlockTextStates {
             selection = TextRange(cursorPosition + 1)
         }
 
+        pendingProgrammaticCommits[targetId] = mergedText
         remove(sourceId)
         return cursorPosition
     }
@@ -120,6 +126,16 @@ public class BlockTextStates {
             // +1 for ZWSP offset
             selection = TextRange((cursorPosition ?: text.length) + 1)
         }
+        pendingProgrammaticCommits[blockId] = text
+    }
+
+    /**
+     * Consumes the expected visible text for the next programmatic commit on [blockId].
+     *
+     * Returns null when no programmatic commit is pending.
+     */
+    public fun consumeProgrammaticCommit(blockId: BlockId): String? {
+        return pendingProgrammaticCommits.remove(blockId)
     }
 
     /**
@@ -143,7 +159,12 @@ public class BlockTextStates {
      */
     public fun cleanup(existingBlockIds: Set<BlockId>) {
         val toRemove = states.keys - existingBlockIds
-        toRemove.forEach { states.remove(it) }
+        toRemove.forEach {
+            states.remove(it)
+            pendingProgrammaticCommits.remove(it)
+        }
+        val staleCommits = pendingProgrammaticCommits.keys - existingBlockIds
+        staleCommits.forEach { pendingProgrammaticCommits.remove(it) }
     }
 
     /**
@@ -151,5 +172,6 @@ public class BlockTextStates {
      */
     public fun clear() {
         states.clear()
+        pendingProgrammaticCommits.clear()
     }
 }

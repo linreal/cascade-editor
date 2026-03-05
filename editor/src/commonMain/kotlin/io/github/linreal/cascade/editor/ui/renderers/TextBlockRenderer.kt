@@ -74,9 +74,10 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
                 SpanMapper.run { applyStyles(spanState.value) }
             }
         }
-        val spanTextObserver = remember(block.id, blockSpanStates) {
+        val spanTextObserver = remember(block.id, blockTextStates, blockSpanStates) {
             SpanMaintenanceTextObserver(
                 blockId = block.id,
+                blockTextStates = blockTextStates,
                 blockSpanStates = blockSpanStates,
                 initialVisibleText = textFieldState.visibleText(),
             )

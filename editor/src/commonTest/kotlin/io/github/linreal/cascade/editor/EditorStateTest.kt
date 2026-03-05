@@ -167,6 +167,22 @@ class EditorStateTest {
     }
 
     @Test
+    fun `split block uses provided new block id`() {
+        val block = createTestBlock("1", "HelloWorld")
+        val state = EditorState.withBlocks(listOf(block))
+        val expectedNewId = BlockId("split-target")
+
+        val newState = SplitBlock(
+            blockId = BlockId("1"),
+            atPosition = 5,
+            newBlockId = expectedNewId,
+        ).reduce(state)
+
+        assertEquals(expectedNewId, newState.blocks[1].id)
+        assertEquals(expectedNewId, newState.focusedBlockId)
+    }
+
+    @Test
     fun `move blocks to new position`() {
         val block1 = createTestBlock("1")
         val block2 = createTestBlock("2")

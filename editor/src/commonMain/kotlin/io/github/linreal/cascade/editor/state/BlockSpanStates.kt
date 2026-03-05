@@ -180,6 +180,7 @@ public class BlockSpanStates {
         )
         states.remove(sourceId)
         pendingStyles.remove(sourceId)
+        pendingStyles.remove(targetId)
     }
 
     // ── Style Operations ─────────────────────────────────────────────────

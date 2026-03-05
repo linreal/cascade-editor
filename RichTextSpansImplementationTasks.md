@@ -198,28 +198,41 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 
 `Completed`: Implemented `SpanMaintenanceTextObserver` (new `richtext` utility) as the Task 7 integration point. `TextBlockRenderer` now feeds committed visible text changes into this observer via `snapshotFlow`, and the observer performs block-local diffing, calls `BlockSpanStates.adjustForUserEdit`, and applies pending/continuation style updates for inserted ranges. `BackspaceAwareTextField` remains sentinel-only on input transformation path (no chained span-maintenance transform), avoiding the runtime typing corruption seen when external mutable state was touched during input transformation. Additionally, span rendering was stabilized by using a stable per-block `OutputTransformation` instance that reads current span state on each transform pass through `SpanMapper.applyStyles(...)`; this removed transformation-identity churn during typing. Pending build verification.
 
-## Task 8. Programmatic Edit Sync: Split/Merge/SetText Paths
+## Task 8. Programmatic Edit Sync: Split/Merge/SetText Paths — DONE
 
-`Objective`: Ensure span updates happen for non-user edits that bypass input transformations.
+`Objective`: Ensure span updates happen for non-user edits and are **not** double-processed by the committed-text observer.
 
 `Primary files`:
 - `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/registry/BlockRenderer.kt`
 - `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockTextStates.kt`
 - `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockSpanStates.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/CascadeEditor.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/renderers/TextBlockRenderer.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/SpanMaintenanceTextObserver.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/action/EditorAction.kt`
 
 `Implementation`:
-- Update `DefaultBlockCallbacks.onEnter` split flow to split spans in runtime holder.
-- Update `onBackspaceAtStart` merge flow to merge span sets with proper shift.
-- Update forward-delete merge flow similarly.
-- Ensure any `setText`-style programmatic mutation path has explicit span sync behavior.
+- Introduce explicit programmatic-edit origin signaling (per block) so observer path can consume and ignore programmatic commits instead of running user-edit span maintenance.
+- Define deterministic split ID handoff for runtime transfer; preferred approach is generating `newBlockId` at callback boundary and passing it into `SplitBlock` so text + span split target IDs are identical.
+- If split ID cannot be passed explicitly, define a post-dispatch retrieval contract for the new block ID and cover it with tests.
+- Update `DefaultBlockCallbacks.onEnter` to compute split text as today, split runtime spans with known `newBlockId` at `cursorPosition` before source truncation, then apply source `setText` and dispatch split using the same target ID contract.
+- Update `onBackspaceAtStart` and forward-delete merge flows to capture `targetTextLength` before text merge, merge runtime span sets exactly once (`source -> target`) with proper shift, and suppress observer handling for the programmatic merge commit.
+- Ensure any direct `setText(...)` programmatic mutation path has explicit policy (explicit runtime span transform or explicit reset to empty spans).
+- Never rely on user-edit observer heuristics for programmatic edits.
 
 `Restrictions and considerations`:
 - Reducers remain pure; runtime state mutations belong in callback/integration boundary.
 - Preserve focus and cursor behavior already implemented for text.
 - Keep block ID lifecycle consistent when source block is removed.
+- Prevent double-adjust/double-shift bugs caused by observer + callback both mutating spans.
+- Prevent pending-style bleed into merged text.
 
 `Done when`:
 - Split/merge operations transfer spans exactly per spec, including crossing-span clip behavior.
+- Programmatic split/merge/setText paths are observer-safe (no duplicate span transforms).
+- No style loss or style over-application in split/merge manual scenarios.
+
+`Completed`: Added explicit programmatic-edit signaling to `BlockTextStates` via per-block expected commit text tracking (`consumeProgrammaticCommit`), automatically populated by `setText(...)` and `mergeInto(...)`. `SpanMaintenanceTextObserver` now consumes this signal before diffing committed text: exact programmatic commits are ignored, while coalesced commits are rebased to the programmatic baseline so only residual user edits are applied. `DefaultBlockCallbacks` now performs runtime span transfer explicitly for non-user edits: `onEnter` generates `newBlockId` at callback boundary, splits runtime spans with that ID before source truncation, then dispatches `SplitBlock` with the same `newBlockId`; backspace/delete merges use pre-merge target length from `BlockTextStates.mergeInto(...)` and call `BlockSpanStates.mergeInto(...)` exactly once. `SplitBlock` reducer now accepts optional `newBlockId` for deterministic runtime/reducer ID handoff. `BlockSpanStates.mergeInto(...)` clears pending styles on both source and target to prevent pending-style bleed across merge boundaries. Added tests: observer programmatic exact-skip + rebase (`SpanMaintenanceTextObserverTest`), deterministic split ID reducer behavior (`EditorStateTest`), and target pending-style cleanup on merge (`BlockSpanStatesTest`). Pending build verification.
 
 ## Task 9. Add Public Span Actions and Snapshot Synchronization
 
@@ -228,20 +241,25 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Primary files`:
 - `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/action/EditorAction.kt`
 - Optional helper: new `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/SpanActionDispatcher.kt`
+- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/richtext/SpanAlgorithms.kt`
 
 `Implementation`:
 - Add `ApplySpanStyle` and `RemoveSpanStyle` actions with `TextRange`.
 - Implement reducer-side updates to `BlockContent.Text.spans` as immutable snapshot sync only.
 - Add integration path so runtime `BlockSpanStates` and snapshot state stay consistent after action dispatch.
+- Ensure reducer-side span snapshots are canonicalized with the same normalization contract as runtime (`clamp`, drop empty, merge same-style overlaps, deterministic ordering).
+- Update existing text mutation actions (`SplitBlock`, `UpdateBlockText`, and any replacement actions) so snapshot spans are preserved or transformed intentionally, never silently dropped.
 - **Critical**: Ensure snapshot synchronization happens **before** any potential Undo stack capture to prevent state drift.
 
 `Restrictions and considerations`:
 - No side effects inside reducers.
 - Keep dispatch path deterministic and easy to test.
 - Preserve compatibility with future undo/redo snapshot capture.
+- Avoid runtime/snapshot drift by defining one canonical conversion direction per mutation path.
 
 `Done when`:
 - External code can call `dispatch(ApplySpanStyle/RemoveSpanStyle)` and see immediate UI + state snapshot consistency.
+- Snapshot span state remains canonical and stable across repeated action/reducer cycles.
 
 ## Task 10. Implement Selection Status and Toolbar Contracts
 
@@ -283,6 +301,10 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 - Add sentinel-specific tests for coordinate conversions.
 - Add composition-sensitive tests where feasible.
 - Add scale-oriented tests for many blocks/spans to catch obvious performance regressions.
+- Add observer-origin tests verifying programmatic commits marked as programmatic are ignored by user-edit observer path while user commits still apply normal diff + continuation behavior.
+- Add split-ID handoff regression tests to ensure runtime span split and reducer split target the same block ID.
+- Add serialization hardening tests for malformed schema shapes where non-object span entries and non-object `style` entries are dropped (not fatal).
+- Add rendering mapping tests for overlapping underline + strikethrough so cumulative decoration behavior is verified.
 
 `Restrictions and considerations`:
 - Tests must verify visible coordinate invariants.
@@ -292,12 +314,30 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 `Done when`:
 - `./gradlew :editor:allTests` passes with new coverage.
 - No regressions in existing editor tests.
+- New regression tests explicitly cover programmatic edit sync and malformed decode resilience.
 
-## Task 12. Final Hardening 
+## Task 12. Final Hardening
 
-`Objective`: Ensure implementation matches spec constraints 
+`Objective`: Ensure implementation matches spec constraints and closes known correctness gaps.
 
 `Primary files`:
 - `cassist/RichTextSpans.md`
 - `ARCHITECTURE.md`
 - Code touched by Tasks 1-11
+
+`Implementation`:
+- Resolve known rendering limitation for cumulative text decorations so overlapping `Underline` + `StrikeThrough` can render together (not last-writer wins).
+- Harden `RichTextSchema.decode` against malformed but parseable JSON so invalid span/style entries are dropped safely without aborting whole decode.
+- Audit deterministic span canonicalization in both runtime and snapshot paths; sorting must be stable and deterministic for equal ranges across style combinations.
+- Audit all text mutation actions/callbacks so span policy is explicit: preserve, transform, or reset (never implicit drop).
+- Add short architecture notes for observer-origin guard and split ID handoff to prevent future regressions.
+
+`Restrictions and considerations`:
+- Preserve reducer purity and editor responsiveness.
+- Do not introduce whole-document scans for per-block mutations.
+- Keep backward compatibility for serialized version 1 documents.
+
+`Done when`:
+- Spec checklist in `cassist/RichTextSpans.md` is satisfied with no unresolved TODOs for V1 scope.
+- No known rich-text correctness gaps remain in split/merge/programmatic edit flows.
+- Final full test run is green (to be executed by user) and manual smoke scenarios show no style loss/drift.

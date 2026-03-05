@@ -73,11 +73,12 @@ public fun CascadeEditor(
     }
 
     // Create callbacks with state access and text states for proper merge handling
-    val callbacks = remember(stateHolder, blockTextStates) {
+    val callbacks = remember(stateHolder, blockTextStates, blockSpanStates) {
         DefaultBlockCallbacks(
             dispatchFn = { action -> stateHolder.dispatch(action) },
             stateProvider = { stateHolder.state },
-            blockTextStates = blockTextStates
+            blockTextStates = blockTextStates,
+            blockSpanStates = blockSpanStates,
         )
     }
 

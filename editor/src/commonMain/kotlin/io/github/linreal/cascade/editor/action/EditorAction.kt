@@ -506,11 +506,13 @@ public data object CloseSlashCommand : EditorAction {
  * @param blockId The block to split
  * @param atPosition Cursor position where split occurs
  * @param newBlockText Optional text for the new block (from BlockTextStates)
+ * @param newBlockId Optional pre-generated ID for deterministic runtime split handoff
  */
 public data class SplitBlock(
     val blockId: BlockId,
     val atPosition: Int,
-    val newBlockText: String? = null
+    val newBlockText: String? = null,
+    val newBlockId: BlockId? = null,
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val block = state.getBlock(blockId) ?: return state
@@ -522,7 +524,7 @@ public data class SplitBlock(
         val beforeText = if (newBlockText != null) null else textContent.text.take(atPosition)
 
         val newBlock = Block(
-            id = BlockId.generate(),
+            id = newBlockId ?: BlockId.generate(),
             type = BlockType.Paragraph,
             content = BlockContent.Text(afterText)
         )

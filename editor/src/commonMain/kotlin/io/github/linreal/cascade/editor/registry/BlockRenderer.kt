@@ -8,6 +8,7 @@ import io.github.linreal.cascade.editor.action.EditorAction
 import io.github.linreal.cascade.editor.action.FocusBlock
 import io.github.linreal.cascade.editor.action.FocusNextBlock
 import io.github.linreal.cascade.editor.action.FocusPreviousBlock
+import io.github.linreal.cascade.editor.action.MergeBlocks
 import io.github.linreal.cascade.editor.action.OpenSlashCommand
 import io.github.linreal.cascade.editor.action.SplitBlock
 import io.github.linreal.cascade.editor.action.StartDrag
@@ -16,6 +17,7 @@ import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.loge
+import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorState
 
@@ -85,11 +87,13 @@ public interface BlockCallbacks {
  * @param dispatchFn Function to dispatch actions
  * @param stateProvider Optional provider for current editor state, enables merge/delete logic
  * @param blockTextStates Manager for per-block TextFieldState instances
+ * @param blockSpanStates Manager for per-block runtime spans
  */
 public open class DefaultBlockCallbacks(
     private val dispatchFn: (EditorAction) -> Unit,
     private val stateProvider: (() -> EditorState)? = null,
-    private val blockTextStates: BlockTextStates? = null
+    private val blockTextStates: BlockTextStates? = null,
+    private val blockSpanStates: BlockSpanStates? = null,
 ) : BlockCallbacks {
 
     override fun dispatch(action: EditorAction) {
@@ -102,24 +106,40 @@ public open class DefaultBlockCallbacks(
 
     override fun onEnter(blockId: BlockId, cursorPosition: Int) {
         val textStates = blockTextStates
-        val state = stateProvider?.invoke()
+        val newBlockId = BlockId.generate()
 
-        if (textStates != null && state != null) {
+        if (textStates != null) {
             // Get current text from TextFieldState (source of truth)
-            val currentText = textStates.getVisibleText(blockId) ?: ""
+            val fallbackText = (stateProvider?.invoke()?.getBlock(blockId)?.content as? BlockContent.Text)?.text.orEmpty()
+            val currentText = textStates.getVisibleText(blockId) ?: fallbackText
+            val splitPosition = cursorPosition.coerceIn(0, currentText.length)
 
             // Split the text
-            val beforeText = currentText.take(cursorPosition)
-            val afterText = currentText.drop(cursorPosition)
+            val beforeText = currentText.take(splitPosition)
+            val afterText = currentText.drop(splitPosition)
+
+            // Runtime span split must happen before source text truncation.
+            blockSpanStates?.split(
+                sourceBlockId = blockId,
+                newBlockId = newBlockId,
+                position = splitPosition,
+            )
 
             // Update current block's text to only have the "before" portion
             textStates.setText(blockId, beforeText, beforeText.length)
 
             // Dispatch split action with the "after" text for the new block
-            dispatch(SplitBlock(blockId, cursorPosition, afterText))
+            dispatch(
+                SplitBlock(
+                    blockId = blockId,
+                    atPosition = splitPosition,
+                    newBlockText = afterText,
+                    newBlockId = newBlockId,
+                )
+            )
         } else {
             // Fallback to original behavior
-            dispatch(SplitBlock(blockId, cursorPosition, null))
+            dispatch(SplitBlock(blockId, cursorPosition, null, newBlockId))
         }
     }
 
@@ -133,12 +153,37 @@ public open class DefaultBlockCallbacks(
                 val previousBlock = state.blocks[blockIndex - 1]
                 // Only merge if previous block supports text
                 if (previousBlock.type.supportsText && previousBlock.content is BlockContent.Text) {
-                    // Perform text merge in BlockTextStates
-                    textStates?.mergeInto(sourceId = blockId, targetId = previousBlock.id)
+                    if (textStates != null) {
+                        val sourceContent =
+                            state.getBlock(blockId)?.content as? BlockContent.Text
+                        val targetContent = previousBlock.content
+                        textStates.getOrCreate(blockId, sourceContent?.text.orEmpty())
+                        textStates.getOrCreate(previousBlock.id, targetContent.text)
 
-                    // Dispatch action to remove source block and update focus
-                    dispatch(DeleteBlock(blockId))
-                    dispatch(FocusBlock(previousBlock.id))
+                        // Ensure span states exist before merge (block may not have been rendered yet).
+                        blockSpanStates?.getOrCreate(blockId, sourceContent?.spans.orEmpty(), sourceContent?.text?.length ?: 0)
+                        blockSpanStates?.getOrCreate(previousBlock.id, targetContent.spans, targetContent.text.length)
+
+                        val targetTextLength = textStates.mergeInto(
+                            sourceId = blockId,
+                            targetId = previousBlock.id,
+                        )
+                        if (targetTextLength != null) {
+                            blockSpanStates?.mergeInto(
+                                sourceId = blockId,
+                                targetId = previousBlock.id,
+                                targetTextLength = targetTextLength,
+                            )
+
+                            // Dispatch action to remove source block and update focus
+                            dispatch(DeleteBlock(blockId))
+                            dispatch(FocusBlock(previousBlock.id))
+                            return
+                        }
+                    }
+
+                    // Fallback when runtime holders are unavailable.
+                    dispatch(MergeBlocks(sourceId = blockId, targetId = previousBlock.id))
                     return
                 }
             }
@@ -165,19 +210,45 @@ public open class DefaultBlockCallbacks(
                 val nextBlock = state.blocks[blockIndex + 1]
                 // Only merge if next block supports text
                 if (nextBlock.type.supportsText && nextBlock.content is BlockContent.Text) {
-                    // Get cursor position before merge (end of current text)
-                    val cursorPos = textStates?.getVisibleText(blockId)?.length
+                    if (textStates != null) {
+                        val targetContent =
+                            state.getBlock(blockId)?.content as? BlockContent.Text
+                        val sourceContent = nextBlock.content
+                        textStates.getOrCreate(blockId, targetContent?.text.orEmpty())
+                        textStates.getOrCreate(nextBlock.id, sourceContent.text)
 
-                    // Perform text merge in BlockTextStates (nextBlock into current)
-                    textStates?.mergeInto(sourceId = nextBlock.id, targetId = blockId)
+                        // Ensure span states exist before merge (block may not have been rendered yet).
+                        blockSpanStates?.getOrCreate(blockId, targetContent?.spans.orEmpty(), targetContent?.text?.length ?: 0)
+                        blockSpanStates?.getOrCreate(nextBlock.id, sourceContent.spans, sourceContent.text.length)
 
-                    // Dispatch action to remove source block
-                    dispatch(DeleteBlock(nextBlock.id))
+                        // Get cursor position before merge (end of current text)
+                        val cursorPos = textStates.getVisibleText(blockId)?.length
 
-                    // Restore cursor position if needed
-                    if (cursorPos != null) {
-                        textStates?.setCursorPosition(blockId, cursorPos)
+                        // Perform text merge in BlockTextStates (nextBlock into current)
+                        val targetTextLength = textStates.mergeInto(
+                            sourceId = nextBlock.id,
+                            targetId = blockId,
+                        )
+                        if (targetTextLength != null) {
+                            blockSpanStates?.mergeInto(
+                                sourceId = nextBlock.id,
+                                targetId = blockId,
+                                targetTextLength = targetTextLength,
+                            )
+
+                            // Dispatch action to remove source block
+                            dispatch(DeleteBlock(nextBlock.id))
+
+                            // Restore cursor position if needed
+                            if (cursorPos != null) {
+                                textStates.setCursorPosition(blockId, cursorPos)
+                            }
+                            return
+                        }
                     }
+
+                    // Fallback when runtime holders are unavailable.
+                    dispatch(MergeBlocks(sourceId = nextBlock.id, targetId = blockId))
                     return
                 }
             }

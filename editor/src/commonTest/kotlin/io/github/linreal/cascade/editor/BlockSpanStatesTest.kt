@@ -411,6 +411,18 @@ class BlockSpanStatesTest {
     }
 
     @Test
+    fun `mergeInto - clears pending styles on target`() {
+        val holder = BlockSpanStates()
+        holder.create(blockA, listOf(TextSpan(0, 3, SpanStyle.Bold)))
+        holder.create(blockB, listOf(TextSpan(0, 2, SpanStyle.Italic)))
+        holder.setPendingStyles(blockA, setOf(SpanStyle.Underline))
+
+        holder.mergeInto(sourceId = blockB, targetId = blockA, targetTextLength = 3)
+
+        assertNull(holder.getPendingStyles(blockA))
+    }
+
+    @Test
     fun `mergeInto - empty source`() {
         val holder = BlockSpanStates()
         val targetSpans = listOf(TextSpan(0, 3, SpanStyle.Bold))

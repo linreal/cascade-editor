@@ -2,6 +2,7 @@ package io.github.linreal.cascade.editor.richtext
 
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.state.BlockSpanStates
+import io.github.linreal.cascade.editor.state.BlockTextStates
 import kotlin.math.min
 
 /**
@@ -12,12 +13,22 @@ import kotlin.math.min
  */
 internal class SpanMaintenanceTextObserver(
     private val blockId: BlockId,
+    private val blockTextStates: BlockTextStates,
     private val blockSpanStates: BlockSpanStates,
     initialVisibleText: String,
 ) {
     private var previousVisibleText: String = initialVisibleText
 
     internal fun onCommittedVisibleText(currentVisibleText: String) {
+        val expectedProgrammaticText = blockTextStates.consumeProgrammaticCommit(blockId)
+        if (expectedProgrammaticText != null) {
+            if (currentVisibleText == expectedProgrammaticText) {
+                previousVisibleText = currentVisibleText
+                return
+            }
+            previousVisibleText = expectedProgrammaticText
+        }
+
         val edit = computeEdit(previousVisibleText, currentVisibleText) ?: return
         previousVisibleText = currentVisibleText
 
