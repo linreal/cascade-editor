@@ -453,20 +453,10 @@ Implement config-driven toolbar rendering + state visuals.
 
 **Completed:** `RichTextToolbar` renders a horizontally scrollable `Row` of toggle buttons driven by `RichTextToolbarConfig`. Each `ToolbarToggleButton` reflects `StyleStatus` visually: `FullyActive` = blue filled background + white text, `Partial` = semi-transparent blue background, `Absent` = transparent background, disabled (`canFormat == false`) = gray text + transparent background with clicks suppressed. Buttons use self-describing display text (B, I, U, S, <>, H) with matching text styles (bold B, italic I, underlined U, strikethrough S, monospace <>). All buttons have `focusProperties { canFocus = false }` to prevent stealing text field focus. 44dp min touch target via `sizeIn`. Accessibility content descriptions set via `semantics { contentDescription }` from `ToolbarButtonSpec.label`. Toolbar container has a top `HorizontalDivider` separator. `clickable` only applied when `enabled` to prevent disabled-state interactions. Pending build verification.
 
-### Subtask 10.8: Block Type Conversion Span Policy
-**Files:**
-- Modify `action/EditorAction.kt` (`ConvertBlockType` reducer)
-- Modify `DefaultBlockCallbacks` or wherever `ConvertBlockType` is dispatched (for runtime `BlockSpanStates` cleanup)
+### Subtask 10.8: Block Type Conversion Span Policy — DEFERRED
+Deferred to when slash command / block conversion UI is implemented. No dispatch site exists yet.
 
-When converting to `Code`:
-- Reducer: clear `BlockContent.Text.spans` in snapshot
-- Runtime: clear `BlockSpanStates` for that block, clear pending styles
-
-When converting between non-Code text types: preserve spans unchanged.
-
-**Tests:** Conversion to Code strips spans, conversion back keeps empty, non-Code-to-non-Code preserves spans.
-
-### Subtask 10.9: Tests + Integration Verification
+### Subtask 10.9: Tests + Integration Verification — DONE
 **Files:**
 - New `FormattingStateCalculatorTest.kt` (if not already done per subtask)
 - New `DefaultFormattingActionsTest.kt` (if not already done per subtask)
@@ -480,9 +470,11 @@ Additional integration tests:
 - `onFormattingStateChanged` callback fires on style change, not on same-style cursor move
 - Enter at end of bold text → new block toolbar shows Bold active
 
+**Completed:** `FormattingStateCalculatorTest.kt` (24 tests) and `DefaultFormattingActionsTest.kt` (15 tests) were already completed in Subtasks 10.3 and 10.5. `EnterContinuationTest.kt` (15 tests) for split continuation was completed in Subtask 10.2. New `FormattingIntegrationTest.kt` (27 tests) covers the remaining integration verification: focus/unfocus cycle state transitions, focus switch between blocks with different styles, pending style state for empty blocks, empty block tap-Bold-toggle flow, formatting disabled during drag (state + action no-op), same-style cursor movement producing structurally equal `FormattingState` (ensuring no redundant observer/callback notifications), style-to-unstyled cursor move producing different state, Enter at end of bold → new block shows Bold active via continuation + calculator, toggle + calculator consistency (apply/remove round-trip), multi-block selection disables formatting, Code block disables formatting, default toolbar config V1 button verification, config extensibility (adding button is data-only), custom tracked styles flowing into calculator, cursor-at-end-of-bold continuation semantics, overlapping Bold+Italic status for covered/wider ranges, `FormattingState.Empty` companion contract, backspace merge preserving formatting state continuity, apply/remove style updating both runtime and snapshot, collapsed-cursor toggle pending set/remove cycle, collapsed-cursor inside bold range toggle removing pending, non-text block `canFormat` false, and all text-supporting block types (Heading, Todo, BulletList, Quote) allowing formatting. ConvertBlockType span policy tests deferred with Subtask 10.8. Pending build verification.
+
 ---
 
-## Undo/Redo Gap Documentation (Subtask 10.10)
+## Undo/Redo Gap Documentation (Subtask 10.10) — DONE
 
 **Files:**
 - Update `ARCHITECTURE.md` — add note in Conventions or a new "Known Gaps" section
@@ -492,6 +484,8 @@ Document:
 - Runtime `BlockSpanStates` is NOT part of the undo/redo snapshot chain
 - Future undo system must either: (a) capture `BlockSpanStates` snapshots alongside `EditorState`, or (b) rebuild runtime state from undo'd snapshot
 - Until then, formatting actions cannot be undone
+
+**Completed:** Added "Known Gaps" section to `ARCHITECTURE.md` (between Conventions and Testing) with a table documenting the undo/redo constraint: `SpanActionDispatcher` syncs via `UpdateBlockContent` but runtime `BlockSpanStates` is outside the undo snapshot chain, requiring future undo to either capture runtime snapshots or rebuild from undo'd state.
 
 ---
 

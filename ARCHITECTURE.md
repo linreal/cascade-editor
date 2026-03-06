@@ -185,6 +185,12 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Multi-block drag | Not done | `DragState` supports it, UI doesn't |
 | Keyboard shortcuts | Not done | Only Enter/Backspace handled |
 
+## Known Gaps
+
+| # | Area | Constraint |
+|---|------|-----------|
+| 1 | **Undo/Redo + Rich Text Spans** | `SpanActionDispatcher` syncs snapshots via `UpdateBlockContent`, but runtime `BlockSpanStates` is NOT part of the undo/redo snapshot chain. Future undo system must either (a) capture `BlockSpanStates` snapshots alongside `EditorState`, or (b) rebuild runtime span state from the undo'd snapshot. Until then, formatting actions cannot be undone. |
+
 ## Testing
 
 | Test File | Coverage |
@@ -206,3 +212,4 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `EnterContinuationTest.kt` | New-block style continuation on Enter: pending transfer, end-of-block inheritance, mid-block no-transfer, empty block edge cases |
 | `FormattingStateCalculatorTest.kt` | Pure calculator: canFormat conditions, collapsed caret pending/continuation, ranged selection query, reversed bounds, metadata |
 | `DefaultFormattingActionsTest.kt` | Action adapter: ranged/collapsed toggle, apply/remove pass-through, no-op guards (no focus, Code, block selection, drag, non-text), fresh selection resolution |
+| `FormattingIntegrationTest.kt` | Full integration: focus/unfocus cycles, focus switch between styled blocks, pending styles for empty blocks, drag disables formatting, same-style cursor move structural equality, Enter continuation + calculator, toggle + calculator consistency, multi-block selection disable, Code disable, config extensibility, backspace merge continuity, runtime/snapshot sync, collapsed-cursor pending toggle cycle |
