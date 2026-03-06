@@ -330,9 +330,9 @@ The callback fires from a `LaunchedEffect` on `FormattingState` changes. Uses st
 
 ---
 
-## Subtask Decomposition (Revised Order)
+## Subtask Decomposition
 
-### Subtask 10.0: Prerequisite Utility
+### Subtask 10.0: Prerequisite Utility — DONE
 **Files:**
 - Modify `ui/BackspaceAwareTextEdit.kt`
 
@@ -340,16 +340,20 @@ Add `TextFieldState.visibleSelection(): TextRange` helper. Needed by subtasks 10
 
 **Tests:** Unit test for sentinel offset adjustment (0, 1, collapsed, reversed).
 
-### Subtask 10.1: Core Contracts
+**Completed:** Added `visibleSelection()` public extension on `TextFieldState` in `BackspaceAwareTextEdit.kt` alongside existing `visibleText()` and `visibleCursorPosition()`. Subtracts 1 from both `selection.start` and `selection.end` for ZWSP sentinel offset, clamped to 0. 9 test cases in `VisibleSelectionTest.kt` covering: collapsed cursor at raw 0 (clamped), after sentinel (position 0), mid-text, end-of-text; ranged selections (start, middle, full); reversed selection preservation; empty text. Pending build verification.
+
+### Subtask 10.1: Core Contracts — DONE
 **Files:**
 - New `richtext/FormattingState.kt`
 - New `richtext/FormattingActions.kt`
 - New `ui/ToolbarSlot.kt`
-- New `ui/RichTextToolbarConfig.kt` (or colocated in toolbar file)
+- New `ui/RichTextToolbarConfig.kt`
 
 Data classes and interfaces only. No implementation yet.
 
-### Subtask 10.2: New-Block Continuation on Enter
+**Completed:** Four contract files created exactly per spec. `FormattingState` — `@Immutable` data class with `styles: Map<SpanStyle, StyleStatus>`, `canFormat`, `focusedBlockId`, `selectionCollapsed`, `styleStatusOf()` helper, and `Empty` companion constant. `FormattingActions` — `@Stable` interface with `toggleStyle`/`applyStyle`/`removeStyle`. `ToolbarSlot` — sealed interface with `Default(config)`, `None`, and `Custom(content)` variants; `Custom` receives `State<FormattingState>` + `FormattingActions`. `RichTextToolbarConfig` — `@Immutable` data class with `buttons: List<ToolbarButtonSpec>` and `Default` companion with V1 buttons (Bold, Italic, Underline, StrikeThrough, InlineCode, Highlight yellow `0xFFFFEB3B`). `ToolbarButtonSpec` — `@Immutable` data class with `style: SpanStyle` and `label: String`. Pending build verification.
+
+### Subtask 10.2: New-Block Continuation on Enter — DONE
 **Files:**
 - Modify `registry/BlockRenderer.kt` (`DefaultBlockCallbacks.onEnter`)
 
@@ -361,7 +365,9 @@ Capture continuation styles before split, assign to `newBlockId` after split per
 - Mid-block split does NOT transfer pending for ranged selection
 - Empty block with pending styles → Enter → new block inherits pending
 
-### Subtask 10.3: Pure Formatting Calculator
+**Completed:** Updated `DefaultBlockCallbacks.onEnter` to compute continuation styles BEFORE calling `blockSpanStates.split()` (which clears pending on both blocks). Three-way priority: (1) if `getPendingStyles(blockId)` is non-null → use those, (2) else if cursor is at end-of-block and position > 0 → inherit from `activeStylesAt(splitPosition - 1)`, (3) else (mid-block split or empty block without pending) → no continuation. After split, non-empty continuation styles are set on `newBlockId` via `setPendingStyles`. 11 test cases in `EnterContinuationTest.kt` covering: pending transfer, pending cleared on source, end-of-block inheritance (single style, multi-style, partial-styled text, unstyled text), mid-block split no-transfer, split-at-0 no-transfer, empty block with/without pending, and pending-overrides-position-inheritance. Pending build verification.
+
+### Subtask 10.3: Pure Formatting Calculator — DONE
 **Files:**
 - New `richtext/FormattingStateCalculator.kt` (internal)
 
@@ -380,6 +386,8 @@ Implement pure function from inputs → `FormattingState` per rules in section 1
 - Block selection active → `canFormat = false`
 - Dragging → `canFormat = false`
 - Reversed selection bounds handling
+
+**Completed:** `FormattingStateCalculator` internal object with single `compute()` pure function. `canFormat` logic: requires focused text block (not Code), no block selection, not dragging. Collapsed caret: pending styles are canonical when non-null (including empty set override); otherwise falls back to `activeStylesAt(position - 1)` continuation; position 0 yields empty. Ranged selection: delegates to `queryStyleStatus` per tracked style, ignores pending. Selection bounds are normalized (handles reversed). 24 test cases in `FormattingStateCalculatorTest.kt` covering all listed scenarios plus multi-styled regions, metadata passthrough, and empty-set pending override. Pending build verification.
 
 ### Subtask 10.4: Reactive Observer Bridge
 **Files:**

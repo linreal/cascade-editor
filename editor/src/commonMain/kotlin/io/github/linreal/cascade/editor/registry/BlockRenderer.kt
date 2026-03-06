@@ -119,12 +119,28 @@ public open class DefaultBlockCallbacks(
             val beforeText = currentText.take(splitPosition)
             val afterText = currentText.drop(splitPosition)
 
+            // Compute continuation styles BEFORE split (which clears pending on both blocks).
+            val continuationStyles = blockSpanStates?.let { spanStates ->
+                val pending = spanStates.getPendingStyles(blockId)
+                when {
+                    pending != null -> pending
+                    splitPosition == currentText.length && splitPosition > 0 ->
+                        spanStates.activeStylesAt(blockId, splitPosition - 1)
+                    else -> null
+                }
+            }
+
             // Runtime span split must happen before source text truncation.
             blockSpanStates?.split(
                 sourceBlockId = blockId,
                 newBlockId = newBlockId,
                 position = splitPosition,
             )
+
+            // Transfer continuation styles to the new block after split.
+            if (!continuationStyles.isNullOrEmpty()) {
+                blockSpanStates?.setPendingStyles(newBlockId, continuationStyles)
+            }
 
             // Update current block's text to only have the "before" portion
             textStates.setText(blockId, beforeText, beforeText.length)

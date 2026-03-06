@@ -37,6 +37,11 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Span edit observer | `richtext/SpanMaintenanceTextObserver.kt` | `SpanMaintenanceTextObserver` |
 | Span action dispatcher | `richtext/SpanActionDispatcher.kt` | `SpanActionDispatcher` |
 | Span dispatcher local | `ui/LocalSpanActionDispatcher.kt` | `LocalSpanActionDispatcher` |
+| Formatting state | `richtext/FormattingState.kt` | `FormattingState` |
+| Formatting actions | `richtext/FormattingActions.kt` | `FormattingActions` |
+| Toolbar slot | `ui/ToolbarSlot.kt` | `ToolbarSlot` |
+| Toolbar config | `ui/RichTextToolbarConfig.kt` | `RichTextToolbarConfig`, `ToolbarButtonSpec` |
+| Formatting calculator | `richtext/FormattingStateCalculator.kt` | `FormattingStateCalculator` |
 
 All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
 
@@ -194,3 +199,6 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `SpanMapperTest.kt` | Style mapping (all variants, property isolation), OutputTransformation null/non-null contract, stability |
 | `SpanMaintenanceTextObserverTest.kt` | Programmatic commit exact-skip and rebase behavior (observer-safe split/merge/setText path) |
 | `SpanActionDispatcherTest.kt` | Runtime + snapshot coordination via UpdateBlockContent for apply/remove/toggle, no-op guards, multi-dispatch accumulation, collapsed-cursor pending style toggle |
+| `VisibleSelectionTest.kt` | Sentinel offset adjustment for visibleSelection(): collapsed, ranged, reversed, edge cases |
+| `EnterContinuationTest.kt` | New-block style continuation on Enter: pending transfer, end-of-block inheritance, mid-block no-transfer, empty block edge cases |
+| `FormattingStateCalculatorTest.kt` | Pure calculator: canFormat conditions, collapsed caret pending/continuation, ranged selection query, reversed bounds, metadata |

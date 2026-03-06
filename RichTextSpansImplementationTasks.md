@@ -266,28 +266,7 @@ Tasks are ordered by implementation sequence and are scoped for one-shot deliver
 ## Task 10. Implement Selection Status and Toolbar Contracts
 
 `Objective`: Expose style state for internal/external formatting UIs without EditorState churn.
-
-`Primary files`:
-- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/CascadeEditor.kt`
-- New optional UI: `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/ui/RichTextToolbar.kt`
-- `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/state/BlockSpanStates.kt`
-
-`Implementation`:
-- Add `StyleStatus` query usage from focused block selection (`TextFieldState.selection`).
-- Add optional `CascadeEditor` params:
-- `enableRichTextToolbar: Boolean = false`
-- `onActiveStylesChanged: ((Set<SpanStyle>) -> Unit)? = null`
-- Implement internal toolbar as keyboard-adjacent panel (V1 default behavior).
-- Disable formatting controls in UI when focused block type is `Code`.
-
-`Restrictions and considerations`:
-- Do not store high-frequency text selection in `EditorState`.
-- Keep toolbar observation block-local and reactive.
-- External callback should be stable and not spam redundant updates.
-
-`Done when`:
-- Internal toolbar toggles styles and reflects `FullyActive`/`Partial`/`Absent`.
-- External callback provides usable active-style state for custom UIs.
+Decomposition is in separate file: Task10_ToolbarAndSelectionStatus.md
 
 ## Task 11. Complete Test Matrix and Performance Validation
 

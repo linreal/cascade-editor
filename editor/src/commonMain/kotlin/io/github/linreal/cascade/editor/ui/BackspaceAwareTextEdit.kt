@@ -107,3 +107,13 @@ public fun TextFieldState.visibleText(): String {
 public fun TextFieldState.visibleCursorPosition(): Int {
     return (selection.start - 1).coerceAtLeast(0)
 }
+
+/**
+ * Returns the selection range in visible text coordinates (sentinel offset removed).
+ * Both start and end are adjusted by -1 for the ZWSP sentinel, clamped to 0.
+ */
+public fun TextFieldState.visibleSelection(): TextRange {
+    val start = (selection.start - 1).coerceAtLeast(0)
+    val end = (selection.end - 1).coerceAtLeast(0)
+    return TextRange(start, end)
+}
