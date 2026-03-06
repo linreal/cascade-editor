@@ -63,7 +63,7 @@ class DefaultFormattingActionsTest {
         blockSpanStates.getOrCreate(blockId, spans, text.length)
     }
 
-    // ── Toggle on ranged selection ──────────────────────────────────────
+ // Toggle on ranged selection
 
     @Test
     fun `toggleStyle on ranged selection applies style via dispatcher`() {
@@ -94,7 +94,7 @@ class DefaultFormattingActionsTest {
         assertEquals(1, dispatchedActions.size)
     }
 
-    // ── Toggle on collapsed cursor ──────────────────────────────────────
+ // Toggle on collapsed cursor
 
     @Test
     fun `toggleStyle on collapsed cursor toggles pending style`() {
@@ -126,7 +126,7 @@ class DefaultFormattingActionsTest {
         assertTrue(SpanStyle.Bold !in pending)
     }
 
-    // ── No-op: no focus ─────────────────────────────────────────────────
+ // No-op: no focus
 
     @Test
     fun `toggleStyle no-op when no block is focused`() {
@@ -143,7 +143,7 @@ class DefaultFormattingActionsTest {
         assertTrue(blockSpanStates.getSpans(blockId).isEmpty())
     }
 
-    // ── No-op: Code block ───────────────────────────────────────────────
+ // No-op: Code block
 
     @Test
     fun `toggleStyle no-op when focused block is Code`() {
@@ -159,7 +159,7 @@ class DefaultFormattingActionsTest {
         assertTrue(dispatchedActions.isEmpty())
     }
 
-    // ── No-op: block selection active ───────────────────────────────────
+ // No-op: block selection active
 
     @Test
     fun `toggleStyle no-op when block selection is active`() {
@@ -179,7 +179,7 @@ class DefaultFormattingActionsTest {
         assertTrue(dispatchedActions.isEmpty())
     }
 
-    // ── No-op: dragging ─────────────────────────────────────────────────
+ // No-op: dragging
 
     @Test
     fun `toggleStyle no-op when dragging`() {
@@ -202,7 +202,7 @@ class DefaultFormattingActionsTest {
         assertTrue(dispatchedActions.isEmpty())
     }
 
-    // ── No-op: non-text block ───────────────────────────────────────────
+ // No-op: non-text block
 
     @Test
     fun `toggleStyle no-op when focused block is non-text type`() {
@@ -216,7 +216,7 @@ class DefaultFormattingActionsTest {
         assertTrue(dispatchedActions.isEmpty())
     }
 
-    // ── Fresh selection resolution ──────────────────────────────────────
+ // Fresh selection resolution
 
     @Test
     fun `action resolves fresh selection at invocation time`() {
@@ -243,7 +243,7 @@ class DefaultFormattingActionsTest {
         assertTrue(spans2.any { it.style == SpanStyle.Italic && it.start == 6 && it.end == 11 })
     }
 
-    // ── applyStyle and removeStyle pass through ─────────────────────────
+ // applyStyle and removeStyle pass through
 
     @Test
     fun `applyStyle delegates to dispatcher on ranged selection`() {

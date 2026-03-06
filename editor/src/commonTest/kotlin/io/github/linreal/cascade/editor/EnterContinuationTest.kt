@@ -60,7 +60,7 @@ class EnterContinuationTest {
         }
     }
 
-    // ── Pending styles transferred to new block ──────────────────────────
+ // Pending styles transferred to new block
 
     @Test
     fun `pending styles are transferred to new block on Enter`() {
@@ -91,7 +91,7 @@ class EnterContinuationTest {
         assertNull(harness.blockSpanStates.getPendingStyles(blockId))
     }
 
-    // ── End-of-block inheritance ─────────────────────────────────────────
+ // End-of-block inheritance
 
     @Test
     fun `cursor at end of bold text inherits bold to new block`() {
@@ -156,7 +156,7 @@ class EnterContinuationTest {
         assertNull(harness.blockSpanStates.getPendingStyles(newId))
     }
 
-    // ── Mid-block split: no continuation ─────────────────────────────────
+ // Mid-block split: no continuation
 
     @Test
     fun `mid-block split does not set positional continuation`() {
@@ -245,7 +245,7 @@ class EnterContinuationTest {
         assertNull(harness.blockSpanStates.getPendingStyles(newId))
     }
 
-    // ── Empty block with pending styles ──────────────────────────────────
+ // Empty block with pending styles
 
     @Test
     fun `empty block with pending styles transfers them to new block`() {
@@ -274,7 +274,7 @@ class EnterContinuationTest {
         assertNull(harness.blockSpanStates.getPendingStyles(newId))
     }
 
-    // ── Pending styles take precedence over position inheritance ─────────
+ // Pending styles take precedence over position inheritance
 
     @Test
     fun `pending styles override position-based inheritance`() {

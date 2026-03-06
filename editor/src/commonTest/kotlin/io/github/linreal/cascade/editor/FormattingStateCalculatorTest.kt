@@ -42,7 +42,7 @@ class FormattingStateCalculatorTest {
         trackedStyles = trackedStyles,
     )
 
-    // ── canFormat disabled cases ─────────────────────────────────────────
+ // canFormat disabled cases
 
     @Test
     fun `no focus returns canFormat false`() {
@@ -93,7 +93,7 @@ class FormattingStateCalculatorTest {
         assertTrue(result.canFormat)
     }
 
-    // ── Collapsed caret + pending styles ─────────────────────────────────
+ // Collapsed caret + pending styles
 
     @Test
     fun `collapsed caret with non-empty pending styles marks them FullyActive`() {
@@ -131,7 +131,7 @@ class FormattingStateCalculatorTest {
         assertEquals(StyleStatus.FullyActive, result.styleStatusOf(SpanStyle.Italic))
     }
 
-    // ── Collapsed caret fallback to position - 1 ────────────────────────
+ // Collapsed caret fallback to position - 1
 
     @Test
     fun `collapsed caret at position 0 returns all Absent`() {
@@ -186,7 +186,7 @@ class FormattingStateCalculatorTest {
         assertEquals(StyleStatus.Absent, result.styleStatusOf(SpanStyle.Underline))
     }
 
-    // ── Ranged selection ─────────────────────────────────────────────────
+ // Ranged selection
 
     @Test
     fun `ranged selection full coverage returns FullyActive`() {
@@ -227,7 +227,7 @@ class FormattingStateCalculatorTest {
         assertEquals(StyleStatus.Absent, result.styleStatusOf(SpanStyle.Bold))
     }
 
-    // ── Reversed selection ───────────────────────────────────────────────
+ // Reversed selection
 
     @Test
     fun `reversed selection bounds are normalized`() {
@@ -240,7 +240,7 @@ class FormattingStateCalculatorTest {
         assertFalse(result.selectionCollapsed)
     }
 
-    // ── Output metadata ──────────────────────────────────────────────────
+ // Output metadata
 
     @Test
     fun `collapsed selection flag is true for same start and end`() {

@@ -146,7 +146,7 @@ class SpanAlgorithmsTest {
     // ║  Edit Adjustment                                                ║
     // ╚══════════════════════════════════════════════════════════════════╝
 
-    // ── Insertions ──
+ // Insertions
 
     @Test
     fun `adjustForEdit - insert within span expands it`() {
@@ -198,7 +198,7 @@ class SpanAlgorithmsTest {
         assertEquals(listOf(TextSpan(2, 13, SpanStyle.Italic)), result)
     }
 
-    // ── Deletions ──
+ // Deletions
 
     @Test
     fun `adjustForEdit - delete within span shrinks it`() {
@@ -268,7 +268,7 @@ class SpanAlgorithmsTest {
         assertEquals(listOf(TextSpan(0, 3, SpanStyle.Bold)), result)
     }
 
-    // ── Replacements ──
+ // Replacements
 
     @Test
     fun `adjustForEdit - replace within span adjusts end by delta`() {
@@ -295,7 +295,7 @@ class SpanAlgorithmsTest {
         assertTrue(result.isEmpty())
     }
 
-    // ── Multiple spans ──
+ // Multiple spans
 
     @Test
     fun `adjustForEdit - multiple spans adjusted correctly`() {
@@ -321,7 +321,7 @@ class SpanAlgorithmsTest {
         assertTrue(result.isEmpty())
     }
 
-    // ── Boundary: zero-length no-op edit ──
+ // Boundary: zero-length no-op edit
 
     @Test
     fun `adjustForEdit - no-op edit leaves spans unchanged`() {
@@ -792,7 +792,7 @@ class SpanAlgorithmsTest {
         )
     }
 
-    // ── Collapsed cursor queries ──
+ // Collapsed cursor queries
 
     @Test
     fun `queryStyleStatus - collapsed cursor inside span is FullyActive`() {

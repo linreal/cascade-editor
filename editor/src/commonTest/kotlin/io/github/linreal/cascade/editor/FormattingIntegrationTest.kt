@@ -41,7 +41,7 @@ class FormattingIntegrationTest {
 
     private val defaultTracked = RichTextToolbarConfig.Default.buttons.map { it.style }
 
-    // ── Helpers ──────────────────────────────────────────────────────────
+ // Helpers
 
     /**
      * Full integration harness with stateHolder, text/span states, actions, and callbacks.
@@ -142,7 +142,7 @@ class FormattingIntegrationTest {
         }
     }
 
-    // ── 1. Focus/unfocus cycle produces correct state ────────────────────
+ // 1. Focus/unfocus cycle produces correct state
 
     @Test
     fun `focus on styled block shows active styles then unfocus clears`() {
@@ -183,7 +183,7 @@ class FormattingIntegrationTest {
         assertEquals(StyleStatus.FullyActive, state2.styleStatusOf(SpanStyle.Italic))
     }
 
-    // ── 2. Pending style state for empty block ───────────────────────────
+ // 2. Pending style state for empty block
 
     @Test
     fun `empty block with pending Bold shows Bold FullyActive in formatting state`() {
@@ -217,7 +217,7 @@ class FormattingIntegrationTest {
         assertEquals(StyleStatus.FullyActive, after.styleStatusOf(SpanStyle.Bold))
     }
 
-    // ── 3. Toolbar disabled during drag ──────────────────────────────────
+ // 3. Toolbar disabled during drag
 
     @Test
     fun `formatting state shows canFormat false when dragging`() {
@@ -250,7 +250,7 @@ class FormattingIntegrationTest {
         assertTrue(harness.blockSpanStates.getSpans(blockId).isEmpty())
     }
 
-    // ── 4. Same-style cursor move produces structurally equal state ──────
+ // 4. Same-style cursor move produces structurally equal state
 
     @Test
     fun `cursor movement within same styled region produces equal FormattingState`() {
@@ -289,7 +289,7 @@ class FormattingIntegrationTest {
         assertTrue(styled != unstyled)
     }
 
-    // ── 5. Enter at end of bold → new block toolbar shows Bold active ───
+ // 5. Enter at end of bold → new block toolbar shows Bold active
 
     @Test
     fun `Enter at end of bold text then new block shows Bold active in formatting state`() {
@@ -335,7 +335,7 @@ class FormattingIntegrationTest {
         assertEquals(StyleStatus.Absent, state.styleStatusOf(SpanStyle.Italic))
     }
 
-    // ── 6. Toggle style + calculator consistency ─────────────────────────
+ // 6. Toggle style + calculator consistency
 
     @Test
     fun `toggle Bold on ranged selection then calculator shows Bold FullyActive`() {
@@ -372,7 +372,7 @@ class FormattingIntegrationTest {
         assertEquals(StyleStatus.Absent, afterSecond.styleStatusOf(SpanStyle.Bold))
     }
 
-    // ── 7. Multi-block selection disables formatting ─────────────────────
+ // 7. Multi-block selection disables formatting
 
     @Test
     fun `multi-block selection makes canFormat false and actions no-op`() {
@@ -396,7 +396,7 @@ class FormattingIntegrationTest {
         assertTrue(harness.dispatched.isEmpty())
     }
 
-    // ── 8. Code block disables formatting ────────────────────────────────
+ // 8. Code block disables formatting
 
     @Test
     fun `Code block focused makes canFormat false and actions no-op`() {
@@ -412,7 +412,7 @@ class FormattingIntegrationTest {
         assertTrue(harness.dispatched.isEmpty())
     }
 
-    // ── 9. Default toolbar config extensibility ──────────────────────────
+ // 9. Default toolbar config extensibility
 
     @Test
     fun `default toolbar config has expected V1 buttons`() {
@@ -457,7 +457,7 @@ class FormattingIntegrationTest {
         assertEquals(StyleStatus.FullyActive, customState.styleStatusOf(SpanStyle.Link(linkUrl)))
     }
 
-    // ── 10. Cursor at end of bold + type scenario ────────────────────────
+ // 10. Cursor at end of bold + type scenario
 
     @Test
     fun `cursor at end of bold text shows Bold active via continuation semantics`() {
@@ -473,7 +473,7 @@ class FormattingIntegrationTest {
         assertEquals(StyleStatus.FullyActive, state.styleStatusOf(SpanStyle.Bold))
     }
 
-    // ── 11. Multiple styles overlap correctly in status ──────────────────
+ // 11. Multiple styles overlap correctly in status
 
     @Test
     fun `overlapping Bold and Italic both show FullyActive for covered range`() {
@@ -507,7 +507,7 @@ class FormattingIntegrationTest {
         assertEquals(StyleStatus.Partial, state.styleStatusOf(SpanStyle.Italic))
     }
 
-    // ── 12. FormattingState.Empty companion ──────────────────────────────
+ // 12. FormattingState.Empty companion
 
     @Test
     fun `FormattingState Empty has correct defaults`() {
@@ -519,7 +519,7 @@ class FormattingIntegrationTest {
         assertEquals(StyleStatus.Absent, empty.styleStatusOf(SpanStyle.Bold))
     }
 
-    // ── 13. Backspace merge preserves formatting state continuity ────────
+ // 13. Backspace merge preserves formatting state continuity
 
     @Test
     fun `backspace merge updates runtime spans then calculator reflects merged state`() {
@@ -591,7 +591,7 @@ class FormattingIntegrationTest {
         assertTrue(updateIndex >= 0 && deleteIndex > updateIndex)
     }
 
-    // ── 14. Apply + remove via actions maintain snapshot consistency ─────
+ // 14. Apply + remove via actions maintain snapshot consistency
 
     @Test
     fun `apply style updates both runtime and snapshot`() {
@@ -635,7 +635,7 @@ class FormattingIntegrationTest {
         assertEquals(runtimeSpans, snapshotContent.spans)
     }
 
-    // ── 15. Collapsed cursor toggle pending + continuation combined ──────
+ // 15. Collapsed cursor toggle pending + continuation combined
 
     @Test
     fun `collapsed cursor toggle sets pending then second toggle removes it`() {
@@ -673,7 +673,7 @@ class FormattingIntegrationTest {
         assertEquals(StyleStatus.Absent, after.styleStatusOf(SpanStyle.Bold))
     }
 
-    // ── 16. Non-text block type ──────────────────────────────────────────
+ // 16. Non-text block type
 
     @Test
     fun `Divider block returns canFormat false`() {
@@ -685,7 +685,7 @@ class FormattingIntegrationTest {
         assertFalse(state.canFormat)
     }
 
-    // ── 17. All text-supporting block types allow formatting ─────────────
+ // 17. All text-supporting block types allow formatting
 
     @Test
     fun `Heading block allows formatting`() {

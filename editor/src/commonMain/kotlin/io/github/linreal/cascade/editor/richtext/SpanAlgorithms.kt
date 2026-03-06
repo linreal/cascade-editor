@@ -29,7 +29,7 @@ public enum class StyleStatus {
  */
 internal object SpanAlgorithms {
 
-    // ── Normalization ────────────────────────────────────────────────────
+ // Normalization
 
     /**
      * Normalizes a span list:
@@ -54,7 +54,7 @@ internal object SpanAlgorithms {
         return mergeOverlapping(valid)
     }
 
-    // ── Edit Adjustment ──────────────────────────────────────────────────
+ // Edit Adjustment
 
     /**
      * Adjusts span coordinates after a text edit.
@@ -114,7 +114,7 @@ internal object SpanAlgorithms {
         else -> editStart // e in (editStart, editEnd]
     }
 
-    // ── Split / Merge ────────────────────────────────────────────────────
+ // Split / Merge
 
     /**
      * Splits spans at [position] into two groups for a block split.
@@ -170,7 +170,7 @@ internal object SpanAlgorithms {
         return mergeOverlapping(firstSpans + shifted)
     }
 
-    // ── Style Application ────────────────────────────────────────────────
+ // Style Application
 
     /**
      * Applies [style] to `[rangeStart, rangeEnd)`.
@@ -261,7 +261,7 @@ internal object SpanAlgorithms {
         }
     }
 
-    // ── Style Queries ────────────────────────────────────────────────────
+ // Style Queries
 
     /**
      * Queries the presence of [style] in `[rangeStart, rangeEnd)`.
@@ -338,7 +338,7 @@ internal object SpanAlgorithms {
             .mapTo(mutableSetOf()) { it.style }
     }
 
-    // ── Internal Helpers ─────────────────────────────────────────────────
+ // Internal Helpers
 
     /**
      * Merges overlapping and adjacent same-style spans.

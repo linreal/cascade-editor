@@ -29,7 +29,7 @@ public class BlockSpanStates {
     // Snapshot-aware map so pending style changes can drive Compose recomposition.
     private val pendingStyles = mutableStateMapOf<BlockId, Set<SpanStyle>>()
 
-    // ── Lifecycle ────────────────────────────────────────────────────────
+ // Lifecycle
 
     /**
      * Gets existing span state or creates new one with initial spans.
@@ -108,7 +108,7 @@ public class BlockSpanStates {
         pendingStyles.clear()
     }
 
-    // ── Edit Adjustment ──────────────────────────────────────────────────
+ // Edit Adjustment
 
     /**
      * Adjusts span coordinates after a user text edit.
@@ -130,7 +130,7 @@ public class BlockSpanStates {
         )
     }
 
-    // ── Transfer ─────────────────────────────────────────────────────────
+ // Transfer
 
     /**
      * Splits spans at [position] for a block split operation.
@@ -183,7 +183,7 @@ public class BlockSpanStates {
         pendingStyles.remove(targetId)
     }
 
-    // ── Style Operations ─────────────────────────────────────────────────
+ // Style Operations
 
     /**
      * Applies [style] to the range `[rangeStart, rangeEnd)` in the given block.
@@ -247,7 +247,7 @@ public class BlockSpanStates {
         )
     }
 
-    // ── Queries ──────────────────────────────────────────────────────────
+ // Queries
 
     /**
      * Queries the presence of [style] in the range `[rangeStart, rangeEnd)`.
@@ -283,7 +283,7 @@ public class BlockSpanStates {
         )
     }
 
-    // ── Pending Styles ───────────────────────────────────────────────────
+ // Pending Styles
 
     /**
      * Gets pending continuation styles for a block.

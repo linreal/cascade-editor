@@ -25,9 +25,7 @@ public sealed interface EditorAction {
     public fun reduce(state: EditorState): EditorState
 }
 
-// =============================================================================
 // Block Manipulation Actions
-// =============================================================================
 
 /**
  * Inserts a block at the specified index.
@@ -228,9 +226,7 @@ public data class ReplaceBlock(
     }
 }
 
-// =============================================================================
 // Selection Actions
-// =============================================================================
 
 /**
  * Selects a single block, clearing any previous selection.
@@ -323,9 +319,7 @@ public data object SelectAll : EditorAction {
     }
 }
 
-// =============================================================================
 // Focus Actions
-// =============================================================================
 
 /**
  * Focuses a block.
@@ -374,9 +368,7 @@ public data object ClearFocus : EditorAction {
     }
 }
 
-// =============================================================================
 // Drag & Drop Actions
-// =============================================================================
 
 /**
  * Starts dragging a block.
@@ -458,9 +450,7 @@ public data object CancelDrag : EditorAction {
     }
 }
 
-// =============================================================================
 // Slash Command Actions
-// =============================================================================
 
 /**
  * Opens the slash command menu.
@@ -502,9 +492,7 @@ public data object CloseSlashCommand : EditorAction {
     }
 }
 
-// =============================================================================
 // Compound Actions
-// =============================================================================
 
 /**
  * Splits a block at the cursor position, creating a new block below.
@@ -586,9 +574,7 @@ public data object DeleteSelectedOrFocused : EditorAction {
     }
 }
 
-// =============================================================================
 // Span Style Actions
-// =============================================================================
 
 /**
  * Applies a span style to the specified range in a block's snapshot.

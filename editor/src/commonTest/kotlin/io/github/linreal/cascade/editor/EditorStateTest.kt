@@ -226,7 +226,7 @@ class EditorStateTest {
         assertTrue(newState.selectedBlockIds.isEmpty())
     }
 
-    // ── Helpers with spans ──────────────────────────────────────────────
+ // Helpers with spans
 
     private fun createTestBlockWithSpans(
         id: String,
@@ -238,7 +238,7 @@ class EditorStateTest {
         content = BlockContent.Text(text, spans),
     )
 
-    // ── ApplySpanStyle ──────────────────────────────────────────────────
+ // ApplySpanStyle
 
     @Test
     fun `apply span style adds bold to empty spans`() {
@@ -332,7 +332,7 @@ class EditorStateTest {
         assertEquals(TextSpan(0, 5, SpanStyle.Bold), boldSpans[0])
     }
 
-    // ── RemoveSpanStyle ─────────────────────────────────────────────────
+ // RemoveSpanStyle
 
     @Test
     fun `remove span style removes style from range`() {
@@ -414,7 +414,7 @@ class EditorStateTest {
         assertTrue(content.spans[0].start <= content.spans[1].start)
     }
 
-    // ── SplitBlock with spans ───────────────────────────────────────────
+ // SplitBlock with spans
 
     @Test
     fun `split block splits snapshot spans — fallback path`() {
@@ -547,7 +547,7 @@ class EditorStateTest {
         assertEquals(listOf(TextSpan(0, 5, SpanStyle.Italic)), newBlockContent.spans)
     }
 
-    // ── MergeBlocks with spans ──────────────────────────────────────────
+ // MergeBlocks with spans
 
     @Test
     fun `merge blocks merges snapshot spans`() {
@@ -607,7 +607,7 @@ class EditorStateTest {
         assertEquals(TextSpan(0, 5, SpanStyle.Bold), content.spans[0])
     }
 
-    // ── UpdateBlockText span policy ─────────────────────────────────────
+ // UpdateBlockText span policy
 
     @Test
     fun `update block text resets spans`() {
@@ -624,7 +624,7 @@ class EditorStateTest {
         assertTrue(content.spans.isEmpty())
     }
 
-    // ── Snapshot stability ──────────────────────────────────────────────
+ // Snapshot stability
 
     @Test
     fun `apply then remove returns to original spans`() {

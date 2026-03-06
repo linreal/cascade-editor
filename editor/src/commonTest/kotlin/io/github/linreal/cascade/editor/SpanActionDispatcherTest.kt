@@ -33,7 +33,7 @@ class SpanActionDispatcherTest {
         blockSpanStates.getOrCreate(blockId, spans, text.length)
     }
 
-    // ── applyStyle ──────────────────────────────────────────────────────
+ // applyStyle
 
     @Test
     fun `applyStyle updates runtime and syncs snapshot via UpdateBlockContent`() {
@@ -62,7 +62,7 @@ class SpanActionDispatcherTest {
         assertTrue(dispatchedActions.isEmpty())
     }
 
-    // ── removeStyle ─────────────────────────────────────────────────────
+ // removeStyle
 
     @Test
     fun `removeStyle updates runtime and syncs snapshot via UpdateBlockContent`() {
@@ -88,7 +88,7 @@ class SpanActionDispatcherTest {
         assertTrue(dispatchedActions.isEmpty())
     }
 
-    // ── toggleStyle (non-collapsed) ─────────────────────────────────────
+ // toggleStyle (non-collapsed)
 
     @Test
     fun `toggleStyle applies when absent`() {
@@ -135,7 +135,7 @@ class SpanActionDispatcherTest {
         assertTrue(dispatchedActions.isEmpty())
     }
 
-    // ── toggleStyle (collapsed cursor — pending styles) ─────────────────
+ // toggleStyle (collapsed cursor — pending styles)
 
     @Test
     fun `toggleStyle collapsed cursor adds pending style when absent`() {
@@ -207,7 +207,7 @@ class SpanActionDispatcherTest {
         assertNull(blockSpanStates.getPendingStyles(blockId))
     }
 
-    // ── Coordinated consistency ─────────────────────────────────────────
+ // Coordinated consistency
 
     @Test
     fun `applyStyle snapshot carries runtime text and updated spans`() {

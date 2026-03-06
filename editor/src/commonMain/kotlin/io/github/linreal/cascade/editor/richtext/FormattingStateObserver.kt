@@ -34,7 +34,7 @@ internal fun rememberFormattingState(
     trackedStyles: List<SpanStyle>,
 ): State<FormattingState> {
 
-    // ── Layer 1: EditorState-derived values ──────────────────────────────
+ // Layer 1: EditorState-derived values
     // Each re-evaluates on every EditorState dispatch but only propagates
     // when its specific output changes. Prevents the final derivation from
     // running on drag-position updates, block text changes, etc.
@@ -58,7 +58,7 @@ internal fun rememberFormattingState(
         derivedStateOf { stateHolder.state.dragState != null }
     }
 
-    // ── Layer 2: Final formatting state ──────────────────────────────────
+ // Layer 2: Final formatting state
     // Reads Layer 1 outputs + per-block snapshot state (selection, spans,
     // pending styles). Only the focused block's TextFieldState and span
     // state are read, so cursor/span changes in non-focused blocks are

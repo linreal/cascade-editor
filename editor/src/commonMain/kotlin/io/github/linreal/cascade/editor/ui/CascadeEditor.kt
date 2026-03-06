@@ -108,7 +108,7 @@ public fun CascadeEditor(
         )
     }
 
-    // ── Formatting state observer + actions ──────────────────────────────
+ // Formatting state observer + actions
     // Only created when a toolbar is visible or an external callback is set.
 
     val needsFormattingState = toolbar !is ToolbarSlot.None || onFormattingStateChanged != null
@@ -260,7 +260,7 @@ public fun CascadeEditor(
                 }
             }
 
-            // ── Toolbar ──────────────────────────────────────────────────
+         // Toolbar
             // formattingState/formattingActions are non-null when toolbar is
             // Default or Custom (guarded by needsFormattingState).
             when (toolbar) {
