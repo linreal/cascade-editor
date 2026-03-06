@@ -1,5 +1,6 @@
 package io.github.linreal.cascade.editor
 
+import androidx.compose.ui.text.TextRange
 import io.github.linreal.cascade.editor.action.EditorAction
 import io.github.linreal.cascade.editor.action.SplitBlock
 import io.github.linreal.cascade.editor.core.Block
@@ -158,8 +159,8 @@ class EnterContinuationTest {
     // ── Mid-block split: no continuation ─────────────────────────────────
 
     @Test
-    fun `mid-block split does not transfer pending styles`() {
-        // Bold on [0,5), split at position 3 (mid-block)
+    fun `mid-block split does not set positional continuation`() {
+        // Bold on [0,5), split at position 3 (mid-block, collapsed cursor)
         val harness = TestHarness(
             text = "Hello",
             spans = listOf(TextSpan(0, 5, SpanStyle.Bold)),
@@ -169,7 +170,64 @@ class EnterContinuationTest {
 
         val newId = harness.newBlockId()
         assertNotNull(newId)
-        // No pending styles — new block gets its spans from the split algorithm
+        // No positional continuation — new block gets its spans from the split algorithm
+        assertNull(harness.blockSpanStates.getPendingStyles(newId))
+    }
+
+    @Test
+    fun `mid-block collapsed split with pending styles transfers them`() {
+        // Collapsed cursor + pending styles = transfer per D2 policy
+        val harness = TestHarness(
+            text = "Hello",
+            pendingStyles = setOf(SpanStyle.Bold),
+        )
+
+        harness.callbacks.onEnter(blockId, cursorPosition = 3)
+
+        val newId = harness.newBlockId()
+        assertNotNull(newId)
+        // Collapsed cursor with pending → continuation transfers
+        val pendingOnNew = harness.blockSpanStates.getPendingStyles(newId)
+        assertNotNull(pendingOnNew)
+        assertEquals(setOf(SpanStyle.Bold), pendingOnNew)
+    }
+
+    @Test
+    fun `ranged selection split does not transfer pending styles`() {
+        val harness = TestHarness(
+            text = "Hello",
+            pendingStyles = setOf(SpanStyle.Bold),
+        )
+        // Set a ranged (non-collapsed) selection on the TextFieldState
+        // Raw coords: +1 for sentinel, so visible [1,4) → raw [2,5)
+        harness.blockTextStates.get(blockId)?.edit {
+            selection = TextRange(2, 5)
+        }
+
+        harness.callbacks.onEnter(blockId, cursorPosition = 1)
+
+        val newId = harness.newBlockId()
+        assertNotNull(newId)
+        // Ranged split → no continuation per D2 policy
+        assertNull(harness.blockSpanStates.getPendingStyles(newId))
+    }
+
+    @Test
+    fun `ranged selection at end of styled text does not inherit`() {
+        val harness = TestHarness(
+            text = "Hello",
+            spans = listOf(TextSpan(0, 5, SpanStyle.Bold)),
+        )
+        // Ranged selection [3,5) → raw [4,6)
+        harness.blockTextStates.get(blockId)?.edit {
+            selection = TextRange(4, 6)
+        }
+
+        harness.callbacks.onEnter(blockId, cursorPosition = 3)
+
+        val newId = harness.newBlockId()
+        assertNotNull(newId)
+        // Ranged → no continuation even though cursor is at styled position
         assertNull(harness.blockSpanStates.getPendingStyles(newId))
     }
 

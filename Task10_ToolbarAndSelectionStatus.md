@@ -365,7 +365,7 @@ Capture continuation styles before split, assign to `newBlockId` after split per
 - Mid-block split does NOT transfer pending for ranged selection
 - Empty block with pending styles → Enter → new block inherits pending
 
-**Completed:** Updated `DefaultBlockCallbacks.onEnter` to compute continuation styles BEFORE calling `blockSpanStates.split()` (which clears pending on both blocks). Three-way priority: (1) if `getPendingStyles(blockId)` is non-null → use those, (2) else if cursor is at end-of-block and position > 0 → inherit from `activeStylesAt(splitPosition - 1)`, (3) else (mid-block split or empty block without pending) → no continuation. After split, non-empty continuation styles are set on `newBlockId` via `setPendingStyles`. 11 test cases in `EnterContinuationTest.kt` covering: pending transfer, pending cleared on source, end-of-block inheritance (single style, multi-style, partial-styled text, unstyled text), mid-block split no-transfer, split-at-0 no-transfer, empty block with/without pending, and pending-overrides-position-inheritance. Pending build verification.
+**Completed:** Updated `DefaultBlockCallbacks.onEnter` to compute continuation styles BEFORE calling `blockSpanStates.split()` (which clears pending on both blocks). Guarded by `selectionCollapsed` check on the `TextFieldState` — ranged splits produce no continuation per D2 policy. For collapsed splits, three-way priority: (1) if `getPendingStyles(blockId)` is non-null → use those, (2) else if cursor is at end-of-block and position > 0 → inherit from `activeStylesAt(splitPosition - 1)`, (3) else (mid-block split or empty block without pending) → no continuation. After split, non-empty continuation styles are set on `newBlockId` via `setPendingStyles`. 15 test cases in `EnterContinuationTest.kt` covering: pending transfer, pending cleared on source, end-of-block inheritance (single style, multi-style, partial-styled text, unstyled text), mid-block no positional continuation, mid-block collapsed with pending (transfers), ranged selection with pending (no transfer), ranged selection at end of styled text (no transfer), split-at-0 no-transfer, empty block with/without pending, and pending-overrides-position-inheritance. Pending build verification.
 
 ### Subtask 10.3: Pure Formatting Calculator — DONE
 **Files:**
@@ -389,7 +389,7 @@ Implement pure function from inputs → `FormattingState` per rules in section 1
 
 **Completed:** `FormattingStateCalculator` internal object with single `compute()` pure function. `canFormat` logic: requires focused text block (not Code), no block selection, not dragging. Collapsed caret: pending styles are canonical when non-null (including empty set override); otherwise falls back to `activeStylesAt(position - 1)` continuation; position 0 yields empty. Ranged selection: delegates to `queryStyleStatus` per tracked style, ignores pending. Selection bounds are normalized (handles reversed). 24 test cases in `FormattingStateCalculatorTest.kt` covering all listed scenarios plus multi-styled regions, metadata passthrough, and empty-set pending override. Pending build verification.
 
-### Subtask 10.4: Reactive Observer Bridge
+### Subtask 10.4: Reactive Observer Bridge — DONE
 **Files:**
 - New `richtext/FormattingStateObserver.kt`
 
@@ -404,7 +404,9 @@ Uses `derivedStateOf` chains:
 
 Ensures: cursor-move-within-same-style does NOT trigger recomposition.
 
-### Subtask 10.5: Action Adapter
+**Completed:** `rememberFormattingState` internal composable function in `FormattingStateObserver.kt`. Two-layer `derivedStateOf` chain: Layer 1 extracts EditorState-derived values (`focusedBlockId`, `focusedBlockType`, `hasBlockSelection`, `isDragging`) — each re-evaluates on every EditorState dispatch but only propagates when its specific output changes, shielding the final derivation from irrelevant state churn (drag position updates, block reordering, etc.). Layer 2 reads Layer 1 outputs plus per-block snapshot state (`TextFieldState.visibleSelection()`, `BlockSpanStates.getSpans()`, `BlockSpanStates.getPendingStyles()`) — only for the focused block — and delegates to `FormattingStateCalculator.compute()`. Output uses `FormattingState` structural equality so cursor movement within the same style region does NOT cause downstream recomposition. `trackedStyles` parameter allows the caller (CascadeEditor) to pass toolbar-relevant styles. Pending build verification.
+
+### Subtask 10.5: Action Adapter — DONE
 **Files:**
 - New `richtext/DefaultFormattingActions.kt`
 
@@ -418,9 +420,12 @@ Resolve focused block + visible selection from runtime state **at invocation tim
 - No-op when block selection active
 - Action resolves fresh selection (not stale)
 
-### Subtask 10.6: `CascadeEditor` Wiring + Layout Change
+**Completed:** `DefaultFormattingActions` internal class implementing `FormattingActions`. All three methods (`toggleStyle`, `applyStyle`, `removeStyle`) resolve formatting context at invocation time via `resolveContext()` — reads `focusedBlockId` from `EditorStateHolder.state`, resolves block type, checks `canFormat` guards (supportsText, not Code, no block selection, not dragging), reads `visibleSelection()` from the focused block's `TextFieldState` — then delegates to `SpanActionDispatcher`. Returns null (no-op) for any disallowed context. Selection is passed through as-is (SpanAlgorithms normalize internally). 15 test cases in `DefaultFormattingActionsTest.kt` covering: ranged toggle apply/remove, collapsed cursor pending style toggle, no-op for no focus/Code block/block selection/dragging/non-text block, fresh selection resolution, applyStyle/removeStyle pass-through, and no-op guards for apply/remove. Pending build verification.
+
+### Subtask 10.6: `CascadeEditor` Wiring + Layout Change — DONE
 **Files:**
 - Modify `ui/CascadeEditor.kt`
+- New `ui/RichTextToolbar.kt` (placeholder for Subtask 10.7)
 
 Changes:
 1. Add `toolbar: ToolbarSlot = ToolbarSlot.Default()` parameter
@@ -432,6 +437,8 @@ Changes:
 7. Render Default/Custom/None toolbar based on slot
 
 **Verify:** Drag gesture still works correctly with layout change. Auto-scroll still works. Drop indicator renders correctly.
+
+**Completed:** `CascadeEditor` now accepts `toolbar: ToolbarSlot = ToolbarSlot.Default()` and `onFormattingStateChanged: ((FormattingState) -> Unit)? = null`. Layout restructured from root `Box` to `Column { Box(weight=1f, dragGesture) { LazyColumn + overlays }; Toolbar }` — toolbar is OUTSIDE the drag gesture Box. Formatting state computed via `rememberFormattingState()` with `trackedStyles` derived from `ToolbarSlot.Default` config buttons or `RichTextToolbarConfig.Default` for other slots. `DefaultFormattingActions` created with `stateHolder`, `blockTextStates`, and `spanActionDispatcher`. Toolbar slot `when`-dispatch renders `RichTextToolbar` for Default, invokes `content` lambda for Custom, no-op for None. External callback uses `rememberUpdatedState` + `LaunchedEffect(Unit)` + `snapshotFlow { formattingState.value }.collect {}` for structural-equality-deduped notifications without effect restarts on callback identity change. `RichTextToolbar.kt` created as placeholder (empty composable) for Subtask 10.7. Pending build verification.
 
 ### Subtask 10.7: Default Toolbar UI
 **Files:**

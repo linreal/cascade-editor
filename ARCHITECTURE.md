@@ -42,6 +42,9 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Toolbar slot | `ui/ToolbarSlot.kt` | `ToolbarSlot` |
 | Toolbar config | `ui/RichTextToolbarConfig.kt` | `RichTextToolbarConfig`, `ToolbarButtonSpec` |
 | Formatting calculator | `richtext/FormattingStateCalculator.kt` | `FormattingStateCalculator` |
+| Formatting observer | `richtext/FormattingStateObserver.kt` | `rememberFormattingState()` |
+| Formatting actions impl | `richtext/DefaultFormattingActions.kt` | `DefaultFormattingActions` |
+| Default toolbar UI | `ui/RichTextToolbar.kt` | `RichTextToolbar()` |
 
 All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
 
@@ -202,3 +205,4 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `VisibleSelectionTest.kt` | Sentinel offset adjustment for visibleSelection(): collapsed, ranged, reversed, edge cases |
 | `EnterContinuationTest.kt` | New-block style continuation on Enter: pending transfer, end-of-block inheritance, mid-block no-transfer, empty block edge cases |
 | `FormattingStateCalculatorTest.kt` | Pure calculator: canFormat conditions, collapsed caret pending/continuation, ranged selection query, reversed bounds, metadata |
+| `DefaultFormattingActionsTest.kt` | Action adapter: ranged/collapsed toggle, apply/remove pass-through, no-op guards (no focus, Code, block selection, drag, non-text), fresh selection resolution |

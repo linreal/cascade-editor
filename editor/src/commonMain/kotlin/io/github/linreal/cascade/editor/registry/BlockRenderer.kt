@@ -120,14 +120,20 @@ public open class DefaultBlockCallbacks(
             val afterText = currentText.drop(splitPosition)
 
             // Compute continuation styles BEFORE split (which clears pending on both blocks).
-            val continuationStyles = blockSpanStates?.let { spanStates ->
-                val pending = spanStates.getPendingStyles(blockId)
-                when {
-                    pending != null -> pending
-                    splitPosition == currentText.length && splitPosition > 0 ->
-                        spanStates.activeStylesAt(blockId, splitPosition - 1)
-                    else -> null
+            // Only for collapsed-cursor splits (ranged split → no continuation).
+            val selectionCollapsed = textStates.get(blockId)?.selection?.collapsed ?: true
+            val continuationStyles = if (selectionCollapsed) {
+                blockSpanStates?.let { spanStates ->
+                    val pending = spanStates.getPendingStyles(blockId)
+                    when {
+                        pending != null -> pending
+                        splitPosition == currentText.length && splitPosition > 0 ->
+                            spanStates.activeStylesAt(blockId, splitPosition - 1)
+                        else -> null
+                    }
                 }
+            } else {
+                null
             }
 
             // Runtime span split must happen before source text truncation.
