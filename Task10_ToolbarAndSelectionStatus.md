@@ -440,9 +440,9 @@ Changes:
 
 **Completed:** `CascadeEditor` now accepts `toolbar: ToolbarSlot = ToolbarSlot.Default()` and `onFormattingStateChanged: ((FormattingState) -> Unit)? = null`. Layout restructured from root `Box` to `Column { Box(weight=1f, dragGesture) { LazyColumn + overlays }; Toolbar }` — toolbar is OUTSIDE the drag gesture Box. Formatting state computed via `rememberFormattingState()` with `trackedStyles` derived from `ToolbarSlot.Default` config buttons or `RichTextToolbarConfig.Default` for other slots. `DefaultFormattingActions` created with `stateHolder`, `blockTextStates`, and `spanActionDispatcher`. Toolbar slot `when`-dispatch renders `RichTextToolbar` for Default, invokes `content` lambda for Custom, no-op for None. External callback uses `rememberUpdatedState` + `LaunchedEffect(Unit)` + `snapshotFlow { formattingState.value }.collect {}` for structural-equality-deduped notifications without effect restarts on callback identity change. `RichTextToolbar.kt` created as placeholder (empty composable) for Subtask 10.7. Pending build verification.
 
-### Subtask 10.7: Default Toolbar UI
+### Subtask 10.7: Default Toolbar UI — DONE
 **Files:**
-- New `ui/RichTextToolbar.kt`
+- Modify `ui/RichTextToolbar.kt` (replace placeholder)
 
 Implement config-driven toolbar rendering + state visuals.
 - Horizontal scrollable row
@@ -450,6 +450,8 @@ Implement config-driven toolbar rendering + state visuals.
 - `focusProperties { canFocus = false }` on all buttons
 - Accessibility content descriptions
 - 44dp min touch target
+
+**Completed:** `RichTextToolbar` renders a horizontally scrollable `Row` of toggle buttons driven by `RichTextToolbarConfig`. Each `ToolbarToggleButton` reflects `StyleStatus` visually: `FullyActive` = blue filled background + white text, `Partial` = semi-transparent blue background, `Absent` = transparent background, disabled (`canFormat == false`) = gray text + transparent background with clicks suppressed. Buttons use self-describing display text (B, I, U, S, <>, H) with matching text styles (bold B, italic I, underlined U, strikethrough S, monospace <>). All buttons have `focusProperties { canFocus = false }` to prevent stealing text field focus. 44dp min touch target via `sizeIn`. Accessibility content descriptions set via `semantics { contentDescription }` from `ToolbarButtonSpec.label`. Toolbar container has a top `HorizontalDivider` separator. `clickable` only applied when `enabled` to prevent disabled-state interactions. Pending build verification.
 
 ### Subtask 10.8: Block Type Conversion Span Policy
 **Files:**
