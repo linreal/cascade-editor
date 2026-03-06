@@ -9,7 +9,6 @@ import kotlin.math.min
 
 /**
  * Pure function that computes [FormattingState] from raw inputs.
- * No Compose dependencies — fully unit-testable.
  */
 internal object FormattingStateCalculator {
 

@@ -276,6 +276,37 @@ class RichTextSchemaTest {
         assertTrue(decoded.spans.isEmpty())
     }
 
+    @Test
+    fun `non-object span entry is dropped without failing decode`() {
+        val json = """
+            {"version":1,"text":"Hello","spans":[
+                {"start":0,"end":5,"style":{"type":"bold"}},
+                123,
+                "bad",
+                true
+            ]}
+        """.trimIndent()
+        val decoded = RichTextSchema.decodeFromString(json)
+
+        assertEquals(1, decoded.spans.size)
+        assertEquals(TextSpan(0, 5, SpanStyle.Bold), decoded.spans[0])
+    }
+
+    @Test
+    fun `span with non-object style is dropped without failing decode`() {
+        val json = """
+            {"version":1,"text":"Hello","spans":[
+                {"start":0,"end":5,"style":{"type":"bold"}},
+                {"start":0,"end":5,"style":"bold"},
+                {"start":0,"end":5,"style":42}
+            ]}
+        """.trimIndent()
+        val decoded = RichTextSchema.decodeFromString(json)
+
+        assertEquals(1, decoded.spans.size)
+        assertEquals(TextSpan(0, 5, SpanStyle.Bold), decoded.spans[0])
+    }
+
     // -- Normalization: valid spans preserved alongside invalid --
 
     @Test
@@ -325,6 +356,15 @@ class RichTextSchemaTest {
     @Test
     fun `missing spans array decodes as empty list`() {
         val json = """{"version":1,"text":"Hello"}"""
+        val decoded = RichTextSchema.decodeFromString(json)
+
+        assertEquals("Hello", decoded.text)
+        assertTrue(decoded.spans.isEmpty())
+    }
+
+    @Test
+    fun `non-array spans field decodes as empty list`() {
+        val json = """{"version":1,"text":"Hello","spans":{"start":0}}"""
         val decoded = RichTextSchema.decodeFromString(json)
 
         assertEquals("Hello", decoded.text)

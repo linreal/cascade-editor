@@ -2,7 +2,9 @@ package io.github.linreal.cascade.editor
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.ui.text.TextRange
+import io.github.linreal.cascade.editor.ui.visibleCursorPosition
 import io.github.linreal.cascade.editor.ui.visibleSelection
+import io.github.linreal.cascade.editor.ui.visibleText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -82,5 +84,29 @@ class VisibleSelectionTest {
         val state = createState("", start = 1)
         val result = state.visibleSelection()
         assertEquals(TextRange(0, 0), result)
+    }
+
+    @Test
+    fun `visibleText strips sentinel prefix`() {
+        val state = TextFieldState(initialText = "${zwsp}Hello")
+        assertEquals("Hello", state.visibleText())
+    }
+
+    @Test
+    fun `visibleText keeps text unchanged when sentinel is missing`() {
+        val state = TextFieldState(initialText = "Hello")
+        assertEquals("Hello", state.visibleText())
+    }
+
+    @Test
+    fun `visibleCursorPosition converts raw offset to visible offset`() {
+        val state = createState("Hello", start = 4) // raw 4 -> visible 3
+        assertEquals(3, state.visibleCursorPosition())
+    }
+
+    @Test
+    fun `visibleCursorPosition clamps raw zero to visible zero`() {
+        val state = createState("Hello", start = 0)
+        assertEquals(0, state.visibleCursorPosition())
     }
 }

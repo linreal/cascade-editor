@@ -1,8 +1,10 @@
 package io.github.linreal.cascade.editor
 
 import androidx.compose.ui.text.TextRange
+import io.github.linreal.cascade.editor.action.DeleteBlock
 import io.github.linreal.cascade.editor.action.EditorAction
 import io.github.linreal.cascade.editor.action.SplitBlock
+import io.github.linreal.cascade.editor.action.UpdateBlockContent
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
@@ -553,6 +555,40 @@ class FormattingIntegrationTest {
         )
         assertEquals(StyleStatus.FullyActive, state.styleStatusOf(SpanStyle.Bold))
         assertEquals(StyleStatus.Absent, state.styleStatusOf(SpanStyle.Italic))
+    }
+
+    @Test
+    fun `forward delete merge updates runtime and snapshot with shifted spans`() {
+        val b1 = BlockId("b1")
+        val b2 = BlockId("b2")
+        val spans1 = listOf(TextSpan(0, 5, SpanStyle.Bold))
+        val spans2 = listOf(TextSpan(0, 5, SpanStyle.Italic))
+        val block1 = Block(b1, BlockType.Paragraph, BlockContent.Text("Hello", spans1))
+        val block2 = Block(b2, BlockType.Paragraph, BlockContent.Text("World", spans2))
+        val harness = Harness(blocks = listOf(block1, block2), focusedBlockId = b1)
+        harness.initBlock(b1, "Hello", spans1, selectionStart = 5)
+        harness.initBlock(b2, "World", spans2, selectionStart = 0)
+
+        harness.callbacks.onDeleteAtEnd(b1)
+
+        val mergedSpans = harness.blockSpanStates.getSpans(b1)
+        assertEquals(2, mergedSpans.size)
+        assertTrue(mergedSpans.any { it.style == SpanStyle.Bold && it.start == 0 && it.end == 5 })
+        assertTrue(mergedSpans.any { it.style == SpanStyle.Italic && it.start == 5 && it.end == 10 })
+        assertEquals(null, harness.blockSpanStates.get(b2))
+
+        val snapshotMerged = harness.stateHolder.state.getBlock(b1)?.content as? BlockContent.Text
+        assertNotNull(snapshotMerged)
+        assertEquals("HelloWorld", snapshotMerged.text)
+        assertEquals(mergedSpans, snapshotMerged.spans)
+
+        val updateIndex = harness.dispatched.indexOfFirst { action ->
+            action is UpdateBlockContent && action.blockId == b1
+        }
+        val deleteIndex = harness.dispatched.indexOfFirst { action ->
+            action is DeleteBlock && action.blockId == b2
+        }
+        assertTrue(updateIndex >= 0 && deleteIndex > updateIndex)
     }
 
     // ── 14. Apply + remove via actions maintain snapshot consistency ─────

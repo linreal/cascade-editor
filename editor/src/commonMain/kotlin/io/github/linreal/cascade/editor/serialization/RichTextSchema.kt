@@ -10,7 +10,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
@@ -130,10 +129,11 @@ public object RichTextSchema {
 
     private fun decodeV1(json: JsonObject): BlockContent.Text {
         val text = json["text"]?.jsonPrimitive?.content ?: ""
-        val spansArray = json["spans"]?.jsonArray ?: JsonArray(emptyList())
+        val spansArray = (json["spans"] as? JsonArray) ?: JsonArray(emptyList())
 
         val spans = spansArray.mapNotNull { element ->
-            decodeSpan(element.jsonObject, text.length)
+            val spanJson = element as? JsonObject ?: return@mapNotNull null
+            decodeSpan(spanJson, text.length)
         }
 
         return BlockContent.Text(text = text, spans = spans)
@@ -142,7 +142,7 @@ public object RichTextSchema {
     private fun decodeSpan(json: JsonObject, textLength: Int): TextSpan? {
         val rawStart = json["start"]?.jsonPrimitive?.intOrNull ?: return null
         val rawEnd = json["end"]?.jsonPrimitive?.intOrNull ?: return null
-        val styleJson = json["style"]?.jsonObject ?: return null
+        val styleJson = json["style"] as? JsonObject ?: return null
         val style = decodeStyle(styleJson) ?: return null
 
         // Normalize: clamp to valid range

@@ -294,4 +294,26 @@ class EnterContinuationTest {
         // Pending wins over position-based Bold
         assertEquals(setOf(SpanStyle.Italic), pendingOnNew)
     }
+
+    @Test
+    fun `split id handoff keeps runtime target and dispatched target identical`() {
+        val harness = TestHarness(
+            text = "HelloWorld",
+            spans = listOf(TextSpan(0, 10, SpanStyle.Bold)),
+        )
+
+        harness.callbacks.onEnter(blockId, cursorPosition = 5)
+
+        val splitAction = harness.dispatched.filterIsInstance<SplitBlock>().single()
+        val dispatchedNewId = splitAction.newBlockId
+        assertNotNull(dispatchedNewId)
+
+        val runtimeSpansOnDispatchedTarget = harness.blockSpanStates.getSpans(dispatchedNewId)
+        assertEquals(listOf(TextSpan(0, 5, SpanStyle.Bold)), runtimeSpansOnDispatchedTarget)
+        assertEquals(
+            runtimeSpansOnDispatchedTarget,
+            splitAction.newBlockSpans,
+            "Runtime split and dispatched payload must reference the same split target ID",
+        )
+    }
 }

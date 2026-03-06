@@ -1,6 +1,7 @@
 package io.github.linreal.cascade.editor
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextDecoration
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
 import io.github.linreal.cascade.editor.richtext.SpanMapper
@@ -258,6 +259,64 @@ class SpanMapperTest {
         // The lambda will skip the empty range at render time via clamping.
         val spans = listOf(TextSpan(3, 3, SpanStyle.Bold))
         assertNotNull(SpanMapper.toOutputTransformation(spans))
+    }
+
+    // ╔══════════════════════════════════════════════════════════════════╗
+    // ║  Rendering overlap mapping                                      ║
+    // ╚══════════════════════════════════════════════════════════════════╝
+
+    @Test
+    fun `underline and strikethrough overlap produces combined decoration run`() {
+        val spans = listOf(
+            TextSpan(0, 5, SpanStyle.Underline),
+            TextSpan(3, 8, SpanStyle.StrikeThrough),
+        )
+
+        val mapped = SpanMapper.mapRenderableSpans(spans)
+        val combined = TextDecoration.combine(
+            listOf(TextDecoration.Underline, TextDecoration.LineThrough)
+        )
+
+        assertTrue(
+            mapped.any { it.start == 3 && it.end == 5 && it.style.textDecoration == combined },
+            "Expected combined underline+strikethrough overlay for overlap [3,5)",
+        )
+    }
+
+    @Test
+    fun `link underline overlapping strikethrough also gets combined decoration overlay`() {
+        val spans = listOf(
+            TextSpan(0, 6, SpanStyle.Link("https://example.com")),
+            TextSpan(2, 4, SpanStyle.StrikeThrough),
+        )
+
+        val mapped = SpanMapper.mapRenderableSpans(spans)
+        val combined = TextDecoration.combine(
+            listOf(TextDecoration.Underline, TextDecoration.LineThrough)
+        )
+
+        assertTrue(
+            mapped.any { it.start == 2 && it.end == 4 && it.style.textDecoration == combined },
+            "Expected combined overlay on link overlap [2,4)",
+        )
+    }
+
+    @Test
+    fun `non-overlapping underline and strikethrough produce no combined overlay`() {
+        val spans = listOf(
+            TextSpan(0, 2, SpanStyle.Underline),
+            TextSpan(3, 5, SpanStyle.StrikeThrough),
+        )
+
+        val mapped = SpanMapper.mapRenderableSpans(spans)
+        val combined = TextDecoration.combine(
+            listOf(TextDecoration.Underline, TextDecoration.LineThrough)
+        )
+
+        assertTrue(
+            mapped.none { it.style.textDecoration == combined },
+            "No combined decoration should be emitted when ranges do not intersect",
+        )
     }
 
     // ╔══════════════════════════════════════════════════════════════════╗

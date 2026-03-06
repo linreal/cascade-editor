@@ -297,6 +297,8 @@ Decomposition is in separate file: Task10_ToolbarAndSelectionStatus.md
 - No regressions in existing editor tests.
 - New regression tests explicitly cover programmatic edit sync and malformed decode resilience.
 
+`Completed`: Extended the matrix with targeted regression coverage and scale guards. Added forward-delete merge integration test (`FormattingIntegrationTest`) to complement existing enter-split and backspace-merge paths. Added split-ID handoff assertion at callback/runtime boundary (`EnterContinuationTest`) to guarantee runtime split target and dispatched `SplitBlock.newBlockId` stay aligned. Added sentinel conversion tests for `visibleText()` and `visibleCursorPosition()` (`VisibleSelectionTest`). Added scale-oriented regression suite (`RichTextScaleRegressionTest`) covering large-span normalization invariants, large-block cleanup correctness, and block-local style mutation behavior. Hardened serialization decode path to safely drop malformed-but-parseable entries (non-object span items, non-object `style`, non-array `spans`) and added explicit tests in `RichTextSchemaTest`. Implemented cumulative decoration overlay in `SpanMapper` for underline+strikethrough intersections and added mapping tests in `SpanMapperTest` to verify combined decoration behavior. Added task-level validation report/checklist in `Task11_TestMatrixAndPerformanceValidation.md`. Pending user-run verification (`:editor:allTests`).
+
 ## Task 12. Final Hardening
 
 `Objective`: Ensure implementation matches spec constraints and closes known correctness gaps.

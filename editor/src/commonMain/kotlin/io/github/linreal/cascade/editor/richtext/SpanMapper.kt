@@ -22,6 +22,9 @@ internal object SpanMapper {
     // TODO: inject via theme when theming/styling API is implemented
     private val linkColor: Color = Color(0xFF0B57D0)
     private val inlineCodeBackground: Color = Color(0x14000000)
+    private val combinedDecoration: TextDecoration = TextDecoration.combine(
+        listOf(TextDecoration.Underline, TextDecoration.LineThrough)
+    )
 
     /**
      * Builds an [OutputTransformation] for the provided spans.
@@ -36,10 +39,7 @@ internal object SpanMapper {
     fun toOutputTransformation(spans: List<TextSpan>): OutputTransformation? {
         if (spans.isEmpty()) return null
 
-        val mapped = spans.mapNotNull { span ->
-            val composeStyle = toComposeSpanStyle(span.style) ?: return@mapNotNull null
-            MappedSpan(start = span.start, end = span.end, style = composeStyle)
-        }
+        val mapped = mapRenderableSpans(spans)
         if (mapped.isEmpty()) return null
 
         return OutputTransformation {
@@ -56,16 +56,13 @@ internal object SpanMapper {
     fun TextFieldBuffer.applyStyles(spans: List<TextSpan>) {
         if (spans.isEmpty()) return
 
-        val mapped = spans.mapNotNull { span ->
-            val composeStyle = toComposeSpanStyle(span.style) ?: return@mapNotNull null
-            MappedSpan(start = span.start, end = span.end, style = composeStyle)
-        }
+        val mapped = mapRenderableSpans(spans)
         if (mapped.isEmpty()) return
 
         applyMappedStyles(mapped)
     }
 
-    private fun TextFieldBuffer.applyMappedStyles(mapped: List<MappedSpan>) {
+    private fun TextFieldBuffer.applyMappedStyles(mapped: List<RenderSpan>) {
         val visibleLength = (length - sentinelOffset).coerceAtLeast(0)
         for (span in mapped) {
             val clampedStart = span.start.coerceIn(0, visibleLength)
@@ -81,13 +78,71 @@ internal object SpanMapper {
     }
 
     /**
-     * Pure domain-to-Compose style mapping.
+     * Maps domain spans to renderable Compose span runs.
      *
-     * TODO: Underline + StrikeThrough on the same range will not stack visually —
-     *  Compose applies each SpanStyle independently and the later TextDecoration
-     *  overwrites the earlier one. Fix by detecting overlapping decoration spans
-     *  at the OutputTransformation builder level and using
-     *  TextDecoration.combine(listOf(Underline, LineThrough)).
+     * Includes decoration overlays for underline+strikethrough intersections so both
+     * decorations render cumulatively in overlapping regions.
+     */
+    internal fun mapRenderableSpans(spans: List<TextSpan>): List<RenderSpan> {
+        if (spans.isEmpty()) return emptyList()
+
+        val base = spans.mapNotNull { span ->
+            val composeStyle = toComposeSpanStyle(span.style) ?: return@mapNotNull null
+            RenderSpan(start = span.start, end = span.end, style = composeStyle)
+        }
+        if (base.isEmpty()) return emptyList()
+
+        val overlay = buildCombinedDecorationOverlay(base)
+        return if (overlay.isEmpty()) base else base + overlay
+    }
+
+    private fun buildCombinedDecorationOverlay(base: List<RenderSpan>): List<RenderSpan> {
+        val underlineRuns = base.filter { it.style.textDecoration == TextDecoration.Underline }
+        val strikeRuns = base.filter { it.style.textDecoration == TextDecoration.LineThrough }
+        if (underlineRuns.isEmpty() || strikeRuns.isEmpty()) return emptyList()
+
+        val overlapIntervals = mutableListOf<Interval>()
+        for (underline in underlineRuns) {
+            for (strike in strikeRuns) {
+                val start = maxOf(underline.start, strike.start)
+                val end = minOf(underline.end, strike.end)
+                if (start < end) {
+                    overlapIntervals += Interval(start, end)
+                }
+            }
+        }
+        if (overlapIntervals.isEmpty()) return emptyList()
+
+        return mergeIntervals(overlapIntervals).map { interval ->
+            RenderSpan(
+                start = interval.start,
+                end = interval.end,
+                style = ComposeSpanStyle(textDecoration = combinedDecoration),
+            )
+        }
+    }
+
+    private fun mergeIntervals(intervals: List<Interval>): List<Interval> {
+        if (intervals.isEmpty()) return emptyList()
+        val sorted = intervals.sortedWith(compareBy({ it.start }, { it.end }))
+        val merged = mutableListOf<Interval>()
+
+        var current = sorted.first()
+        for (index in 1 until sorted.size) {
+            val next = sorted[index]
+            if (next.start <= current.end) {
+                current = Interval(current.start, maxOf(current.end, next.end))
+            } else {
+                merged += current
+                current = next
+            }
+        }
+        merged += current
+        return merged
+    }
+
+    /**
+     * Pure domain-to-Compose style mapping.
      */
     fun toComposeSpanStyle(style: SpanStyle): ComposeSpanStyle? {
         return when (style) {
@@ -110,9 +165,14 @@ internal object SpanMapper {
         }
     }
 
-    private data class MappedSpan(
+    internal data class RenderSpan(
         val start: Int,
         val end: Int,
         val style: ComposeSpanStyle,
+    )
+
+    private data class Interval(
+        val start: Int,
+        val end: Int,
     )
 }
