@@ -3,6 +3,9 @@ package io.github.linreal.cascade.editor.registry
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockType
+import io.github.linreal.cascade.editor.slash.BuiltInBlockSlashBehavior
+import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandSpec
+import io.github.linreal.cascade.editor.slash.SlashCommandGroup
 
 /**
  * Central registry for block types, descriptors, and renderers.
@@ -95,23 +98,33 @@ public class BlockRegistry {
 }
 
 /**
+ * Shared group definitions for built-in slash menu items.
+ */
+private val BasicBlocksGroup = SlashCommandGroup(label = "Basic Blocks", order = 0)
+private val MediaGroup = SlashCommandGroup(label = "Media", order = 10)
+
+/**
  * Registers all built-in block type descriptors.
  */
 private fun BlockRegistry.registerBuiltInDescriptors() {
-    // Paragraph
+    // Paragraph — text-capable, ReplaceAnchorWhenBlank
     registerDescriptor(
         BlockDescriptor(
             typeId = "paragraph",
             displayName = "Paragraph",
             description = "Plain text paragraph",
             keywords = listOf("text", "p"),
+            slash = BuiltInSlashCommandSpec(
+                group = BasicBlocksGroup,
+                behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+            ),
             factory = { id ->
                 Block(id, BlockType.Paragraph, BlockContent.Text(""))
             }
         )
     )
 
-    // Headings 1-6
+    // Headings 1-6 — text-capable, ReplaceAnchorWhenBlank
     for (level in 1..6) {
         registerDescriptor(
             BlockDescriptor(
@@ -119,6 +132,10 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
                 displayName = "Heading $level",
                 description = "Heading level $level",
                 keywords = listOf("h$level", "heading", "title"),
+                slash = BuiltInSlashCommandSpec(
+                    group = BasicBlocksGroup,
+                    behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+                ),
                 factory = { id ->
                     Block(id, BlockType.Heading(level), BlockContent.Text(""))
                 }
@@ -126,91 +143,119 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
         )
     }
 
-    // Todo
+    // Todo — text-capable, ReplaceAnchorWhenBlank
     registerDescriptor(
         BlockDescriptor(
             typeId = "todo",
             displayName = "To-do",
             description = "Task with checkbox",
             keywords = listOf("checkbox", "task", "check", "todo"),
+            slash = BuiltInSlashCommandSpec(
+                group = BasicBlocksGroup,
+                behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+            ),
             factory = { id ->
                 Block(id, BlockType.Todo(checked = false), BlockContent.Text(""))
             }
         )
     )
 
-    // Bullet List
+    // Bullet List — text-capable, ReplaceAnchorWhenBlank
     registerDescriptor(
         BlockDescriptor(
             typeId = "bullet_list",
             displayName = "Bullet List",
             description = "Unordered list item",
             keywords = listOf("list", "bullet", "ul", "unordered"),
+            slash = BuiltInSlashCommandSpec(
+                group = BasicBlocksGroup,
+                behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+            ),
             factory = { id ->
                 Block(id, BlockType.BulletList, BlockContent.Text(""))
             }
         )
     )
 
-    // Numbered List
+    // Numbered List — text-capable, ReplaceAnchorWhenBlank
     registerDescriptor(
         BlockDescriptor(
             typeId = "numbered_list",
             displayName = "Numbered List",
             description = "Ordered list item",
             keywords = listOf("list", "number", "ol", "ordered"),
+            slash = BuiltInSlashCommandSpec(
+                group = BasicBlocksGroup,
+                behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+            ),
             factory = { id ->
                 Block(id, BlockType.NumberedList, BlockContent.Text(""))
             }
         )
     )
 
-    // Quote
+    // Quote — text-capable, ReplaceAnchorWhenBlank
     registerDescriptor(
         BlockDescriptor(
             typeId = "quote",
             displayName = "Quote",
             description = "Quoted text block",
             keywords = listOf("blockquote", "citation"),
+            slash = BuiltInSlashCommandSpec(
+                group = BasicBlocksGroup,
+                behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+            ),
             factory = { id ->
                 Block(id, BlockType.Quote, BlockContent.Text(""))
             }
         )
     )
 
-    // Code
+    // Code — text-capable but isConvertible=false → AlwaysInsert
     registerDescriptor(
         BlockDescriptor(
             typeId = "code",
             displayName = "Code",
             description = "Code block with syntax highlighting",
             keywords = listOf("code", "snippet", "programming"),
+            slash = BuiltInSlashCommandSpec(
+                group = BasicBlocksGroup,
+                behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
+            ),
             factory = { id ->
                 Block(id, BlockType.Code(), BlockContent.Text(""))
             }
         )
     )
 
-    // Divider
+    // Divider — non-text, AlwaysInsert
     registerDescriptor(
         BlockDescriptor(
             typeId = "divider",
             displayName = "Divider",
             description = "Horizontal line separator",
             keywords = listOf("hr", "line", "separator", "horizontal"),
+            slash = BuiltInSlashCommandSpec(
+                group = MediaGroup,
+                behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
+            ),
             factory = { id ->
                 Block(id, BlockType.Divider, BlockContent.Empty)
             }
         )
     )
 
-    // Image
+    // Image — non-text, AlwaysInsert
     registerDescriptor(
         BlockDescriptor(
             typeId = "image",
             displayName = "Image",
             description = "Embedded image",
             keywords = listOf("picture", "photo", "img"),
+            slash = BuiltInSlashCommandSpec(
+                group = MediaGroup,
+                behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
+            ),
             factory = { id ->
                 Block(id, BlockType.Image, BlockContent.Image("", null))
             }

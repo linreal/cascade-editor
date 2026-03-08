@@ -120,7 +120,7 @@ Add `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/SlashCommandR
 - registry behavior is deterministic and unit-tested
 - search/ranking logic no longer depends on `BlockDescriptor.matches()`
 
-## Task 3 — Add Built-In Slash Metadata to Block Descriptors
+## Task 3 — Add Built-In Slash Metadata to Block Descriptors ✅
 
 ### Goal
 
@@ -158,11 +158,22 @@ Extend `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/BlockRegis
 - descriptors without slash metadata remain valid registry entries
 - built-in defaults have the expected slash behavior per type
 
+### Implementation Notes
+
+- Added `BuiltInSlashCommandSpec` and `BuiltInBlockSlashBehavior` (sealed interface with `ReplaceAnchorWhenBlank` and `AlwaysInsert`) in `slash/BuiltInSlashCommandSpec.kt`.
+- Added `slash: BuiltInSlashCommandSpec? = null` to `BlockDescriptor`.
+- Removed stale `@property category` KDoc from `BlockDescriptor`.
+- All built-in descriptors now carry explicit `slash` metadata with group and behavior.
+- Two groups: "Basic Blocks" (order=0) for text-capable types + code, "Media" (order=10) for divider + image.
+- Behavior assignments: paragraph, headings, todo, bullet list, numbered list, quote → `ReplaceAnchorWhenBlank`; code, divider, image → `AlwaysInsert`.
+- `BlockRegistry.search()` left intact for backwards compatibility.
+- Added 8 new tests in `BlockRegistryTest.kt` covering slash metadata exposure, no-slash descriptors, behavior per type, group ordering, and custom descriptor preservation.
+
 ### Definition of Done
 
-- block slash discoverability is explicit in descriptor metadata
-- default descriptors compile with the new field
-- tests cover representative built-in policies
+- block slash discoverability is explicit in descriptor metadata ✅
+- default descriptors compile with the new field ✅
+- tests cover representative built-in policies ✅
 
 ## Task 4 — Generate Built-In Slash Items from Descriptor Metadata
 

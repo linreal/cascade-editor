@@ -35,7 +35,8 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Text span | `core/TextSpan.kt` | `TextSpan` |
 | Block ID | `core/BlockId.kt` | `BlockId` |
 | Registry | `registry/BlockRegistry.kt` | `BlockRegistry` |
-| Descriptors | `registry/BlockDescriptor.kt` | `BlockDescriptor`, `BlockCategory` |
+| Descriptors | `registry/BlockDescriptor.kt` | `BlockDescriptor` |
+| Built-in slash spec | `slash/BuiltInSlashCommandSpec.kt` | `BuiltInSlashCommandSpec`, `BuiltInBlockSlashBehavior` |
 | Renderer interface | `registry/BlockRenderer.kt` | `BlockRenderer<T>`, `BlockCallbacks`, `DefaultBlockCallbacks` |
 | Rich text serialization | `serialization/RichTextSchema.kt` | `RichTextSchema` |
 | Span algorithms | `richtext/SpanAlgorithms.kt` | `SpanAlgorithms`, `StyleStatus` |
@@ -167,7 +168,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | TextBlockField (shared) | Done | Extracted text editing composable used by all text renderers |
 | Heading font sizes | Done | No bold weight yet |
 | Code monospace font | Done | No syntax highlighting |
-| Slash commands (backend) | Done | Session state with query range, submenu nav, highlight; enriched reducer API |
+| Slash commands (backend) | Done | Session state with query range, submenu nav, highlight; enriched reducer API; `BuiltInSlashCommandSpec` on descriptors with explicit behavior policies |
 | Slash commands (UI) | Not done | No popup, no "/" detection |
 | Todo checkbox UI | Done | `TodoBlockRenderer` with `Checkbox` + `TextBlockField`, `ToggleTodo` action |
 | Bullet/numbered list prefixes | Not done | Render as plain paragraphs |
@@ -208,7 +209,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `DragActionsTest.kt` | Drag state transitions |
 | `AutoScrollTest.kt` | Hot zones, speed calculation |
 | `DragUtilsTest.kt` | Drop target coordinate math |
-| `BlockRegistryTest.kt` | Descriptor search, block creation |
+| `BlockRegistryTest.kt` | Descriptor search, block creation, slash metadata exposure, behavior policies per built-in type |
 | `BlockTest.kt` | Core block creation |
 | `RichTextSchemaTest.kt` | Span serialization round-trips, normalization, version handling |
 | `SpanAlgorithmsTest.kt` | Normalize, edit adjust, split/merge, apply/remove/toggle, style queries (~62 tests) |
