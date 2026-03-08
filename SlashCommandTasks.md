@@ -7,7 +7,7 @@ Recommended package for new slash-specific code:
 - `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/slash/`
 - `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/`
 
-## Task 1 — Enrich Slash Session State and Reducer API
+## Task 1 — Enrich Slash Session State and Reducer API ✅
 
 ### Goal
 

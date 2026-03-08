@@ -19,7 +19,8 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Drop target calc | `ui/utils/DragUtils.kt` | `calculateDropTargetIndex()` |
 | Text state local | `ui/LocalBlockTextStates.kt` | `LocalBlockTextStates` |
 | Span state local | `ui/LocalBlockSpanStates.kt` | `LocalBlockSpanStates` |
-| State snapshot | `state/EditorState.kt` | `EditorState`, `DragState` |
+| State snapshot | `state/EditorState.kt` | `EditorState`, `DragState`, `SlashCommandState`, `SlashQueryRange` |
+| Slash command ID | `slash/SlashCommandId.kt` | `SlashCommandId` |
 | State holder | `state/EditorStateHolder.kt` | `EditorStateHolder`, `rememberEditorState()` |
 | Text state manager | `state/BlockTextStates.kt` | `BlockTextStates` |
 | Span state manager | `state/BlockSpanStates.kt` | `BlockSpanStates` |
@@ -120,7 +121,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 
 **Drag & Drop:** `StartDrag`, `UpdateDragTarget`, `CompleteDrag`, `CancelDrag`
 
-**Slash Commands:** `OpenSlashCommand`, `UpdateSlashCommandQuery`, `CloseSlashCommand`
+**Slash Commands:** `OpenSlashCommand`, `UpdateSlashCommandSession`, `NavigateSlashSubmenu`, `NavigateSlashBack`, `HighlightSlashCommand`, `CloseSlashCommand`
 
 ## Data Flow
 
@@ -163,7 +164,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | TextBlockField (shared) | Done | Extracted text editing composable used by all text renderers |
 | Heading font sizes | Done | No bold weight yet |
 | Code monospace font | Done | No syntax highlighting |
-| Slash commands (backend) | Done | Actions + state + search |
+| Slash commands (backend) | Done | Session state with query range, submenu nav, highlight; enriched reducer API |
 | Slash commands (UI) | Not done | No popup, no "/" detection |
 | Todo checkbox UI | Done | `TodoBlockRenderer` with `Checkbox` + `TextBlockField`, `ToggleTodo` action |
 | Bullet/numbered list prefixes | Not done | Render as plain paragraphs |
@@ -199,6 +200,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Test File | Coverage |
 |-----------|----------|
 | `EditorStateTest.kt` | All action reducers incl. span actions, split/merge span transfer, snapshot stability (~87 tests) |
+| `SlashCommandStateTest.kt` | Slash session reducers: open/update/navigate/highlight/close, submenu path, no-op guards |
 | `DragActionsTest.kt` | Drag state transitions |
 | `AutoScrollTest.kt` | Hot zones, speed calculation |
 | `DragUtilsTest.kt` | Drop target coordinate math |
