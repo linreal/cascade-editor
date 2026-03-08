@@ -42,7 +42,7 @@ public class TodoBlockRenderer : BlockRenderer<BlockType.Todo> {
             Checkbox(
                 checked = todoType.checked,
                 onCheckedChange = { callbacks.dispatch(ToggleTodo(block.id)) },
-                modifier = Modifier.background(Color.Black),
+                modifier = Modifier,
             )
             TextBlockField(
                 block = block,
