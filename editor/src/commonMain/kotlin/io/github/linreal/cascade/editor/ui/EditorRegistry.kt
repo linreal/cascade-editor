@@ -2,6 +2,7 @@ package io.github.linreal.cascade.editor.ui
 
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.ui.renderers.TextBlockRenderer
+import io.github.linreal.cascade.editor.ui.renderers.TodoBlockRenderer
 
 /**
  * Creates a [BlockRegistry] with all built-in descriptors and renderers.
@@ -20,11 +21,10 @@ public fun createEditorRegistry(): BlockRegistry {
 public fun BlockRegistry.registerBuiltInRenderers() {
     val textRenderer = TextBlockRenderer()
 
-    // Register TextBlockRenderer for all text-supporting types
+    // Register TextBlockRenderer for all text-supporting types (except todo)
     val textTypeIds = listOf(
         "paragraph",
         "heading_1", "heading_2", "heading_3", "heading_4", "heading_5", "heading_6",
-        "todo",
         "bullet_list",
         "numbered_list",
         "quote",
@@ -34,6 +34,9 @@ public fun BlockRegistry.registerBuiltInRenderers() {
     textTypeIds.forEach { typeId ->
         registerRenderer(typeId, textRenderer)
     }
+
+    // Register TodoBlockRenderer for todo blocks (checkbox + text)
+    registerRenderer("todo", TodoBlockRenderer())
 
     // TODO: Register DividerRenderer for "divider"
     // TODO: Register ImageRenderer for "image"

@@ -8,7 +8,9 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 |---------|------|------------|
 | Main composable | `ui/CascadeEditor.kt` | `CascadeEditor()` |
 | Text input | `ui/BackspaceAwareTextEdit.kt` | `BackspaceAwareTextField()` |
+| Shared text field | `ui/renderers/TextBlockField.kt` | `TextBlockField()` |
 | Text renderer | `ui/renderers/TextBlockRenderer.kt` | `TextBlockRenderer` |
+| Todo renderer | `ui/renderers/TodoBlockRenderer.kt` | `TodoBlockRenderer` |
 | Editor registry setup | `ui/EditorRegistry.kt` | `createEditorRegistry()` |
 | Drop indicator | `ui/DropIndicator.kt` | `DropIndicator()` |
 | Drag preview | `ui/DragPreview.kt` | `DragPreview()` |
@@ -108,7 +110,7 @@ Custom blocks: implement `CustomBlockType` interface.
 
 All state changes go through `EditorAction.reduce(state) → newState`.
 
-**Block Manipulation:** `InsertBlock`, `InsertBlockAfter`, `DeleteBlocks`, `DeleteBlock`, `UpdateBlockContent`, `UpdateBlockText`, `ConvertBlockType`, `MoveBlocks`, `MergeBlocks`, `SplitBlock`, `ReplaceBlock`
+**Block Manipulation:** `InsertBlock`, `InsertBlockAfter`, `DeleteBlocks`, `DeleteBlock`, `UpdateBlockContent`, `UpdateBlockText`, `ConvertBlockType`, `MoveBlocks`, `MergeBlocks`, `SplitBlock`, `ReplaceBlock`, `ToggleTodo`
 
 **Span Styles:** `ApplySpanStyle`, `RemoveSpanStyle`
 
@@ -130,7 +132,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 
 ## Registry System
 
-**BlockRegistry** — maps `typeId` string to `BlockDescriptor` (metadata + factory) and `BlockRenderer` (UI). Use `registry.search(query)` for slash command filtering. Use `registry.getRenderer(typeId)` for rendering. `createEditorRegistry()` pre-registers all built-in types with `TextBlockRenderer`.
+**BlockRegistry** — maps `typeId` string to `BlockDescriptor` (metadata + factory) and `BlockRenderer` (UI). Use `registry.search(query)` for slash command filtering. Use `registry.getRenderer(typeId)` for rendering. `createEditorRegistry()` pre-registers all built-in types: `TodoBlockRenderer` for "todo", `TextBlockRenderer` for all other text-supporting types. All text-editing renderers share the `TextBlockField` composable for text input, spans, and focus.
 
 **BlockCallbacks** — interface passed to renderers for interaction handling. `DefaultBlockCallbacks` wires `onEnter` → split, `onBackspaceAtStart` → merge, `onDeleteAtEnd` → forward-merge, `onDragStart` → drag initiation, `onSlashCommand` → open menu. Stubs: `onClick`, `onLongClick`.
 
@@ -157,12 +159,13 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Selection (single, multi, range) | Done | Actions done; UI triggers partial (`onClick` is a stub) |
 | Drag & drop (gesture, preview, indicator, auto-scroll) | Done | Single-block drag only |
 | Block registry & search | Done | |
-| TextBlockRenderer | Done | All text-supporting types use this |
+| TextBlockRenderer | Done | All text-supporting types except todo |
+| TextBlockField (shared) | Done | Extracted text editing composable used by all text renderers |
 | Heading font sizes | Done | No bold weight yet |
 | Code monospace font | Done | No syntax highlighting |
 | Slash commands (backend) | Done | Actions + state + search |
 | Slash commands (UI) | Not done | No popup, no "/" detection |
-| Todo checkbox UI | Not done | Type exists, no checkbox rendering |
+| Todo checkbox UI | Done | `TodoBlockRenderer` with `Checkbox` + `TextBlockField`, `ToggleTodo` action |
 | Bullet/numbered list prefixes | Not done | Render as plain paragraphs |
 | Quote visual styling | Not done | No left border / background |
 | Divider renderer | Not done | Type exists, no UI |

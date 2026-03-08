@@ -574,6 +574,25 @@ public data object DeleteSelectedOrFocused : EditorAction {
     }
 }
 
+// Block Type Mutation Actions
+
+/**
+ * Toggles the checked state of a Todo block.
+ * No-op if the block is not a Todo.
+ */
+public data class ToggleTodo(
+    val blockId: BlockId,
+) : EditorAction {
+    override fun reduce(state: EditorState): EditorState {
+        val block = state.getBlock(blockId) ?: return state
+        val todoType = block.type as? BlockType.Todo ?: return state
+        val newBlocks = state.blocks.map { b ->
+            if (b.id == blockId) b.withType(BlockType.Todo(checked = !todoType.checked)) else b
+        }
+        return state.copy(blocks = newBlocks)
+    }
+}
+
 // Span Style Actions
 
 /**
