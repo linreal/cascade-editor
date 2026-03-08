@@ -50,6 +50,9 @@ fun App() {
                         ),
                     )
                 ),
+                Block.todo("1.5 Checked Todo list item", checked = true),
+                Block.todo("1.6 Unchecked Todo list item", checked = false),
+
                 Block.paragraph("2. Short block."),
                 Block.paragraph(
                     "3. This is a medium sized block that contains a bit more information about how this editor works and what you can do with it."
