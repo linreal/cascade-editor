@@ -58,7 +58,7 @@ Add reducer coverage in `editor/src/commonTest/kotlin/io/github/linreal/cascade/
 - all slash reducer tests pass
 - no remaining code constructs the old `OpenSlashCommand` / `UpdateSlashCommandQuery` shapes
 
-## Task 2 — Add Public Slash Command Model and Registry
+## Task 2 — Add Public Slash Command Model and Registry ✅
 
 ### Goal
 

@@ -21,6 +21,9 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Span state local | `ui/LocalBlockSpanStates.kt` | `LocalBlockSpanStates` |
 | State snapshot | `state/EditorState.kt` | `EditorState`, `DragState`, `SlashCommandState`, `SlashQueryRange` |
 | Slash command ID | `slash/SlashCommandId.kt` | `SlashCommandId` |
+| Slash command model | `slash/SlashCommandModel.kt` | `SlashCommandItem`, `SlashCommandAction`, `SlashCommandMenu`, `SlashCommandGroup`, `SlashCommandIconKey`, `SlashQueryTextPolicy`, `SlashCommandResult` |
+| Slash command context | `slash/SlashCommandContext.kt` | `SlashCommandContext`, `SlashCommandEditor` |
+| Slash command registry | `slash/SlashCommandRegistry.kt` | `SlashCommandRegistry` |
 | State holder | `state/EditorStateHolder.kt` | `EditorStateHolder`, `rememberEditorState()` |
 | Text state manager | `state/BlockTextStates.kt` | `BlockTextStates` |
 | Span state manager | `state/BlockSpanStates.kt` | `BlockSpanStates` |
@@ -201,6 +204,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 |-----------|----------|
 | `EditorStateTest.kt` | All action reducers incl. span actions, split/merge span transfer, snapshot stability (~87 tests) |
 | `SlashCommandStateTest.kt` | Slash session reducers: open/update/navigate/highlight/close, submenu path, no-op guards |
+| `SlashCommandRegistryTest.kt` | Registry: registration order, dedup, ranking tiers, path-based submenu search, menu discoverability, tie-breaking |
 | `DragActionsTest.kt` | Drag state transitions |
 | `AutoScrollTest.kt` | Hot zones, speed calculation |
 | `DragUtilsTest.kt` | Drop target coordinate math |
