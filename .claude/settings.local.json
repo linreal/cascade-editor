@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "WebSearch",
-      "WebFetch(domain:proandroiddev.com)",
-      "WebFetch(domain:www.droidcon.com)"
-    ]
-  }
-}
