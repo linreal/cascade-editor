@@ -3,6 +3,7 @@ package io.github.linreal.cascade.editor.ui
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.insert
 import androidx.compose.runtime.Composable
@@ -44,6 +45,7 @@ public fun BackspaceAwareTextField(
     state: TextFieldState,
     modifier: Modifier = Modifier,
     textStyle: TextStyle = TextStyle(fontSize = 16.sp),
+    outputTransformation: OutputTransformation? = null,
     focusRequester: FocusRequester? = null,
     onBackspaceAtStart: () -> Unit,
     onEnterPressed: (cursorPosition: Int) -> Unit,
@@ -77,11 +79,12 @@ public fun BackspaceAwareTextField(
     BasicTextField(
         state = state,
         inputTransformation = sentinelGuard,
+        outputTransformation = outputTransformation,
         textStyle = textStyle,
         modifier = baseModifier,
-        onTextLayout = onTextLayout ,
+        onTextLayout = onTextLayout,
         keyboardOptions = KeyboardOptions(
-            imeAction = ImeAction.Next
+            imeAction = ImeAction.Next,
         ),
         onKeyboardAction = {
             // Report cursor position relative to visible text
@@ -103,4 +106,14 @@ public fun TextFieldState.visibleText(): String {
  */
 public fun TextFieldState.visibleCursorPosition(): Int {
     return (selection.start - 1).coerceAtLeast(0)
+}
+
+/**
+ * Returns the selection range in visible text coordinates (sentinel offset removed).
+ * Both start and end are adjusted by -1 for the ZWSP sentinel, clamped to 0.
+ */
+public fun TextFieldState.visibleSelection(): TextRange {
+    val start = (selection.start - 1).coerceAtLeast(0)
+    val end = (selection.end - 1).coerceAtLeast(0)
+    return TextRange(start, end)
 }
