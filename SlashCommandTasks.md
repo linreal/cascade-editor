@@ -2,13 +2,6 @@
 
 This document decomposes [SlashCommandSpec.md](SlashCommandSpec.md) into an ordered set of implementation tasks.
 
-Principles for this plan:
-
-- tasks are sequenced by dependency
-- each task is independently reviewable
-- unit tests are required for stateful or algorithmic behavior
-- UI-only geometry details may rely on manual verification where unit tests would add little value
-
 Recommended package for new slash-specific code:
 
 - `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/slash/`
