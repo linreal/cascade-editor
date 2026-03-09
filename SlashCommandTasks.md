@@ -384,7 +384,7 @@ Add `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/SlashCommandT
 - inline range tracking works for middle-of-line slash commands ✅
 - observer behavior has direct unit coverage ✅
 
-## Task 7 — Implement Command Execution Engine
+## Task 7 — Implement Command Execution Engine ✅
 
 ### Goal
 

@@ -134,6 +134,7 @@ internal class SlashCommandTextObserver(
     private fun updateOrCloseSession(edit: TextEdit, text: String, cursor: Int) {
         val editEnd = edit.start + edit.deletedLength
         val delta = edit.insertedLength - edit.deletedLength
+        var editBeforeRange = false
 
         // Adjust tracked positions based on where the edit occurred
         when {
@@ -141,6 +142,7 @@ internal class SlashCommandTextObserver(
             editEnd <= slashStart -> {
                 slashStart += delta
                 rangeEnd += delta
+                editBeforeRange = true
             }
             // Edit within or at the edge of the tracked range: adjust end
             edit.start >= slashStart && edit.start <= rangeEnd -> {
@@ -163,8 +165,10 @@ internal class SlashCommandTextObserver(
         // Clamp rangeEnd to text bounds
         rangeEnd = rangeEnd.coerceIn(slashStart + 1, text.length + 1)
 
-        // Validate cursor position (when available)
-        if (cursor >= 0 && (cursor < slashStart || cursor > rangeEnd)) {
+        // Validate cursor position (when available).
+        // Skip when the edit was entirely before the tracked range — the cursor
+        // is naturally at the edit site, not inside the slash query.
+        if (!editBeforeRange && cursor >= 0 && (cursor < slashStart || cursor > rangeEnd)) {
             closeSession()
             return
         }

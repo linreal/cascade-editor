@@ -12,6 +12,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
@@ -28,6 +29,9 @@ import io.github.linreal.cascade.editor.richtext.DefaultFormattingActions
 import io.github.linreal.cascade.editor.richtext.FormattingState
 import io.github.linreal.cascade.editor.richtext.SpanActionDispatcher
 import io.github.linreal.cascade.editor.richtext.rememberFormattingState
+import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandFactory
+import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
+import io.github.linreal.cascade.editor.slash.SlashCommandRegistry
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorStateHolder
@@ -80,6 +84,31 @@ public fun CascadeEditor(
     // Create and remember the text states holder
     val blockTextStates = remember { BlockTextStates() }
     val blockSpanStates = remember { BlockSpanStates() }
+    val slashExecutionScope = rememberCoroutineScope()
+    val slashRegistry = remember(registry) { SlashCommandRegistry() }
+    val slashExecutor = remember(
+        slashRegistry,
+        stateHolder,
+        blockTextStates,
+        blockSpanStates,
+        registry,
+        slashExecutionScope,
+    ) {
+        SlashCommandExecutor(
+            registry = slashRegistry,
+            stateHolder = stateHolder,
+            textStates = blockTextStates,
+            spanStates = blockSpanStates,
+            blockRegistry = registry,
+            executionScope = slashExecutionScope,
+        )
+    }
+
+    LaunchedEffect(registry, slashRegistry, slashExecutor) {
+        val builtInFactory = BuiltInSlashCommandFactory(slashExecutor.builtInExecutor)
+        builtInFactory.generate(registry.getAllDescriptors())
+            .forEach(slashRegistry::register)
+    }
 
     // Cleanup stale states when blocks change
     LaunchedEffect(state.blocks) {
@@ -157,7 +186,9 @@ public fun CascadeEditor(
         LocalBlockTextStates provides blockTextStates,
         LocalBlockSpanStates provides blockSpanStates,
         LocalSpanActionDispatcher provides spanActionDispatcher,
+        LocalSlashCommandExecutor provides slashExecutor,
         LocalSlashSessionAnchorBlockId provides state.slashCommandState?.anchorBlockId,
+        LocalSlashHighlightedCommandId provides state.slashCommandState?.highlightedCommandId,
     ) {
         val lazyListState = rememberLazyListState()
 

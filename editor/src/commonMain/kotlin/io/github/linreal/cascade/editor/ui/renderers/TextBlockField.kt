@@ -31,6 +31,8 @@ import io.github.linreal.cascade.editor.slash.SlashCommandTextObserver
 import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
 import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
+import io.github.linreal.cascade.editor.ui.LocalSlashCommandExecutor
+import io.github.linreal.cascade.editor.ui.LocalSlashHighlightedCommandId
 import io.github.linreal.cascade.editor.ui.LocalSlashSessionAnchorBlockId
 import io.github.linreal.cascade.editor.ui.visibleSelection
 import io.github.linreal.cascade.editor.ui.visibleText
@@ -66,7 +68,9 @@ internal fun TextBlockField(
     val textFieldState = remember(block.id) {
         blockTextStates.getOrCreate(block.id, textContent.text)
     }
+    val slashCommandExecutor = LocalSlashCommandExecutor.current
     val slashSessionAnchorBlockId = LocalSlashSessionAnchorBlockId.current
+    val slashHighlightedCommandId = LocalSlashHighlightedCommandId.current
 
     // Get span state from the shared holder
     val blockSpanStates = LocalBlockSpanStates.current
@@ -169,6 +173,16 @@ internal fun TextBlockField(
                 callbacks.onBackspaceAtStart(block.id)
             },
             onEnterPressed = { cursorPosition ->
+                val highlightedCommandId = slashHighlightedCommandId
+                val executor = slashCommandExecutor
+                if (
+                    slashSessionAnchorBlockId == block.id &&
+                    highlightedCommandId != null &&
+                    executor != null
+                ) {
+                    executor.execute(highlightedCommandId)
+                    return@BackspaceAwareTextField
+                }
                 callbacks.onEnter(block.id, cursorPosition)
             }
         )
