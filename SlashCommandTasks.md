@@ -175,7 +175,7 @@ Extend `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/BlockRegis
 - default descriptors compile with the new field ✅
 - tests cover representative built-in policies ✅
 
-## Task 4 — Generate Built-In Slash Items from Descriptor Metadata
+## Task 4 — Generate Built-In Slash Items from Descriptor Metadata ✅
 
 ### Goal
 
@@ -220,11 +220,24 @@ Add `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/BuiltInSlashC
 - metadata is copied correctly from the descriptor
 - behavior is preserved for later execution
 
+### Implementation Notes
+
+- Added `BuiltInSlashCommandFactory` in `slash/BuiltInSlashCommandFactory.kt`.
+- Constructor accepts a `builtInExecutor` lambda `suspend SlashCommandContext.(typeId, behavior) -> SlashCommandResult` — keeps the factory pure and testable with recording fakes.
+- `generate(descriptors)` filters for non-null `slash`, maps each to a `SlashCommandAction` with:
+  - ID: `builtin.block.<typeId>` (stable prefix in `ID_PREFIX` companion constant)
+  - Metadata copied from descriptor: `displayName` → `title`, `description`, `keywords`, `slash.group` → `group`
+  - Icon: `slash.icon` preferred, falls back to `descriptor.icon` wrapped in `SlashCommandIconKey`, null when both absent
+  - All actions use `RemoveBeforeExecute` query text policy
+  - `onExecute` delegates to the captured `builtInExecutor` with the descriptor's `typeId` and `behavior`
+- Output order matches input order (after filtering) for deterministic results.
+- 19 tests covering: filtering (null slash excluded, empty inputs), ID stability, metadata copying (title, description, keywords, group), icon resolution (slash icon, fallback, null), query text policy, behavior preservation via recording executor (ConvertInPlace, AlwaysInsert), deterministic ordering, and integration with `BlockRegistry.createDefault()`.
+
 ### Definition of Done
 
-- built-in slash items can be generated from descriptors without UI involvement
-- generation has direct unit coverage
-- no code path assumes every descriptor automatically becomes a slash entry
+- built-in slash items can be generated from descriptors without UI involvement ✅
+- generation has direct unit coverage ✅
+- no code path assumes every descriptor automatically becomes a slash entry ✅
 
 ## Task 5 — Add Query-Range Editing Primitives and Safe Slash Editor Host
 
