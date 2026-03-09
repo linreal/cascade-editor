@@ -102,6 +102,30 @@ class SlashCommandEditorHostTest {
         host.replaceQueryText("y")
     }
 
+    @Test
+    fun `replaceQueryText no-op when anchor is non-text`() {
+        val anchorId = BlockId.generate()
+        val block = Block(anchorId, BlockType.Divider, BlockContent.Empty)
+        val stateHolder = EditorStateHolder(EditorState.withBlocks(listOf(block)))
+        val textStates = BlockTextStates()
+        textStates.getOrCreate(anchorId, "stale")
+        val spanStates = BlockSpanStates()
+        spanStates.getOrCreate(anchorId, listOf(TextSpan(0, 5, SpanStyle.Bold)), 5)
+        val host = SlashCommandEditorHost(
+            anchorBlockId = anchorId,
+            queryRange = SlashQueryRange(0, 3),
+            stateHolder = stateHolder,
+            textStates = textStates,
+            spanStates = spanStates,
+        )
+
+        host.replaceQueryText("new")
+
+        assertEquals("stale", textStates.getVisibleText(anchorId))
+        assertEquals(listOf(TextSpan(0, 5, SpanStyle.Bold)), spanStates.getSpans(anchorId))
+        assertEquals(BlockContent.Empty, stateHolder.state.getBlock(anchorId)?.content)
+    }
+
     // -- updateAnchorText --
 
     @Test
@@ -146,6 +170,30 @@ class SlashCommandEditorHostTest {
         // No crash, no state change
     }
 
+    @Test
+    fun `updateAnchorText no-op when anchor is non-text`() {
+        val anchorId = BlockId.generate()
+        val stateHolder = EditorStateHolder(
+            EditorState.withBlocks(
+                listOf(Block(anchorId, BlockType.Divider, BlockContent.Empty))
+            )
+        )
+        val textStates = BlockTextStates()
+        textStates.getOrCreate(anchorId, "stale")
+        val host = SlashCommandEditorHost(
+            anchorBlockId = anchorId,
+            queryRange = SlashQueryRange(0, 1),
+            stateHolder = stateHolder,
+            textStates = textStates,
+            spanStates = BlockSpanStates(),
+        )
+
+        host.updateAnchorText("anything")
+
+        assertEquals("stale", textStates.getVisibleText(anchorId))
+        assertEquals(BlockContent.Empty, stateHolder.state.getBlock(anchorId)?.content)
+    }
+
     // -- replaceAnchorBlock --
 
     @Test
@@ -179,6 +227,9 @@ class SlashCommandEditorHostTest {
         assertNull(env.host.getAnchorBlock())
         // New block exists
         assertNotNull(env.stateHolder.state.getBlock(newId))
+        // Runtime text state follows the new ID and old anchor state is removed
+        assertEquals("heading", env.textStates.getVisibleText(newId))
+        assertNull(env.textStates.getVisibleText(env.anchorId))
     }
 
     @Test
@@ -195,6 +246,22 @@ class SlashCommandEditorHostTest {
     }
 
     @Test
+    fun `replaceAnchorBlock with non-text replacement clears runtime text and spans`() {
+        val env = createHost(
+            text = "original",
+            queryRange = SlashQueryRange(0, 1),
+            spans = listOf(TextSpan(0, 4, SpanStyle.Bold)),
+        )
+        val divider = Block(BlockId.generate(), BlockType.Divider, BlockContent.Empty)
+
+        env.host.replaceAnchorBlock(divider, preserveAnchorId = true, requestFocus = false)
+
+        assertEquals(BlockType.Divider, env.stateHolder.state.getBlock(env.anchorId)?.type)
+        assertNull(env.textStates.getVisibleText(env.anchorId))
+        assertTrue(env.spanStates.getSpans(env.anchorId).isEmpty())
+    }
+
+    @Test
     fun `replaceAnchorBlock no-op when anchor missing`() {
         val anchorId = BlockId.generate()
         val stateHolder = EditorStateHolder(EditorState.Empty)
@@ -208,6 +275,30 @@ class SlashCommandEditorHostTest {
 
         host.replaceAnchorBlock(Block(BlockId.generate(), BlockType.Paragraph, BlockContent.Text("x")))
         assertTrue(stateHolder.state.blocks.isEmpty())
+    }
+
+    @Test
+    fun `replaceAnchorBlock no-op when anchor is non-text`() {
+        val anchorId = BlockId.generate()
+        val stateHolder = EditorStateHolder(
+            EditorState.withBlocks(
+                listOf(Block(anchorId, BlockType.Divider, BlockContent.Empty))
+            )
+        )
+        val textStates = BlockTextStates()
+        textStates.getOrCreate(anchorId, "stale")
+        val host = SlashCommandEditorHost(
+            anchorBlockId = anchorId,
+            queryRange = SlashQueryRange(0, 1),
+            stateHolder = stateHolder,
+            textStates = textStates,
+            spanStates = BlockSpanStates(),
+        )
+
+        host.replaceAnchorBlock(Block.paragraph("replacement"))
+
+        assertEquals(BlockType.Divider, stateHolder.state.getBlock(anchorId)?.type)
+        assertEquals("stale", textStates.getVisibleText(anchorId))
     }
 
     // -- insertBlockAfterAnchor --
@@ -242,6 +333,20 @@ class SlashCommandEditorHostTest {
     }
 
     @Test
+    fun `insertBlockAfterAnchor with null cursor places cursor at end of inserted text`() {
+        val env = createHost(
+            text = "anchor",
+            queryRange = SlashQueryRange(0, 1),
+        )
+        val insertedBlock = Block(BlockId.generate(), BlockType.Paragraph, BlockContent.Text("new text"))
+
+        env.host.insertBlockAfterAnchor(insertedBlock, requestFocus = true, cursorPosition = null)
+
+        val selectionStart = env.textStates.get(insertedBlock.id)?.selection?.start
+        assertEquals("new text".length + 1, selectionStart) // +1 for ZWSP
+    }
+
+    @Test
     fun `insertBlockAfterAnchor no-op when anchor missing`() {
         val anchorId = BlockId.generate()
         val stateHolder = EditorStateHolder(EditorState.Empty)
@@ -255,6 +360,28 @@ class SlashCommandEditorHostTest {
 
         host.insertBlockAfterAnchor(Block.divider())
         assertTrue(stateHolder.state.blocks.isEmpty())
+    }
+
+    @Test
+    fun `insertBlockAfterAnchor no-op when anchor is non-text`() {
+        val anchorId = BlockId.generate()
+        val stateHolder = EditorStateHolder(
+            EditorState.withBlocks(
+                listOf(Block(anchorId, BlockType.Divider, BlockContent.Empty))
+            )
+        )
+        val host = SlashCommandEditorHost(
+            anchorBlockId = anchorId,
+            queryRange = SlashQueryRange(0, 1),
+            stateHolder = stateHolder,
+            textStates = BlockTextStates(),
+            spanStates = BlockSpanStates(),
+        )
+
+        host.insertBlockAfterAnchor(Block.paragraph("new"))
+
+        assertEquals(1, stateHolder.state.blocks.size)
+        assertEquals(anchorId, stateHolder.state.blocks.first().id)
     }
 
     // -- focusBlock --
@@ -282,6 +409,60 @@ class SlashCommandEditorHostTest {
         host.focusBlock(secondId, cursorPosition = 0)
 
         assertEquals(secondId, stateHolder.state.focusedBlockId)
+    }
+
+    @Test
+    fun `focusBlock with null cursor moves cursor to end`() {
+        val anchorId = BlockId.generate()
+        val secondId = BlockId.generate()
+        val blocks = listOf(
+            Block(anchorId, BlockType.Paragraph, BlockContent.Text("a")),
+            Block(secondId, BlockType.Paragraph, BlockContent.Text("target")),
+        )
+        val stateHolder = EditorStateHolder(EditorState.withBlocks(blocks))
+        val textStates = BlockTextStates()
+        textStates.getOrCreate(anchorId, "a")
+        textStates.getOrCreate(secondId, "target", initialCursorPosition = 0)
+        val host = SlashCommandEditorHost(
+            anchorBlockId = anchorId,
+            queryRange = SlashQueryRange(0, 1),
+            stateHolder = stateHolder,
+            textStates = textStates,
+            spanStates = BlockSpanStates(),
+        )
+
+        host.focusBlock(secondId, cursorPosition = null)
+
+        assertEquals(secondId, stateHolder.state.focusedBlockId)
+        val selectionStart = textStates.get(secondId)?.selection?.start
+        assertEquals("target".length + 1, selectionStart) // +1 for ZWSP
+    }
+
+    @Test
+    fun `focusBlock with null cursor creates runtime text state when missing`() {
+        val anchorId = BlockId.generate()
+        val secondId = BlockId.generate()
+        val blocks = listOf(
+            Block(anchorId, BlockType.Paragraph, BlockContent.Text("a")),
+            Block(secondId, BlockType.Paragraph, BlockContent.Text("target")),
+        )
+        val stateHolder = EditorStateHolder(EditorState.withBlocks(blocks))
+        val textStates = BlockTextStates()
+        textStates.getOrCreate(anchorId, "a")
+        val host = SlashCommandEditorHost(
+            anchorBlockId = anchorId,
+            queryRange = SlashQueryRange(0, 1),
+            stateHolder = stateHolder,
+            textStates = textStates,
+            spanStates = BlockSpanStates(),
+        )
+
+        host.focusBlock(secondId, cursorPosition = null)
+
+        assertEquals(secondId, stateHolder.state.focusedBlockId)
+        assertEquals("target", textStates.getVisibleText(secondId))
+        val selectionStart = textStates.get(secondId)?.selection?.start
+        assertEquals("target".length + 1, selectionStart) // +1 for ZWSP
     }
 
     @Test
@@ -351,6 +532,26 @@ class SlashCommandEditorHostTest {
             queryRange = SlashQueryRange(0, 1),
             stateHolder = EditorStateHolder(EditorState.Empty),
             textStates = BlockTextStates(),
+            spanStates = BlockSpanStates(),
+        )
+
+        assertNull(host.getAnchorVisibleText())
+    }
+
+    @Test
+    fun `getAnchorVisibleText returns null when anchor is non-text`() {
+        val anchorId = BlockId.generate()
+        val textStates = BlockTextStates()
+        textStates.getOrCreate(anchorId, "stale")
+        val host = SlashCommandEditorHost(
+            anchorBlockId = anchorId,
+            queryRange = SlashQueryRange(0, 1),
+            stateHolder = EditorStateHolder(
+                EditorState.withBlocks(
+                    listOf(Block(anchorId, BlockType.Divider, BlockContent.Empty))
+                )
+            ),
+            textStates = textStates,
             spanStates = BlockSpanStates(),
         )
 

@@ -14,7 +14,7 @@ import io.github.linreal.cascade.editor.registry.BlockDescriptor
  *   [typeId] and [BuiltInBlockSlashBehavior]. The lambda receives the same [SlashCommandContext]
  *   receiver as a regular slash action.
  */
-public class BuiltInSlashCommandFactory(
+internal class BuiltInSlashCommandFactory(
     private val builtInExecutor: suspend SlashCommandContext.(
         typeId: String,
         behavior: BuiltInBlockSlashBehavior,
