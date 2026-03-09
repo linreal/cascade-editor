@@ -110,7 +110,7 @@ private val MediaGroup = SlashCommandGroup(id = "media", label = "Media", order 
  * Registers all built-in block type descriptors.
  */
 private fun BlockRegistry.registerBuiltInDescriptors() {
-    // Paragraph — text-capable, ReplaceAnchorWhenBlank
+    // Paragraph — text-capable convertible, ConvertInPlace
     registerDescriptor(
         BlockDescriptor(
             typeId = "paragraph",
@@ -119,7 +119,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             keywords = listOf("text", "p"),
             slash = BuiltInSlashCommandSpec(
                 group = BasicBlocksGroup,
-                behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+                behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
             ),
             factory = { id ->
                 Block(id, BlockType.Paragraph, BlockContent.Text(""))
@@ -127,7 +127,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
         )
     )
 
-    // Headings 1-6 — text-capable, ReplaceAnchorWhenBlank
+    // Headings 1-6 — text-capable convertible, ConvertInPlace
     for (level in 1..6) {
         registerDescriptor(
             BlockDescriptor(
@@ -137,7 +137,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
                 keywords = listOf("h$level", "heading", "title"),
                 slash = BuiltInSlashCommandSpec(
                     group = BasicBlocksGroup,
-                    behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+                    behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
                 ),
                 factory = { id ->
                     Block(id, BlockType.Heading(level), BlockContent.Text(""))
@@ -146,7 +146,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
         )
     }
 
-    // Todo — text-capable, ReplaceAnchorWhenBlank
+    // Todo — text-capable convertible, ConvertInPlace
     registerDescriptor(
         BlockDescriptor(
             typeId = "todo",
@@ -155,7 +155,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             keywords = listOf("checkbox", "task", "check", "todo"),
             slash = BuiltInSlashCommandSpec(
                 group = BasicBlocksGroup,
-                behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+                behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
             ),
             factory = { id ->
                 Block(id, BlockType.Todo(checked = false), BlockContent.Text(""))
@@ -163,7 +163,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
         )
     )
 
-    // Bullet List — text-capable, ReplaceAnchorWhenBlank
+    // Bullet List — text-capable convertible, ConvertInPlace
     registerDescriptor(
         BlockDescriptor(
             typeId = "bullet_list",
@@ -172,7 +172,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             keywords = listOf("list", "bullet", "ul", "unordered"),
             slash = BuiltInSlashCommandSpec(
                 group = BasicBlocksGroup,
-                behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+                behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
             ),
             factory = { id ->
                 Block(id, BlockType.BulletList, BlockContent.Text(""))
@@ -180,7 +180,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
         )
     )
 
-    // Numbered List — text-capable, ReplaceAnchorWhenBlank
+    // Numbered List — text-capable convertible, ConvertInPlace
     registerDescriptor(
         BlockDescriptor(
             typeId = "numbered_list",
@@ -189,7 +189,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             keywords = listOf("list", "number", "ol", "ordered"),
             slash = BuiltInSlashCommandSpec(
                 group = BasicBlocksGroup,
-                behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+                behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
             ),
             factory = { id ->
                 Block(id, BlockType.NumberedList, BlockContent.Text(""))
@@ -197,7 +197,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
         )
     )
 
-    // Quote — text-capable, ReplaceAnchorWhenBlank
+    // Quote — text-capable convertible, ConvertInPlace
     registerDescriptor(
         BlockDescriptor(
             typeId = "quote",
@@ -206,7 +206,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             keywords = listOf("blockquote", "citation"),
             slash = BuiltInSlashCommandSpec(
                 group = BasicBlocksGroup,
-                behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+                behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
             ),
             factory = { id ->
                 Block(id, BlockType.Quote, BlockContent.Text(""))

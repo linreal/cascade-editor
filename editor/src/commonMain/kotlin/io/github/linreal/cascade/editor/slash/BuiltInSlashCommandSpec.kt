@@ -9,7 +9,7 @@ import androidx.compose.runtime.Immutable
  * Custom slash commands registered directly with [SlashCommandRegistry] are not affected.
  *
  * @property group Grouping for the slash menu.
- * @property behavior Controls how the built-in command behaves on execution (replace vs insert).
+ * @property behavior Controls how the built-in command behaves on execution (convert in-place vs insert below).
  * @property icon Slash-menu-specific icon override. When null, the built-in command factory
  *   falls back to [BlockDescriptor.icon][io.github.linreal.cascade.editor.registry.BlockDescriptor.icon]
  *   wrapped in [SlashCommandIconKey].
@@ -27,13 +27,15 @@ public data class BuiltInSlashCommandSpec(
 public sealed interface BuiltInBlockSlashBehavior {
 
     /**
-     * If the anchor block is blank after query removal, replace it in-place with the target type.
-     * Otherwise, insert a new block of the target type below the anchor.
+     * Always convert the anchor block's type in-place, preserving remaining text and spans
+     * after query removal. Use for text-capable convertible types (paragraph, heading, todo, etc.).
      */
-    public data object ReplaceAnchorWhenBlank : BuiltInBlockSlashBehavior
+    public data object ConvertInPlace : BuiltInBlockSlashBehavior
 
     /**
      * Always insert a new block below the anchor, regardless of anchor content.
+     * Use for non-convertible types (code, divider, image) or types that should never
+     * modify the anchor block.
      */
     public data object AlwaysInsert : BuiltInBlockSlashBehavior
 }

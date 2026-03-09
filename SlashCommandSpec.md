@@ -150,20 +150,19 @@ For built-in block commands:
 
 1. Remove `queryRange` from the anchor block's visible text.
 2. Let `remainingText` be the resulting anchor text.
-3. If `remainingText.isBlank()` and the block command behavior is `ReplaceAnchorWhenBlank`, replace the anchor block with the target block type.
-4. Otherwise insert a new target block below the anchor block.
+3. If behavior is `ConvertInPlace`, convert the anchor block's type to the target type in-place, preserving `remainingText` and spans after query removal. The block keeps its id — only the type changes.
+4. If behavior is `AlwaysInsert`, insert a new target block below the anchor block.
 
 Rules:
 
-- Replace-on-blank uses an empty text payload for text-capable targets.
-- Insert-below preserves `remainingText` in the anchor block verbatim.
-- Non-text blocks and custom-content blocks should default to `AlwaysInsert`.
-- Replace-on-blank is an explicit descriptor choice, not an implicit rule applied to every registered block.
+- `ConvertInPlace` is used for text-capable convertible types (paragraph, headings, todo, lists, quote). It always converts in-place, whether the anchor is blank or not.
+- `AlwaysInsert` is used for non-convertible types (code, divider, image) and preserves `remainingText` in the anchor block verbatim.
+- Behavior is an explicit descriptor choice, not an implicit rule applied to every registered block.
 
 ```kotlin
-public enum class BuiltInBlockSlashBehavior {
-    ReplaceAnchorWhenBlank,
-    AlwaysInsert
+public sealed interface BuiltInBlockSlashBehavior {
+    data object ConvertInPlace : BuiltInBlockSlashBehavior
+    data object AlwaysInsert : BuiltInBlockSlashBehavior
 }
 ```
 
@@ -332,7 +331,7 @@ Rules:
 
 - `slash == null` means the block is not shown in the slash menu
 - built-in block slash commands inherit `displayName`, `description`, and `keywords` from the descriptor
-- `slash.behavior` decides whether blank-anchor replacement is allowed
+- `slash.behavior` decides whether the anchor block is converted in-place or a new block is inserted below
 - block descriptors remain the source of block creation, not the source of arbitrary custom actions
 
 ## Example: Built-in Todo Command
@@ -345,7 +344,7 @@ val todoDescriptor = BlockDescriptor(
     keywords = listOf("checkbox", "task", "check", "todo"),
     slash = BuiltInSlashCommandSpec(
         group = SlashCommandGroup("lists", "Lists", order = 20),
-        behavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+        behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
         icon = SlashCommandIconKey("check_box")
     ),
     factory = { id -> Block(id, BlockType.Todo(false), BlockContent.Text("")) }

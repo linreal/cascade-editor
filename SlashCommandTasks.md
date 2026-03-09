@@ -147,7 +147,7 @@ Make built-in slash entries an explicit opt-in on `BlockDescriptor` rather than 
 ### Notes
 
 - `Divider` and `Image` should use `AlwaysInsert`.
-- Text-capable defaults such as paragraph, heading, todo, list, quote may use `ReplaceAnchorWhenBlank`.
+- Text-capable convertible defaults such as paragraph, heading, todo, list, quote should use `ConvertInPlace` — they always convert the anchor block's type in-place, preserving remaining text and spans after query removal.
 - `Code` should use `AlwaysInsert`. Although `Code` is text-capable, `BlockType.Code.isConvertible` is false, meaning in-place type conversion is not supported. Inserting a new code block below is consistent with this constraint.
 
 ### Tests
@@ -160,12 +160,12 @@ Extend `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/BlockRegis
 
 ### Implementation Notes
 
-- Added `BuiltInSlashCommandSpec` and `BuiltInBlockSlashBehavior` (sealed interface with `ReplaceAnchorWhenBlank` and `AlwaysInsert`) in `slash/BuiltInSlashCommandSpec.kt`.
+- Added `BuiltInSlashCommandSpec` and `BuiltInBlockSlashBehavior` (sealed interface with `ConvertInPlace` and `AlwaysInsert`) in `slash/BuiltInSlashCommandSpec.kt`.
 - Added `slash: BuiltInSlashCommandSpec? = null` to `BlockDescriptor`.
 - Removed stale `@property category` KDoc from `BlockDescriptor`.
 - All built-in descriptors now carry explicit `slash` metadata with group and behavior.
 - Two groups: "Basic Blocks" (order=0) for text-capable types + code, "Media" (order=10) for divider + image.
-- Behavior assignments: paragraph, headings, todo, bullet list, numbered list, quote → `ReplaceAnchorWhenBlank`; code, divider, image → `AlwaysInsert`.
+- Behavior assignments: paragraph, headings, todo, bullet list, numbered list, quote → `ConvertInPlace`; code, divider, image → `AlwaysInsert`.
 - `BlockRegistry.search()` left intact for backwards compatibility.
 - Added 8 new tests in `BlockRegistryTest.kt` covering slash metadata exposure, no-slash descriptors, behavior per type, group ordering, and custom descriptor preservation.
 
@@ -202,7 +202,7 @@ Bridge `BlockDescriptor.slash` into concrete `SlashCommandAction` instances with
   - `keywords`
   - `slash.group`
   - `slash.icon` (fall back to `BlockDescriptor.icon` wrapped in `SlashCommandIconKey` when null)
-- The `onExecute` closure for built-in actions requires a `SlashCommandEditor` at call time, but the factory does not know the editor host at generation time. Recommended approach: the factory accepts a `builtInExecutor: suspend SlashCommandContext.(typeId: String, behavior: BuiltInBlockSlashBehavior) -> SlashCommandResult` lambda parameter that encapsulates built-in block semantics (blank-vs-non-blank resolution, replace-vs-insert). Each generated action's `onExecute` delegates to this lambda with its captured `typeId` and `behavior`. The lambda implementation is provided during wiring in Task 8, and can be unit-tested with a fake in Task 4.
+- The `onExecute` closure for built-in actions requires a `SlashCommandEditor` at call time, but the factory does not know the editor host at generation time. Recommended approach: the factory accepts a `builtInExecutor: suspend SlashCommandContext.(typeId: String, behavior: BuiltInBlockSlashBehavior) -> SlashCommandResult` lambda parameter that encapsulates built-in block semantics (convert-in-place-vs-insert resolution). Each generated action's `onExecute` delegates to this lambda with its captured `typeId` and `behavior`. The lambda implementation is provided during wiring in Task 8, and can be unit-tested with a fake in Task 4.
 - Keep generation pure and deterministic.
 
 ### Notes
@@ -370,8 +370,8 @@ Execute slash items, support async actions, support submenu navigation, and enfo
 - Built-in block command execution:
   - resolve the target descriptor
   - compute `remainingText` after query removal
-  - if behavior is `ReplaceAnchorWhenBlank` and `remainingText.isBlank()`, replace anchor block with empty target block
-  - otherwise insert a new target block below anchor
+  - if behavior is `ConvertInPlace`, convert the anchor block's type to the target type in-place, preserving `remainingText` and spans (the block keeps its id and content, only type changes)
+  - if behavior is `AlwaysInsert`, insert a new target block below the anchor
 - Explicitly protect against stale anchor blocks during async execution.
 
 ### Notes
@@ -386,9 +386,9 @@ Add `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/SlashCommandE
 - submenu selection updates navigation path without executing
 - `RemoveBeforeExecute` removes the range before command logic runs
 - `KeepText` does not remove the range
-- built-in blank-anchor command replaces the block
-- built-in non-blank command inserts below
-- `AlwaysInsert` never replaces
+- `ConvertInPlace` converts the anchor block type, preserving remaining text
+- `ConvertInPlace` on blank anchor produces empty target block with correct type
+- `AlwaysInsert` always inserts below, never converts
 - thrown exception becomes `Failure` and does not crash the executor
 - missing anchor block is handled gracefully
 

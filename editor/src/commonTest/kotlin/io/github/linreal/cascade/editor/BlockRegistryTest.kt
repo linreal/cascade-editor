@@ -172,20 +172,20 @@ class BlockRegistryTest {
     }
 
     @Test
-    fun `text-capable convertible blocks use ReplaceAnchorWhenBlank`() {
+    fun `text-capable convertible blocks use ConvertInPlace`() {
         val registry = BlockRegistry.createDefault()
-        val replaceTypes = listOf(
+        val convertTypes = listOf(
             "paragraph", "heading_1", "heading_2", "heading_3",
             "heading_4", "heading_5", "heading_6",
             "todo", "bullet_list", "numbered_list", "quote"
         )
 
-        for (typeId in replaceTypes) {
+        for (typeId in convertTypes) {
             val descriptor = registry.getDescriptor(typeId)!!
             assertEquals(
-                BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
+                BuiltInBlockSlashBehavior.ConvertInPlace,
                 descriptor.slash!!.behavior,
-                "Expected ReplaceAnchorWhenBlank for '$typeId'"
+                "Expected ConvertInPlace for '$typeId'"
             )
         }
     }
