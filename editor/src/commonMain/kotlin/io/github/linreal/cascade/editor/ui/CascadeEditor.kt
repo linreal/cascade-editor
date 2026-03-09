@@ -157,6 +157,7 @@ public fun CascadeEditor(
         LocalBlockTextStates provides blockTextStates,
         LocalBlockSpanStates provides blockSpanStates,
         LocalSpanActionDispatcher provides spanActionDispatcher,
+        LocalSlashSessionAnchorBlockId provides state.slashCommandState?.anchorBlockId,
     ) {
         val lazyListState = rememberLazyListState()
 

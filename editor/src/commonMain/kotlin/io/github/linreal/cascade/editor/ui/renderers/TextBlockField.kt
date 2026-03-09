@@ -20,16 +20,20 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import io.github.linreal.cascade.editor.action.CloseSlashCommand
+import io.github.linreal.cascade.editor.action.UpdateSlashCommandSession
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.richtext.SpanMapper
 import io.github.linreal.cascade.editor.richtext.SpanMaintenanceTextObserver
+import io.github.linreal.cascade.editor.slash.SlashCommandTextObserver
 import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
 import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
+import io.github.linreal.cascade.editor.ui.LocalSlashSessionAnchorBlockId
+import io.github.linreal.cascade.editor.ui.visibleSelection
 import io.github.linreal.cascade.editor.ui.visibleText
-import kotlinx.coroutines.flow.collect
 
 /**
  * Shared text editing composable used by renderers that need formattable text input.
@@ -62,6 +66,7 @@ internal fun TextBlockField(
     val textFieldState = remember(block.id) {
         blockTextStates.getOrCreate(block.id, textContent.text)
     }
+    val slashSessionAnchorBlockId = LocalSlashSessionAnchorBlockId.current
 
     // Get span state from the shared holder
     val blockSpanStates = LocalBlockSpanStates.current
@@ -81,6 +86,15 @@ internal fun TextBlockField(
             initialVisibleText = textFieldState.visibleText(),
         )
     }
+    val slashTextObserver = remember(block.id, callbacks) {
+        SlashCommandTextObserver(
+            blockId = block.id,
+            onOpen = { id, range, query -> callbacks.onSlashCommand(id, range, query) },
+            onUpdate = { query, range -> callbacks.dispatch(UpdateSlashCommandSession(query, range)) },
+            onClose = { callbacks.dispatch(CloseSlashCommand) },
+            initialVisibleText = textFieldState.visibleText(),
+        )
+    }
 
     LaunchedEffect(isFocused) {
         if (isFocused) {
@@ -89,9 +103,45 @@ internal fun TextBlockField(
             focusManager.clearFocus()
         }
     }
-    LaunchedEffect(textFieldState, spanTextObserver) {
-        snapshotFlow { textFieldState.visibleText() }.collect { currentVisibleText ->
-            spanTextObserver.onCommittedVisibleText(currentVisibleText)
+
+    // Keep observer tracking in sync when slash session closes or moves externally.
+    LaunchedEffect(slashSessionAnchorBlockId, slashTextObserver, block.id) {
+        if (slashSessionAnchorBlockId != block.id && slashTextObserver.isTracking) {
+            slashTextObserver.notifySessionClosed()
+        }
+    }
+
+    // Combined text + selection observation keeps ordering deterministic.
+    // We observe raw text snapshots and only derive visible text when text actually changes.
+    LaunchedEffect(textFieldState, spanTextObserver, slashTextObserver) {
+        var lastObservedVisibleText = textFieldState.visibleText()
+        var lastObservedTextSnapshot = textFieldState.text
+
+        snapshotFlow {
+            Pair(textFieldState.text, textFieldState.visibleSelection())
+        }.collect { (currentTextSnapshot, selection) ->
+            val textSnapshotChanged =
+                currentTextSnapshot !== lastObservedTextSnapshot ||
+                    currentTextSnapshot.length != lastObservedTextSnapshot.length
+
+            if (textSnapshotChanged) {
+                val currentVisibleText = visibleTextFromSnapshot(currentTextSnapshot)
+                // Peek before span observer consumes the commit
+                val isProgrammatic = blockTextStates.hasPendingProgrammaticCommit(block.id)
+                val cursor = if (selection.collapsed) selection.start else -1
+                if (currentVisibleText != lastObservedVisibleText) {
+                    slashTextObserver.onTextChanged(currentVisibleText, isProgrammatic, cursor)
+                    spanTextObserver.onCommittedVisibleText(currentVisibleText)
+                    lastObservedVisibleText = currentVisibleText
+                } else {
+                    // Snapshot identity can change without visible text mutation.
+                    slashTextObserver.onSelectionChanged(selection.start, selection.end)
+                }
+                lastObservedTextSnapshot = currentTextSnapshot
+            } else {
+                // Selection-only change: check slash session cursor validity
+                slashTextObserver.onSelectionChanged(selection.start, selection.end)
+            }
         }
     }
 
@@ -102,9 +152,13 @@ internal fun TextBlockField(
             state = textFieldState,
             modifier = Modifier.fillMaxWidth()
                 .onFocusChanged { focusState ->
+                    val wasFocused = hasComposeFocus
                     hasComposeFocus = focusState.isFocused
                     if (focusState.isFocused && !isFocused) {
                         callbacks.onFocus(block.id)
+                    }
+                    if (!focusState.isFocused && wasFocused) {
+                        slashTextObserver.onFocusLost()
                     }
                 },
             textStyle = textStyle,
@@ -137,5 +191,16 @@ internal fun TextBlockField(
                     }
             )
         }
+    }
+}
+
+private const val ZWSP_SENTINEL: Char = '\u200B'
+
+private fun visibleTextFromSnapshot(text: CharSequence): String {
+    if (text.isEmpty()) return ""
+    return if (text[0] == ZWSP_SENTINEL) {
+        text.subSequence(1, text.length).toString()
+    } else {
+        text.toString()
     }
 }

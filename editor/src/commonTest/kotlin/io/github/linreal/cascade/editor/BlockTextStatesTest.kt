@@ -4,8 +4,10 @@ import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class BlockTextStatesTest {
 
@@ -115,5 +117,50 @@ class BlockTextStatesTest {
         textStates.replaceVisibleRange(id, 2, 6, "")
 
         assertEquals("ab ef", textStates.getVisibleText(id))
+    }
+
+    // -- hasPendingProgrammaticCommit --
+
+    @Test
+    fun `hasPendingProgrammaticCommit returns true after setText`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "abc")
+
+        textStates.setText(id, "xyz")
+
+        assertTrue(textStates.hasPendingProgrammaticCommit(id))
+    }
+
+    @Test
+    fun `hasPendingProgrammaticCommit returns false when nothing pending`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "abc")
+
+        assertFalse(textStates.hasPendingProgrammaticCommit(id))
+    }
+
+    @Test
+    fun `hasPendingProgrammaticCommit does not consume the entry`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "abc")
+        textStates.setText(id, "xyz")
+
+        // Peek twice — both return true
+        assertTrue(textStates.hasPendingProgrammaticCommit(id))
+        assertTrue(textStates.hasPendingProgrammaticCommit(id))
+
+        // Consume removes it
+        assertNotNull(textStates.consumeProgrammaticCommit(id))
+        assertFalse(textStates.hasPendingProgrammaticCommit(id))
+    }
+
+    @Test
+    fun `hasPendingProgrammaticCommit returns true after replaceVisibleRange`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "abc")
+
+        textStates.replaceVisibleRange(id, 1, 2, "X")
+
+        assertTrue(textStates.hasPendingProgrammaticCommit(id))
     }
 }

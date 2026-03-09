@@ -139,6 +139,17 @@ public class BlockTextStates {
     }
 
     /**
+     * Returns true if a programmatic commit is pending for [blockId].
+     *
+     * Non-destructive peek — does not consume the entry. Use this when
+     * multiple observers need to know about a pending commit before the
+     * authoritative consumer calls [consumeProgrammaticCommit].
+     */
+    internal fun hasPendingProgrammaticCommit(blockId: BlockId): Boolean {
+        return pendingProgrammaticCommits.containsKey(blockId)
+    }
+
+    /**
      * Replaces a visible-text range with [replacement] and updates the cursor.
      *
      * Registers the result as a programmatic commit so that

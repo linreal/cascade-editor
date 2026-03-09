@@ -316,7 +316,7 @@ Add targeted tests such as:
 - query text can be removed from the middle of a block without corrupting spans ✅
 - all host/range helper tests pass ✅
 
-## Task 6 — Add Slash Text Observer and Session Tracking
+## Task 6 — Add Slash Text Observer and Session Tracking ✅
 
 ### Goal
 
@@ -364,11 +364,25 @@ Add `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/SlashCommandT
 - pasted text containing `/` does not open the menu
 - multi-character insertion containing `/` does not open the menu
 
+### Implementation Notes
+
+- **`SlashCommandTextObserver`** — new internal class in `slash/SlashCommandTextObserver.kt`. Constructor accepts lambda callbacks (`onOpen`, `onUpdate`, `onClose`) for decoupled, testable design. Tracks session via `slashStart` (visible-text index of `/`) and `rangeEnd` (exclusive). Key methods:
+  - `onTextChanged(text, isProgrammatic, cursorPosition)` — detects single-char `/` insertion (open), adjusts range on edits (update), validates `/` existence + cursor bounds (close). Programmatic changes skip session opening but validate existing sessions.
+  - `onSelectionChanged(start, end)` — closes when cursor/selection extends outside tracked range.
+  - `onFocusLost()` — closes active session on focus loss.
+  - `notifySessionClosed()` — resets internal tracking without dispatching close (for external session closure sync).
+- **`BlockTextStates.hasPendingProgrammaticCommit()`** — new internal non-destructive peek method. Allows the slash observer to check for programmatic commits without consuming the entry that `SpanMaintenanceTextObserver` needs.
+- **`TextBlockField` wiring** — uses a combined text+selection `snapshotFlow` over raw text snapshots (`Pair(text, visibleSelection())`) so ordering remains deterministic while visible text extraction is done only when text actually changes. Slash observer peeks at programmatic commits via `hasPendingProgrammaticCommit()` before the span observer consumes them via `consumeProgrammaticCommit()`. Focus loss triggers `slashTextObserver.onFocusLost()` from the `onFocusChanged` modifier, and slash session anchor changes are synced via `notifySessionClosed()`.
+- **`DefaultBlockCallbacks.onSlashCommand`** — retained as-is. The observer calls it for session opening, keeping the existing callback chain intact.
+- **Paste/autocomplete detection** — uses the single-character insertion heuristic: `edit.deletedLength == 0 && edit.insertedLength == 1 && text[edit.start] == '/'`. Multi-character insertions (paste) are naturally excluded.
+- **Range adjustment algorithm** — classifies edits by position relative to the tracked range (before/within/overlapping/after) and adjusts `slashStart`/`rangeEnd` accordingly. A post-adjustment validation ensures `/` still exists at `slashStart` and the cursor is within bounds.
+- **30 tests** covering: session opening (start/middle/empty text, non-slash char, deletion, replacement), updating (progressive typing, spaces), deletion (shrink, delete-all-query, delete-slash), cursor movement (after range, before slash, within range, at boundaries, selection outside/inside, no-session no-op), programmatic changes (insertion ignored, preserving slash, removing slash, text shortening), paste/multi-char (excluded), focus (lost with/without session), notifySessionClosed (reset, re-open), range shifting (insert/delete before slash, span-across-slash), within-range edits (insert/extend, delete/shrink), after-range cursor close, identical text no-op, non-collapsed cursor skip, successive open-after-close.
+
 ### Definition of Done
 
-- slash session lifecycle is driven from live text edits
-- inline range tracking works for middle-of-line slash commands
-- observer behavior has direct unit coverage
+- slash session lifecycle is driven from live text edits ✅
+- inline range tracking works for middle-of-line slash commands ✅
+- observer behavior has direct unit coverage ✅
 
 ## Task 7 — Implement Command Execution Engine
 
