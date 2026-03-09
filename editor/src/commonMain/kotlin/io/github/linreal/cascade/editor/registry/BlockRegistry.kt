@@ -58,8 +58,11 @@ public class BlockRegistry {
     public fun getAllDescriptors(): List<BlockDescriptor> = descriptors.values.toList()
 
     /**
-     * Searches for descriptors matching a query (for slash commands).
+     * Searches for descriptors matching a query.
      * Results are sorted by relevance.
+     *
+     * Note: slash command search is handled by [SlashCommandRegistry][io.github.linreal.cascade.editor.slash.SlashCommandRegistry].
+     * This method is for general-purpose descriptor lookup.
      */
     public fun search(query: String): List<BlockDescriptor> {
         return descriptors.values
@@ -100,8 +103,8 @@ public class BlockRegistry {
 /**
  * Shared group definitions for built-in slash menu items.
  */
-private val BasicBlocksGroup = SlashCommandGroup(label = "Basic Blocks", order = 0)
-private val MediaGroup = SlashCommandGroup(label = "Media", order = 10)
+private val BasicBlocksGroup = SlashCommandGroup(id = "basic_blocks", label = "Basic Blocks", order = 0)
+private val MediaGroup = SlashCommandGroup(id = "media", label = "Media", order = 10)
 
 /**
  * Registers all built-in block type descriptors.

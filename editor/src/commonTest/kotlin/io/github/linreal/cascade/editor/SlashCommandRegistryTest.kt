@@ -233,4 +233,46 @@ class SlashCommandRegistryTest {
         assertEquals("Apple", results[0].title)
         assertEquals("Zebra", results[1].title)
     }
+
+    // --- Whitespace query handling ---
+
+    @Test
+    fun `whitespace-only query filters instead of returning all items`() {
+        val registry = SlashCommandRegistry()
+        registry.register(action("a", "Alpha"))
+        registry.register(action("b", "Beta"))
+
+        val results = registry.search("   ")
+        assertTrue(results.isEmpty(), "Whitespace query should not match items without spaces in metadata")
+    }
+
+    @Test
+    fun `query with spaces participates in matching`() {
+        val registry = SlashCommandRegistry()
+        registry.register(action("bl", "Bullet List"))
+        registry.register(action("nl", "Numbered List"))
+        registry.register(action("h", "Heading"))
+
+        val results = registry.search("bullet list")
+        assertEquals(1, results.size)
+        assertEquals("Bullet List", results[0].title)
+    }
+
+    // --- Submenu duplicate-ID dedup ---
+
+    @Test
+    fun `submenu children with duplicate IDs are deduplicated with last wins`() {
+        val child1 = action("dup", "First Version")
+        val child2 = action("other", "Other")
+        val child3 = action("dup", "Second Version")
+        val submenu = menu("m", "Menu", children = listOf(child1, child2, child3))
+
+        val registry = SlashCommandRegistry()
+        registry.register(submenu)
+
+        val results = registry.search("", path = listOf(SlashCommandId("m")))
+        assertEquals(2, results.size, "Duplicate ID should be deduplicated")
+        val dupItem = results.first { it.id == SlashCommandId("dup") }
+        assertEquals("Second Version", dupItem.title, "Last registration should win")
+    }
 }

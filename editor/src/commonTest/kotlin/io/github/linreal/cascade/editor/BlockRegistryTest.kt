@@ -135,8 +135,8 @@ class BlockRegistryTest {
 
         val paragraph = registry.getDescriptor("paragraph")!!
         assertNotNull(paragraph.slash)
-        assertNotNull(paragraph.slash!!.group)
-        assertEquals("Basic Blocks", paragraph.slash!!.group!!.label)
+        assertEquals("Basic Blocks", paragraph.slash!!.group.label)
+        assertEquals("basic_blocks", paragraph.slash!!.group.id)
     }
 
     @Test
@@ -209,16 +209,16 @@ class BlockRegistryTest {
     fun `divider and image are in Media group`() {
         val registry = BlockRegistry.createDefault()
 
-        assertEquals("Media", registry.getDescriptor("divider")!!.slash!!.group!!.label)
-        assertEquals("Media", registry.getDescriptor("image")!!.slash!!.group!!.label)
+        assertEquals("Media", registry.getDescriptor("divider")!!.slash!!.group.label)
+        assertEquals("Media", registry.getDescriptor("image")!!.slash!!.group.label)
     }
 
     @Test
     fun `media group sorts after basic blocks group`() {
         val registry = BlockRegistry.createDefault()
 
-        val basicOrder = registry.getDescriptor("paragraph")!!.slash!!.group!!.order
-        val mediaOrder = registry.getDescriptor("divider")!!.slash!!.group!!.order
+        val basicOrder = registry.getDescriptor("paragraph")!!.slash!!.group.order
+        val mediaOrder = registry.getDescriptor("divider")!!.slash!!.group.order
 
         assertTrue(
             mediaOrder > basicOrder,
@@ -229,7 +229,7 @@ class BlockRegistryTest {
     @Test
     fun `custom descriptor with slash spec is preserved`() {
         val registry = BlockRegistry.create()
-        val customGroup = SlashCommandGroup(label = "Custom", order = 99)
+        val customGroup = SlashCommandGroup(id = "custom", label = "Custom", order = 99)
         val customSpec = BuiltInSlashCommandSpec(
             group = customGroup,
             behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
@@ -245,7 +245,7 @@ class BlockRegistryTest {
 
         val retrieved = registry.getDescriptor("custom:widget")!!
         assertEquals(customSpec, retrieved.slash)
-        assertEquals("Custom", retrieved.slash!!.group!!.label)
+        assertEquals("Custom", retrieved.slash!!.group.label)
         assertEquals(BuiltInBlockSlashBehavior.AlwaysInsert, retrieved.slash!!.behavior)
     }
 }

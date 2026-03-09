@@ -8,17 +8,17 @@ import androidx.compose.runtime.Immutable
  * Only descriptors with a non-null `slash` field will appear as built-in slash menu entries.
  * Custom slash commands registered directly with [SlashCommandRegistry] are not affected.
  *
- * @property group Optional grouping for the slash menu. When null, the item is ungrouped.
+ * @property group Grouping for the slash menu.
+ * @property behavior Controls how the built-in command behaves on execution (replace vs insert).
  * @property icon Slash-menu-specific icon override. When null, the built-in command factory
  *   falls back to [BlockDescriptor.icon][io.github.linreal.cascade.editor.registry.BlockDescriptor.icon]
  *   wrapped in [SlashCommandIconKey].
- * @property behavior Controls how the built-in command behaves on execution (replace vs insert).
  */
 @Immutable
 public data class BuiltInSlashCommandSpec(
-    val group: SlashCommandGroup? = null,
+    val group: SlashCommandGroup,
+    val behavior: BuiltInBlockSlashBehavior,
     val icon: SlashCommandIconKey? = null,
-    val behavior: BuiltInBlockSlashBehavior = BuiltInBlockSlashBehavior.ReplaceAnchorWhenBlank,
 )
 
 /**

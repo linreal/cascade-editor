@@ -13,11 +13,13 @@ public value class SlashCommandIconKey(public val value: String)
 /**
  * Grouping label and sort order for slash menu items.
  *
+ * @property id Stable identifier for analytics, localization, and de-dup.
  * @property label Human-readable group header shown in the popup.
  * @property order Lower values sort first. Groups with the same order are sorted by label.
  */
 @Immutable
 public data class SlashCommandGroup(
+    val id: String,
     val label: String,
     val order: Int = 0,
 )

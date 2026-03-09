@@ -14,11 +14,11 @@ import io.github.linreal.cascade.editor.state.SlashQueryRange
  * @property queryRange Visible-text range of the full `/…` token.
  * @property editor Safe operations for mutating editor state during command execution.
  */
-public class SlashCommandContext(
-    public val anchorBlockId: BlockId,
-    public val query: String,
-    public val queryRange: SlashQueryRange,
-    public val editor: SlashCommandEditor,
+public data class SlashCommandContext(
+    val anchorBlockId: BlockId,
+    val query: String,
+    val queryRange: SlashQueryRange,
+    val editor: SlashCommandEditor,
 )
 
 /**
@@ -26,7 +26,6 @@ public class SlashCommandContext(
  *
  * Implementations must guarantee that text, spans, and snapshot state remain aligned
  * after each operation. Commands must not dispatch [EditorAction] directly.
- *
  */
 public interface SlashCommandEditor {
 
@@ -38,30 +37,54 @@ public interface SlashCommandEditor {
 
     /**
      * Replaces the query range (`/…`) in the anchor block with [replacement].
-     * Cursor is placed at the end of the replacement.
+     * When [replacement] is empty the query text is simply removed.
      */
-    public fun replaceQueryText(replacement: String)
+    public fun replaceQueryText(replacement: String = "")
 
     /**
      * Replaces the entire visible text of the anchor block.
+     *
+     * @param text The new text content.
+     * @param cursorPosition Target cursor offset inside the new text. When null the
+     *   implementation places the cursor at the end.
      */
-    public fun updateAnchorText(newText: String)
+    public fun updateAnchorText(text: String, cursorPosition: Int? = null)
 
     /**
-     * Replaces the anchor block with [newBlock].
-     * When [preserveAnchorId] is true the anchor's block ID is kept on the replacement.
+     * Replaces the anchor block with [block].
+     *
+     * @param block The replacement block.
+     * @param preserveAnchorId When true the anchor's block ID is kept on the replacement.
+     * @param requestFocus When true the replacement block receives focus.
+     * @param cursorPosition Target cursor offset inside the replacement. Null means end.
      */
-    public fun replaceAnchorBlock(newBlock: Block, preserveAnchorId: Boolean = true)
+    public fun replaceAnchorBlock(
+        block: Block,
+        preserveAnchorId: Boolean = true,
+        requestFocus: Boolean = true,
+        cursorPosition: Int? = null,
+    )
 
     /**
-     * Inserts [block] immediately after the anchor block and optionally focuses it.
+     * Inserts [block] immediately after the anchor block.
+     *
+     * @param block The block to insert.
+     * @param requestFocus When true the inserted block receives focus.
+     * @param cursorPosition Target cursor offset inside the inserted block. Null means end.
      */
-    public fun insertBlockAfterAnchor(block: Block, focus: Boolean = true)
+    public fun insertBlockAfterAnchor(
+        block: Block,
+        requestFocus: Boolean = true,
+        cursorPosition: Int? = null,
+    )
 
     /**
      * Moves editor focus to the given block.
+     *
+     * @param blockId Target block.
+     * @param cursorPosition Target cursor offset. Null means end.
      */
-    public fun focusBlock(blockId: BlockId)
+    public fun focusBlock(blockId: BlockId, cursorPosition: Int? = null)
 
     /**
      * Closes the slash menu. Called automatically after successful execution,
