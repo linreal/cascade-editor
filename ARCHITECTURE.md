@@ -38,6 +38,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Descriptors | `registry/BlockDescriptor.kt` | `BlockDescriptor` |
 | Built-in slash spec | `slash/BuiltInSlashCommandSpec.kt` | `BuiltInSlashCommandSpec`, `BuiltInBlockSlashBehavior` |
 | Built-in slash factory | `slash/BuiltInSlashCommandFactory.kt` | `BuiltInSlashCommandFactory` |
+| Slash editor host | `slash/SlashCommandEditorHost.kt` | `SlashCommandEditorHost` (internal) |
 | Renderer interface | `registry/BlockRenderer.kt` | `BlockRenderer<T>`, `BlockCallbacks`, `DefaultBlockCallbacks` |
 | Rich text serialization | `serialization/RichTextSchema.kt` | `RichTextSchema` |
 | Span algorithms | `richtext/SpanAlgorithms.kt` | `SpanAlgorithms`, `StyleStatus` |
@@ -106,7 +107,7 @@ Custom blocks: implement `CustomBlockType` interface.
 
 **EditorStateHolder** — Compose-friendly mutable wrapper. Use `rememberEditorState(initialBlocks)` to create. Call `stateHolder.dispatch(action)` to modify state.
 
-**BlockTextStates** — single source of truth for text content. One `TextFieldState` per block. Key methods: `getOrCreate()`, `getVisibleText()`, `mergeInto()`, `setText()`, `consumeProgrammaticCommit()`, `extractAllText()`, `cleanup()`. Programmatic text mutations (`mergeInto` / `setText`) register per-block expected committed text so `SpanMaintenanceTextObserver` can skip/rebase non-user commits and avoid duplicate span adjustment. Provided to renderers via `LocalBlockTextStates` CompositionLocal.
+**BlockTextStates** — single source of truth for text content. One `TextFieldState` per block. Key methods: `getOrCreate()`, `getVisibleText()`, `mergeInto()`, `setText()`, `replaceVisibleRange()`, `consumeProgrammaticCommit()`, `extractAllText()`, `cleanup()`. Programmatic text mutations (`mergeInto` / `setText`) register per-block expected committed text so `SpanMaintenanceTextObserver` can skip/rebase non-user commits and avoid duplicate span adjustment. Provided to renderers via `LocalBlockTextStates` CompositionLocal.
 
 **BlockSpanStates** — single source of truth for rich text spans during editing. One `MutableState<List<TextSpan>>` per block plus snapshot-aware pending-style state. Key methods: `getOrCreate(..., textLength)`, `getSpans()`, `set(..., textLength)`, `adjustForUserEdit()`, `split()`, `mergeInto()`, `applyStyle()`, `removeStyle()`, `toggleStyle()`, `queryStyleStatus()`, `activeStylesAt()`, `resolveStylesForInsertion()`. Invariants are enforced at API ingress (`getOrCreate` / `set`) by normalizing and clamping spans with current visible text length. Created and remembered in `CascadeEditor`, cleaned up in `LaunchedEffect(state.blocks)` with text-only IDs (`collectTextBlockIds`) to prevent stale span state on non-text transitions, and provided to renderers via `LocalBlockSpanStates` CompositionLocal. Per-block span state is initialized in `TextBlockRenderer` from `BlockContent.Text.spans`. Rendering is applied through a stable per-block `BasicTextField` `outputTransformation` that reads latest spans at render time via `SpanMapper.applyStyles(...)` with defensive clamping in visible coordinates. User-edit span maintenance runs post-commit via `SpanMaintenanceTextObserver`, which consumes/rebases programmatic commit baselines from `BlockTextStates` before applying diff-based user edit maintenance. Programmatic split/merge runtime transfer is executed in `DefaultBlockCallbacks`, and `mergeInto(...)` clears pending styles on both source and target to avoid pending-style bleed after merge. External formatting operations (toolbar, keyboard shortcuts) should use `SpanActionDispatcher` (provided via `LocalSpanActionDispatcher`) which coordinates runtime `BlockSpanStates` update (immediate visual) with full snapshot sync via `UpdateBlockContent` (avoids stale-text-length mismatch). Collapsed-cursor `toggleStyle` toggles pending styles instead of applying zero-width spans. `ApplySpanStyle`/`RemoveSpanStyle` actions are snapshot-only and should not be dispatched directly during active editing. Snapshot span reducers use the same `SpanAlgorithms` normalization contract as runtime for canonical output. `SplitBlock` accepts `newBlockSpans` parameter for runtime-provided spans and always updates source block snapshot. `MergeBlocks` reducer merges snapshot spans alongside text. `DefaultBlockCallbacks` syncs merged text+spans to snapshot via `UpdateBlockContent` before `DeleteBlock` dispatch on merge paths. `UpdateBlockText` explicitly resets spans (callers needing span preservation use `UpdateBlockContent`).
 
@@ -169,7 +170,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | TextBlockField (shared) | Done | Extracted text editing composable used by all text renderers |
 | Heading font sizes | Done | No bold weight yet |
 | Code monospace font | Done | No syntax highlighting |
-| Slash commands (backend) | Done | Session state with query range, submenu nav, highlight; enriched reducer API; `BuiltInSlashCommandSpec` on descriptors with `ConvertInPlace`/`AlwaysInsert` behavior policies; `BuiltInSlashCommandFactory` generates `SlashCommandAction`s from descriptor metadata |
+| Slash commands (backend) | Done | Session state with query range, submenu nav, highlight; enriched reducer API; `BuiltInSlashCommandSpec` on descriptors with `ConvertInPlace`/`AlwaysInsert` behavior policies; `BuiltInSlashCommandFactory` generates `SlashCommandAction`s from descriptor metadata; `SlashCommandEditorHost` provides safe runtime/snapshot editing; `BlockTextStates.replaceVisibleRange()` + `BlockSpanStates.adjustForRangeReplacement()` primitives |
 | Slash commands (UI) | Not done | No popup, no "/" detection |
 | Todo checkbox UI | Done | `TodoBlockRenderer` with `Checkbox` + `TextBlockField`, `ToggleTodo` action |
 | Bullet/numbered list prefixes | Not done | Render as plain paragraphs |
@@ -211,6 +212,8 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `AutoScrollTest.kt` | Hot zones, speed calculation |
 | `DragUtilsTest.kt` | Drop target coordinate math |
 | `BuiltInSlashCommandFactoryTest.kt` | Factory filtering, ID stability, metadata copying, icon resolution, behavior preservation via recording executor, deterministic ordering, registry integration |
+| `BlockTextStatesTest.kt` | Range replacement (middle/start/end/full), deletion, missing block, clamping, programmatic commit tracking, cursor positioning |
+| `SlashCommandEditorHostTest.kt` | replaceQueryText (removal, replacement, span preservation, snapshot sync), updateAnchorText, replaceAnchorBlock (id preservation, focus), insertBlockAfterAnchor (ordering, focus), focusBlock, closeMenu, graceful no-ops for missing anchors |
 | `BlockRegistryTest.kt` | Descriptor search, block creation, slash metadata exposure, behavior policies per built-in type |
 | `BlockTest.kt` | Core block creation |
 | `RichTextSchemaTest.kt` | Span serialization round-trips, normalization, version handling |

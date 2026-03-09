@@ -1,0 +1,119 @@
+package io.github.linreal.cascade.editor
+
+import io.github.linreal.cascade.editor.core.BlockId
+import io.github.linreal.cascade.editor.state.BlockTextStates
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+
+class BlockTextStatesTest {
+
+    private val textStates = BlockTextStates()
+
+    // -- replaceVisibleRange --
+
+    @Test
+    fun `replaceVisibleRange replaces middle range keeping surrounding text`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "Hello World")
+
+        val result = textStates.replaceVisibleRange(id, 5, 11, " Kotlin")
+
+        assertEquals("Hello Kotlin", result)
+        assertEquals("Hello Kotlin", textStates.getVisibleText(id))
+    }
+
+    @Test
+    fun `replaceVisibleRange deletes range when replacement is empty`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "ab/query cd")
+
+        val result = textStates.replaceVisibleRange(id, 2, 8, "")
+
+        assertEquals("ab cd", result)
+        assertEquals("ab cd", textStates.getVisibleText(id))
+    }
+
+    @Test
+    fun `replaceVisibleRange at start of text`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "/cmd rest")
+
+        val result = textStates.replaceVisibleRange(id, 0, 4, "")
+
+        assertEquals(" rest", result)
+    }
+
+    @Test
+    fun `replaceVisibleRange at end of text`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "text/cmd")
+
+        val result = textStates.replaceVisibleRange(id, 4, 8, "")
+
+        assertEquals("text", result)
+    }
+
+    @Test
+    fun `replaceVisibleRange with insertion replacing entire text`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "/all")
+
+        val result = textStates.replaceVisibleRange(id, 0, 4, "replaced")
+
+        assertEquals("replaced", result)
+    }
+
+    @Test
+    fun `replaceVisibleRange returns null for missing block`() {
+        val result = textStates.replaceVisibleRange(
+            BlockId.generate(), 0, 1, "x"
+        )
+        assertNull(result)
+    }
+
+    @Test
+    fun `replaceVisibleRange clamps out-of-bounds range`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "abc")
+
+        val result = textStates.replaceVisibleRange(id, -5, 100, "X")
+
+        assertEquals("X", result)
+    }
+
+    @Test
+    fun `replaceVisibleRange registers programmatic commit`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "abc")
+
+        textStates.replaceVisibleRange(id, 1, 2, "X")
+
+        val commit = textStates.consumeProgrammaticCommit(id)
+        assertNotNull(commit)
+        assertEquals("aXc", commit)
+    }
+
+    @Test
+    fun `replaceVisibleRange respects explicit cursor position`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "Hello World")
+
+        textStates.replaceVisibleRange(id, 5, 11, " Kotlin", cursorPositionAfter = 0)
+
+        // Text is correct regardless of cursor
+        assertEquals("Hello Kotlin", textStates.getVisibleText(id))
+    }
+
+    @Test
+    fun `replaceVisibleRange defaults cursor to end of replacement`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "ab/cmd ef")
+
+        // Replace "/cmd" (range 2..6) with "" → "ab ef", cursor at 2
+        textStates.replaceVisibleRange(id, 2, 6, "")
+
+        assertEquals("ab ef", textStates.getVisibleText(id))
+    }
+}

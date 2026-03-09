@@ -239,7 +239,7 @@ Add `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/BuiltInSlashC
 - generation has direct unit coverage ✅
 - no code path assumes every descriptor automatically becomes a slash entry ✅
 
-## Task 5 — Add Query-Range Editing Primitives and Safe Slash Editor Host
+## Task 5 — Add Query-Range Editing Primitives and Safe Slash Editor Host ✅
 
 ### Goal
 
@@ -294,11 +294,27 @@ Add targeted tests such as:
   - missing anchor block results in safe no-op
   - replacing anchor block with preserved id keeps focus/selection coherent
 
+### Implementation Notes
+
+- **`BlockTextStates.replaceVisibleRange()`** — new public method that replaces a visible-text range `[start, endExclusive)` with a replacement string, updates cursor, and registers a programmatic commit. Returns the new visible text or null if the block doesn't exist. Clamps out-of-bounds coordinates.
+- **`BlockSpanStates.adjustForRangeReplacement()`** — new public convenience method that delegates to `adjustForUserEdit()` with the range replacement parameters (deletedLength = endExclusive - start, insertedLength = replacementLength).
+- **`SlashCommandEditorHost`** — internal class implementing `SlashCommandEditor`. Constructor takes `anchorBlockId`, `queryRange`, `stateHolder`, `textStates`, `spanStates`. All eight interface methods implemented:
+  - `getAnchorBlock()` / `getAnchorVisibleText()` — read from snapshot / runtime text
+  - `replaceQueryText()` — adjusts spans first, then replaces visible range, then syncs snapshot via `UpdateBlockContent`
+  - `updateAnchorText()` — full text replacement via `setText()`, resets spans, syncs snapshot
+  - `replaceAnchorBlock()` — uses `ReplaceBlock` action, sets up runtime text/span state, optionally focuses
+  - `insertBlockAfterAnchor()` — uses `InsertBlockAfter` action, creates runtime text/span state, optionally focuses
+  - `focusBlock()` — dispatches `FocusBlock`, sets cursor position
+  - `closeMenu()` — dispatches `CloseSlashCommand`
+  - All operations are graceful no-ops when the anchor block is missing.
+- **10 tests in `BlockTextStatesTest.kt`** covering: middle/start/end/full range replacement, empty replacement (deletion), missing block returns null, out-of-bounds clamping, programmatic commit registration, explicit/default cursor position.
+- **22 tests in `SlashCommandEditorHostTest.kt`** covering: replaceQueryText (removal, replacement, span preservation, snapshot sync, missing anchor), updateAnchorText (full replace, snapshot sync, missing anchor), replaceAnchorBlock (preserve id, new id, focus, missing anchor), insertBlockAfterAnchor (ordering, focus, missing anchor), focusBlock (state update, nonexistent block), closeMenu, getAnchorBlock/getAnchorVisibleText (present, missing, null text).
+
 ### Definition of Done
 
-- slash host operations can update runtime and snapshot state together
-- query text can be removed from the middle of a block without corrupting spans
-- all host/range helper tests pass
+- slash host operations can update runtime and snapshot state together ✅
+- query text can be removed from the middle of a block without corrupting spans ✅
+- all host/range helper tests pass ✅
 
 ## Task 6 — Add Slash Text Observer and Session Tracking
 
