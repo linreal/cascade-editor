@@ -441,7 +441,7 @@ Add `editor/src/commonTest/kotlin/io/github/linreal/cascade/editor/SlashCommandE
 - async command flow is deterministic and unit-tested
 - built-in block semantics match the spec
 
-## Task 8 — Integrate Slash Registry and Host Into `CascadeEditor`
+## Task 8 — Integrate Slash Registry and Host Into `CascadeEditor` ✅
 
 ### Goal
 
@@ -482,11 +482,21 @@ Add integration-oriented unit tests where possible:
   - session closes when anchor block is removed
   - session closes when selection/drag invalidates slash usage
 
+### Implementation Notes
+
+- **Public `slashRegistry` parameter** added to `CascadeEditor()` between `registry` and `modifier`, with default `remember { SlashCommandRegistry() }`. Removed the internal `remember(registry)` creation. KDoc documents the new parameter.
+- **Session invalidation** via `shouldInvalidateSlashSession()` pure function + `LaunchedEffect(stateHolder)` with `snapshotFlow`. Closes session when drag is active, block selection is non-empty, or anchor block is no longer in the block list. Double dispatch of `CloseSlashCommand` is idempotent (reducer returns structurally equal state when session is already null).
+- **10 integration tests** in `CascadeEditorSlashIntegrationTest.kt`:
+  - Registry coexistence: built-in and custom items coexist, custom replaces built-in with same id, custom executable alongside built-ins
+  - Session invalidation (pure function): no session, healthy session, drag active, selection non-empty, anchor missing, different block deleted
+  - Full scenarios: drag start triggers invalidation, anchor deletion detected
+- ARCHITECTURE.md updated: implementation status, testing table, Quick Reference for `CascadeEditor`.
+
 ### Definition of Done
 
-- `CascadeEditor` owns all non-UI slash infrastructure
-- consumers have a defined way to provide custom slash commands
-- integration tests cover invalidation rules
+- `CascadeEditor` owns all non-UI slash infrastructure ✅
+- consumers have a defined way to provide custom slash commands ✅
+- integration tests cover invalidation rules ✅
 
 ## Task 9 — Implement Slash Popup UI and Keyboard Navigation
 

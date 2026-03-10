@@ -6,7 +6,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 
 | Concept | File | Key Symbol |
 |---------|------|------------|
-| Main composable | `ui/CascadeEditor.kt` | `CascadeEditor()` |
+| Main composable | `ui/CascadeEditor.kt` | `CascadeEditor(stateHolder, registry, slashRegistry, ...)` |
 | Text input | `ui/BackspaceAwareTextEdit.kt` | `BackspaceAwareTextField()` |
 | Shared text field | `ui/renderers/TextBlockField.kt` | `TextBlockField()` |
 | Text renderer | `ui/renderers/TextBlockRenderer.kt` | `TextBlockRenderer` |
@@ -171,7 +171,8 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | TextBlockField (shared) | Done | Extracted text editing composable used by all text renderers |
 | Heading font sizes | Done | No bold weight yet |
 | Code monospace font | Done | No syntax highlighting |
-| Slash commands (backend) | Done | Session state with query range, submenu nav, highlight; enriched reducer API; `BuiltInSlashCommandSpec` on descriptors with `ConvertInPlace`/`AlwaysInsert` behavior policies; `BuiltInSlashCommandFactory` generates `SlashCommandAction`s from descriptor metadata; `SlashCommandEditorHost` provides safe runtime/snapshot editing; `BlockTextStates.replaceVisibleRange()` + `BlockSpanStates.adjustForRangeReplacement()` primitives |
+| Slash commands (backend) | Done | Session state with query range, submenu nav, highlight; enriched reducer API; `BuiltInSlashCommandSpec` on descriptors with `ConvertInPlace`/`AlwaysInsert` behavior policies; `BuiltInSlashCommandFactory` generates `SlashCommandAction`s from descriptor metadata; `SlashCommandEditorHost` provides safe runtime/snapshot editing; `BlockTextStates.replaceVisibleRange()` + `BlockSpanStates.adjustForRangeReplacement()` primitives; `CascadeEditor` exposes public `slashRegistry` parameter for consumer custom commands |
+| Slash commands (integration) | Done | `shouldInvalidateSlashSession()` closes session on drag, selection, or anchor deletion; reactive `LaunchedEffect` + `snapshotFlow` wiring in `CascadeEditor` |
 | Slash commands (text observer) | Done | `SlashCommandTextObserver` detects `/`, tracks `queryRange`, dismisses on invalid state; wired in `TextBlockField` via combined text+selection `snapshotFlow` |
 | Slash commands (UI) | Not done | No popup |
 | Todo checkbox UI | Done | `TodoBlockRenderer` with `Checkbox` + `TextBlockField`, `ToggleTodo` action |
@@ -231,3 +232,4 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `FormattingStateCalculatorTest.kt` | Pure calculator: canFormat conditions, collapsed caret pending/continuation, ranged selection query, reversed bounds, metadata |
 | `DefaultFormattingActionsTest.kt` | Action adapter: ranged/collapsed toggle, apply/remove pass-through, no-op guards (no focus, Code, block selection, drag, non-text), fresh selection resolution |
 | `FormattingIntegrationTest.kt` | Full integration: focus/unfocus cycles, focus switch between styled blocks, pending styles for empty blocks, drag disables formatting, same-style cursor move structural equality, Enter continuation + calculator, toggle + calculator consistency, multi-block selection disable, Code disable, config extensibility, backspace merge continuity, runtime/snapshot sync, collapsed-cursor pending toggle cycle |
+| `CascadeEditorSlashIntegrationTest.kt` | Slash integration: registry coexistence (built-in + custom), custom override, custom execution alongside built-ins, session invalidation pure function (no session, healthy, drag, selection, anchor missing, different block deleted), full scenarios (drag start, anchor deletion) |
