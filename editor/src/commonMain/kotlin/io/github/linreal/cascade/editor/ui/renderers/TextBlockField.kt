@@ -15,12 +15,21 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import io.github.linreal.cascade.editor.action.CloseSlashCommand
+import io.github.linreal.cascade.editor.action.HighlightSlashCommand
 import io.github.linreal.cascade.editor.action.UpdateSlashCommandSession
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
@@ -31,9 +40,12 @@ import io.github.linreal.cascade.editor.slash.SlashCommandTextObserver
 import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
 import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
+import io.github.linreal.cascade.editor.ui.LocalSlashCaretRect
 import io.github.linreal.cascade.editor.ui.LocalSlashCommandExecutor
 import io.github.linreal.cascade.editor.ui.LocalSlashHighlightedCommandId
+import io.github.linreal.cascade.editor.ui.LocalSlashPopupItems
 import io.github.linreal.cascade.editor.ui.LocalSlashSessionAnchorBlockId
+import io.github.linreal.cascade.editor.ui.SlashPopupDefaults
 import io.github.linreal.cascade.editor.ui.visibleSelection
 import io.github.linreal.cascade.editor.ui.visibleText
 
@@ -71,6 +83,8 @@ internal fun TextBlockField(
     val slashCommandExecutor = LocalSlashCommandExecutor.current
     val slashSessionAnchorBlockId = LocalSlashSessionAnchorBlockId.current
     val slashHighlightedCommandId = LocalSlashHighlightedCommandId.current
+    val slashCaretRectHolder = LocalSlashCaretRect.current
+    val slashPopupItems = LocalSlashPopupItems.current
 
     // Get span state from the shared holder
     val blockSpanStates = LocalBlockSpanStates.current
@@ -150,11 +164,87 @@ internal fun TextBlockField(
     }
 
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var layoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+
+    val isSlashAnchor = slashSessionAnchorBlockId == block.id
+
+    // Report caret rect in window coordinates when this block is the slash anchor.
+    LaunchedEffect(isSlashAnchor, textLayoutResult, layoutCoordinates, textFieldState.selection) {
+        if (!isSlashAnchor) {
+            // Only the previous anchor owner can clear the shared caret rect.
+            slashCaretRectHolder.clear(block.id)
+            return@LaunchedEffect
+        }
+        val layout = textLayoutResult ?: return@LaunchedEffect
+        val coords = layoutCoordinates ?: return@LaunchedEffect
+        if (!coords.isAttached) return@LaunchedEffect
+
+        val cursorOffset = textFieldState.selection.start
+        val safeOffset = cursorOffset.coerceIn(0, layout.layoutInput.text.length)
+        val localCursorRect = layout.getCursorRect(safeOffset)
+        val windowTopLeft = coords.localToWindow(
+            androidx.compose.ui.geometry.Offset(localCursorRect.left, localCursorRect.top)
+        )
+        val windowBottomRight = coords.localToWindow(
+            androidx.compose.ui.geometry.Offset(localCursorRect.right, localCursorRect.bottom)
+        )
+        slashCaretRectHolder.update(
+            blockId = block.id,
+            caretRect = Rect(
+                left = windowTopLeft.x,
+                top = windowTopLeft.y,
+                right = windowBottomRight.x,
+                bottom = windowBottomRight.y,
+            )
+        )
+    }
 
     Box(modifier = modifier) {
         BackspaceAwareTextField(
             state = textFieldState,
             modifier = Modifier.fillMaxWidth()
+                .onGloballyPositioned { coords -> layoutCoordinates = coords }
+                .onPreviewKeyEvent { keyEvent ->
+                    if (!isSlashAnchor) return@onPreviewKeyEvent false
+                    if (keyEvent.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+
+                    when (keyEvent.key) {
+                        Key.DirectionUp -> {
+                            val nextId = SlashPopupDefaults.resolveNextHighlight(
+                                slashHighlightedCommandId, slashPopupItems, direction = -1
+                            )
+                            callbacks.dispatch(HighlightSlashCommand(nextId))
+                            true
+                        }
+                        Key.DirectionDown -> {
+                            val nextId = SlashPopupDefaults.resolveNextHighlight(
+                                slashHighlightedCommandId, slashPopupItems, direction = 1
+                            )
+                            callbacks.dispatch(HighlightSlashCommand(nextId))
+                            true
+                        }
+                        Key.Enter, Key.NumPadEnter -> {
+                            val highlightedItemId = slashHighlightedCommandId
+                            val highlightedItem = if (highlightedItemId != null) {
+                                slashPopupItems.firstOrNull { it.id == highlightedItemId }
+                            } else {
+                                null
+                            }
+                            val executor = slashCommandExecutor
+                            if (highlightedItem != null && executor != null) {
+                                executor.execute(highlightedItem)
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        Key.Escape -> {
+                            callbacks.dispatch(CloseSlashCommand)
+                            true
+                        }
+                        else -> false
+                    }
+                }
                 .onFocusChanged { focusState ->
                     val wasFocused = hasComposeFocus
                     hasComposeFocus = focusState.isFocused
@@ -173,14 +263,19 @@ internal fun TextBlockField(
                 callbacks.onBackspaceAtStart(block.id)
             },
             onEnterPressed = { cursorPosition ->
-                val highlightedCommandId = slashHighlightedCommandId
+                val highlightedItemId = slashHighlightedCommandId
+                val highlightedItem = if (highlightedItemId != null) {
+                    slashPopupItems.firstOrNull { it.id == highlightedItemId }
+                } else {
+                    null
+                }
                 val executor = slashCommandExecutor
                 if (
                     slashSessionAnchorBlockId == block.id &&
-                    highlightedCommandId != null &&
+                    highlightedItem != null &&
                     executor != null
                 ) {
-                    executor.execute(highlightedCommandId)
+                    executor.execute(highlightedItem)
                     return@BackspaceAwareTextField
                 }
                 callbacks.onEnter(block.id, cursorPosition)

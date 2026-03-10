@@ -79,11 +79,31 @@ internal class SlashCommandExecutor(
         }
     }
 
+    /**
+     * Executes an already-resolved slash item.
+     *
+     * Used by UI paths that already have the visible item list and should not
+     * depend on registry lookups at execution time.
+     */
+    internal fun execute(item: SlashCommandItem): Job {
+        return executionScope.launch {
+            executeNow(item)
+        }
+    }
+
     internal suspend fun executeNow(itemId: SlashCommandId) {
         val session = stateHolder.state.slashCommandState ?: return
 
         val item = resolveItem(itemId, session) ?: return
+        executeItem(item, session)
+    }
 
+    internal suspend fun executeNow(item: SlashCommandItem) {
+        val session = stateHolder.state.slashCommandState ?: return
+        executeItem(item, session)
+    }
+
+    private suspend fun executeItem(item: SlashCommandItem, session: SlashCommandState) {
         when (item) {
             is SlashCommandMenu -> {
                 stateHolder.dispatch(NavigateSlashSubmenu(item.id))

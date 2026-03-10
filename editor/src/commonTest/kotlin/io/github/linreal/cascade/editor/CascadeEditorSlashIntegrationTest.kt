@@ -19,6 +19,7 @@ import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.EditorStateHolder
 import io.github.linreal.cascade.editor.state.SlashCommandState
 import io.github.linreal.cascade.editor.state.SlashQueryRange
+import io.github.linreal.cascade.editor.ui.createMergedSlashRegistry
 import io.github.linreal.cascade.editor.ui.shouldInvalidateSlashSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -29,6 +30,64 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CascadeEditorSlashIntegrationTest {
+
+    @Test
+    fun `createMergedSlashRegistry combines built-in and custom items`() {
+        val builtIn = SlashCommandAction(
+            id = SlashCommandId("builtin.block.heading_1"),
+            title = "Heading 1",
+            description = "Built-in heading",
+            onExecute = { SlashCommandResult.Done },
+        )
+        val custom = SlashCommandAction(
+            id = SlashCommandId("custom.callout"),
+            title = "Callout",
+            description = "Insert callout block",
+            onExecute = { SlashCommandResult.Done },
+        )
+
+        val merged = createMergedSlashRegistry(
+            builtInItems = listOf(builtIn),
+            customItems = listOf(custom),
+        )
+
+        val ids = merged.search("").map { it.id.value }
+        assertTrue("builtin.block.heading_1" in ids)
+        assertTrue("custom.callout" in ids)
+    }
+
+    @Test
+    fun `createMergedSlashRegistry keeps consumer override and does not mutate consumer registry`() {
+        val builtIn = SlashCommandAction(
+            id = SlashCommandId("builtin.block.heading_1"),
+            title = "Heading 1",
+            description = "Built-in heading",
+            onExecute = { SlashCommandResult.Done },
+        )
+        val customOverride = SlashCommandAction(
+            id = SlashCommandId("builtin.block.heading_1"),
+            title = "Custom Heading",
+            description = "Consumer override",
+            onExecute = { SlashCommandResult.Done },
+        )
+
+        val consumerRegistry = SlashCommandRegistry().apply {
+            register(customOverride)
+        }
+        val merged = createMergedSlashRegistry(
+            builtInItems = listOf(builtIn),
+            customItems = consumerRegistry.getRootItems(),
+        )
+
+        val mergedHeading = merged.search("")
+            .firstOrNull { it.id == SlashCommandId("builtin.block.heading_1") }
+        assertNotNull(mergedHeading)
+        assertEquals("Custom Heading", mergedHeading.title)
+
+        val consumerItems = consumerRegistry.search("")
+        assertEquals(1, consumerItems.size)
+        assertEquals("Custom Heading", consumerItems.first().title)
+    }
 
     // -- Registry coexistence --
 

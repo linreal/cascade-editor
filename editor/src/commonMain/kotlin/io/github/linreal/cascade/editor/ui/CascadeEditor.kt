@@ -32,6 +32,7 @@ import io.github.linreal.cascade.editor.richtext.SpanActionDispatcher
 import io.github.linreal.cascade.editor.richtext.rememberFormattingState
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandFactory
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
+import io.github.linreal.cascade.editor.slash.SlashCommandItem
 import io.github.linreal.cascade.editor.slash.SlashCommandRegistry
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
@@ -65,8 +66,8 @@ import io.github.linreal.cascade.editor.state.EditorStateHolder
  * @param stateHolder The state holder managing editor state
  * @param registry Block registry with renderers. Defaults to [createEditorRegistry].
  * @param slashRegistry Slash command registry. Register custom [SlashCommandItem]s here to
- *        make them appear alongside built-in block commands. Defaults to an empty registry
- *        that is populated with built-in items derived from [registry] descriptors.
+ *        make them appear alongside built-in block commands. Custom items override built-ins
+ *        on ID collisions. Defaults to an empty registry.
  * @param modifier Modifier for the editor container
  * @param toolbar Toolbar slot controlling what formatting toolbar is shown.
  *        [ToolbarSlot.Default] renders the built-in config-driven toolbar.
@@ -109,10 +110,9 @@ public fun CascadeEditor(
         )
     }
 
-    LaunchedEffect(registry, slashRegistry, slashExecutor) {
+    val builtInSlashItems = remember(registry, slashExecutor) {
         val builtInFactory = BuiltInSlashCommandFactory(slashExecutor.builtInExecutor)
         builtInFactory.generate(registry.getAllDescriptors())
-            .forEach(slashRegistry::register)
     }
 
     // Cleanup stale states when blocks change
@@ -193,13 +193,44 @@ public fun CascadeEditor(
         }
     }
 
+    // Slash popup support: caret rect holder and search results for keyboard nav.
+    val slashCaretRectHolder = remember { SlashCaretRectHolder() }
+    val slashState = state.slashCommandState
+    val customSlashRootItems = slashRegistry.getRootItems()
+    val effectiveSlashRegistry = remember(builtInSlashItems, customSlashRootItems) {
+        createMergedSlashRegistry(
+            builtInItems = builtInSlashItems,
+            customItems = customSlashRootItems,
+        )
+    }
+    val slashPopupItems = remember(
+        slashState?.query,
+        slashState?.navigationPath,
+        effectiveSlashRegistry,
+    ) {
+        if (slashState != null) {
+            effectiveSlashRegistry.search(slashState.query, slashState.navigationPath)
+        } else {
+            emptyList()
+        }
+    }
+
+    // Empty search results invalidate slash mode per feature spec.
+    LaunchedEffect(slashState?.anchorBlockId, slashState?.query, slashState?.navigationPath, slashPopupItems) {
+        if (slashState != null && slashPopupItems.isEmpty()) {
+            stateHolder.dispatch(CloseSlashCommand)
+        }
+    }
+
     CompositionLocalProvider(
         LocalBlockTextStates provides blockTextStates,
         LocalBlockSpanStates provides blockSpanStates,
         LocalSpanActionDispatcher provides spanActionDispatcher,
         LocalSlashCommandExecutor provides slashExecutor,
-        LocalSlashSessionAnchorBlockId provides state.slashCommandState?.anchorBlockId,
-        LocalSlashHighlightedCommandId provides state.slashCommandState?.highlightedCommandId,
+        LocalSlashSessionAnchorBlockId provides slashState?.anchorBlockId,
+        LocalSlashHighlightedCommandId provides slashState?.highlightedCommandId,
+        LocalSlashCaretRect provides slashCaretRectHolder,
+        LocalSlashPopupItems provides slashPopupItems,
     ) {
         val lazyListState = rememberLazyListState()
 
@@ -301,6 +332,15 @@ public fun CascadeEditor(
                         )
                     }
                 }
+
+                // Slash command popup overlay - shown when a slash session is active.
+                if (slashState != null && slashPopupItems.isNotEmpty()) {
+                    SlashCommandPopup(
+                        slashState = slashState,
+                        stateHolder = stateHolder,
+                        slashExecutor = slashExecutor,
+                    )
+                }
             }
 
          // Toolbar
@@ -344,4 +384,15 @@ internal fun shouldInvalidateSlashSession(state: EditorState): Boolean {
     if (state.selectedBlockIds.isNotEmpty()) return true
     if (state.blocks.none { it.id == slash.anchorBlockId }) return true
     return false
+}
+
+internal fun createMergedSlashRegistry(
+    builtInItems: List<SlashCommandItem>,
+    customItems: List<SlashCommandItem>,
+): SlashCommandRegistry {
+    return SlashCommandRegistry().apply {
+        // Built-ins register first, custom items override by ID when duplicated.
+        builtInItems.forEach(::register)
+        customItems.forEach(::register)
+    }
 }

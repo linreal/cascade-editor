@@ -498,7 +498,7 @@ Add integration-oriented unit tests where possible:
 - consumers have a defined way to provide custom slash commands ✅
 - integration tests cover invalidation rules ✅
 
-## Task 9 — Implement Slash Popup UI and Keyboard Navigation
+## Task 9 — Implement Slash Popup UI and Keyboard Navigation ✅
 
 ### Goal
 

@@ -55,6 +55,12 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Formatting observer | `richtext/FormattingStateObserver.kt` | `rememberFormattingState()` |
 | Formatting actions impl | `richtext/DefaultFormattingActions.kt` | `DefaultFormattingActions` |
 | Default toolbar UI | `ui/RichTextToolbar.kt` | `RichTextToolbar()` |
+| Slash popup defaults | `ui/SlashPopupDefaults.kt` | `SlashPopupDefaults`, `SlashGroupedItems` |
+| Slash popup overlay | `ui/SlashCommandPopup.kt` | `SlashCommandPopup()` |
+| Slash command row | `ui/SlashCommandRow.kt` | `SlashCommandRow()` |
+| Slash caret rect local | `ui/LocalSlashCaretRect.kt` | `LocalSlashCaretRect`, `SlashCaretRectHolder` |
+| Slash registry local | `ui/LocalSlashCommandRegistry.kt` | `LocalSlashCommandRegistry` |
+| Slash popup items local | `ui/LocalSlashPopupItems.kt` | `LocalSlashPopupItems` |
 
 All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
 
@@ -174,7 +180,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Slash commands (backend) | Done | Session state with query range, submenu nav, highlight; enriched reducer API; `BuiltInSlashCommandSpec` on descriptors with `ConvertInPlace`/`AlwaysInsert` behavior policies; `BuiltInSlashCommandFactory` generates `SlashCommandAction`s from descriptor metadata; `SlashCommandEditorHost` provides safe runtime/snapshot editing; `BlockTextStates.replaceVisibleRange()` + `BlockSpanStates.adjustForRangeReplacement()` primitives; `CascadeEditor` exposes public `slashRegistry` parameter for consumer custom commands |
 | Slash commands (integration) | Done | `shouldInvalidateSlashSession()` closes session on drag, selection, or anchor deletion; reactive `LaunchedEffect` + `snapshotFlow` wiring in `CascadeEditor` |
 | Slash commands (text observer) | Done | `SlashCommandTextObserver` detects `/`, tracks `queryRange`, dismisses on invalid state; wired in `TextBlockField` via combined text+selection `snapshotFlow` |
-| Slash commands (UI) | Not done | No popup |
+| Slash commands (UI) | Done | Popup overlay with grouped items, caret-relative positioning, keyboard nav (Up/Down/Enter/Escape), auto-highlight, submenu back-nav, `focusProperties { canFocus = false }` pattern |
 | Todo checkbox UI | Done | `TodoBlockRenderer` with `Checkbox` + `TextBlockField`, `ToggleTodo` action |
 | Bullet/numbered list prefixes | Not done | Render as plain paragraphs |
 | Quote visual styling | Not done | No left border / background |
@@ -196,7 +202,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Theming / styling API | Not done | Colors and sizes hardcoded |
 | Block nesting / indentation | Not done | Flat list only |
 | Multi-block drag | Not done | `DragState` supports it, UI doesn't |
-| Keyboard shortcuts | Not done | Only Enter/Backspace handled |
+| Keyboard shortcuts | Not done | Enter/Backspace + slash popup keys (Up/Down/Enter/Escape) handled; general shortcuts not done |
 
 ## Known Gaps
 
@@ -232,4 +238,5 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `FormattingStateCalculatorTest.kt` | Pure calculator: canFormat conditions, collapsed caret pending/continuation, ranged selection query, reversed bounds, metadata |
 | `DefaultFormattingActionsTest.kt` | Action adapter: ranged/collapsed toggle, apply/remove pass-through, no-op guards (no focus, Code, block selection, drag, non-text), fresh selection resolution |
 | `FormattingIntegrationTest.kt` | Full integration: focus/unfocus cycles, focus switch between styled blocks, pending styles for empty blocks, drag disables formatting, same-style cursor move structural equality, Enter continuation + calculator, toggle + calculator consistency, multi-block selection disable, Code disable, config extensibility, backspace merge continuity, runtime/snapshot sync, collapsed-cursor pending toggle cycle |
+| `SlashPopupUtilsTest.kt` | Popup pure functions: groupSlashItems (empty, single, multiple groups, ordering, ungrouped first, preserve order), calculatePopupOffset (below/above/clamp), resolveNextHighlight (null/down/up/first/last/clamped/unknown) |
 | `CascadeEditorSlashIntegrationTest.kt` | Slash integration: registry coexistence (built-in + custom), custom override, custom execution alongside built-ins, session invalidation pure function (no session, healthy, drag, selection, anchor missing, different block deleted), full scenarios (drag start, anchor deletion) |
