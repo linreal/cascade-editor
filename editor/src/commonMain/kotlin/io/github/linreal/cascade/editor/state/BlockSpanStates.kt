@@ -130,6 +130,30 @@ public class BlockSpanStates {
         )
     }
 
+ // Range Replacement
+
+    /**
+     * Adjusts spans after a visible-text range replacement.
+     *
+     * Delegates to [SpanAlgorithms.adjustForEdit] with the deleted length computed
+     * from `[start, endExclusive)` and the inserted length from [replacementLength].
+     *
+     * No-op if the block has no state entry.
+     */
+    public fun adjustForRangeReplacement(
+        blockId: BlockId,
+        start: Int,
+        endExclusive: Int,
+        replacementLength: Int,
+    ) {
+        adjustForUserEdit(
+            blockId = blockId,
+            editStart = start,
+            deletedLength = endExclusive - start,
+            insertedLength = replacementLength,
+        )
+    }
+
  // Transfer
 
     /**

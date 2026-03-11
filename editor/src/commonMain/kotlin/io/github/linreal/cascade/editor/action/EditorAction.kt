@@ -7,9 +7,11 @@ import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
 import io.github.linreal.cascade.editor.richtext.SpanAlgorithms
+import io.github.linreal.cascade.editor.slash.SlashCommandId
 import io.github.linreal.cascade.editor.state.DragState
 import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.SlashCommandState
+import io.github.linreal.cascade.editor.state.SlashQueryRange
 import io.github.linreal.cascade.editor.ui.utils.convertVisualGapToMoveBlocksIndex
 import kotlin.math.max
 import kotlin.math.min
@@ -453,38 +455,95 @@ public data object CancelDrag : EditorAction {
 // Slash Command Actions
 
 /**
- * Opens the slash command menu.
+ * Opens a slash command session with an initial query and its visible-text range.
  */
 public data class OpenSlashCommand(
     val anchorBlockId: BlockId,
-    val initialQuery: String = ""
+    val queryRange: SlashQueryRange,
+    val initialQuery: String = "",
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         return state.copy(
             slashCommandState = SlashCommandState(
+                anchorBlockId = anchorBlockId,
                 query = initialQuery,
-                anchorBlockId = anchorBlockId
+                queryRange = queryRange,
             )
         )
     }
 }
 
 /**
- * Updates the slash command search query.
+ * Atomically updates the query text and its visible-text range for the active slash session.
+ * No-op if no session is active.
  */
-public data class UpdateSlashCommandQuery(
-    val query: String
+public data class UpdateSlashCommandSession(
+    val query: String,
+    val queryRange: SlashQueryRange,
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val current = state.slashCommandState ?: return state
         return state.copy(
-            slashCommandState = current.copy(query = query)
+            slashCommandState = current.copy(
+                query = query,
+                queryRange = queryRange,
+            )
         )
     }
 }
 
 /**
- * Closes the slash command menu.
+ * Navigates into a submenu by pushing the given command ID onto the navigation path.
+ * Resets the highlighted item. No-op if no session is active.
+ */
+public data class NavigateSlashSubmenu(
+    val submenuId: SlashCommandId,
+) : EditorAction {
+    override fun reduce(state: EditorState): EditorState {
+        val current = state.slashCommandState ?: return state
+        return state.copy(
+            slashCommandState = current.copy(
+                navigationPath = current.navigationPath + submenuId,
+                highlightedCommandId = null,
+            )
+        )
+    }
+}
+
+/**
+ * Pops one level from the submenu navigation path (back navigation).
+ * Resets the highlighted item. No-op if no session is active or already at root.
+ */
+public data object NavigateSlashBack : EditorAction {
+    override fun reduce(state: EditorState): EditorState {
+        val current = state.slashCommandState ?: return state
+        if (current.navigationPath.isEmpty()) return state
+        return state.copy(
+            slashCommandState = current.copy(
+                navigationPath = current.navigationPath.dropLast(1),
+                highlightedCommandId = null,
+            )
+        )
+    }
+}
+
+/**
+ * Updates the highlighted slash command item (for keyboard/pointer navigation).
+ * No-op if no session is active.
+ */
+public data class HighlightSlashCommand(
+    val commandId: SlashCommandId?,
+) : EditorAction {
+    override fun reduce(state: EditorState): EditorState {
+        val current = state.slashCommandState ?: return state
+        return state.copy(
+            slashCommandState = current.copy(highlightedCommandId = commandId)
+        )
+    }
+}
+
+/**
+ * Closes the slash command menu and clears the entire session.
  */
 public data object CloseSlashCommand : EditorAction {
     override fun reduce(state: EditorState): EditorState {

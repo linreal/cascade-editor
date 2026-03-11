@@ -1,6 +1,7 @@
 package io.github.linreal.cascade.editor.ui
 
 import io.github.linreal.cascade.editor.registry.BlockRegistry
+import io.github.linreal.cascade.editor.ui.renderers.DividerBlockRenderer
 import io.github.linreal.cascade.editor.ui.renderers.TextBlockRenderer
 import io.github.linreal.cascade.editor.ui.renderers.TodoBlockRenderer
 
@@ -38,6 +39,8 @@ public fun BlockRegistry.registerBuiltInRenderers() {
     // Register TodoBlockRenderer for todo blocks (checkbox + text)
     registerRenderer("todo", TodoBlockRenderer())
 
-    // TODO: Register DividerRenderer for "divider"
+    // Register DividerBlockRenderer for divider blocks (horizontal line)
+    registerRenderer("divider", DividerBlockRenderer())
+
     // TODO: Register ImageRenderer for "image"
 }

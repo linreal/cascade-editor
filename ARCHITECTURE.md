@@ -6,11 +6,12 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 
 | Concept | File | Key Symbol |
 |---------|------|------------|
-| Main composable | `ui/CascadeEditor.kt` | `CascadeEditor()` |
+| Main composable | `ui/CascadeEditor.kt` | `CascadeEditor(stateHolder, registry, slashRegistry, ...)` |
 | Text input | `ui/BackspaceAwareTextEdit.kt` | `BackspaceAwareTextField()` |
 | Shared text field | `ui/renderers/TextBlockField.kt` | `TextBlockField()` |
 | Text renderer | `ui/renderers/TextBlockRenderer.kt` | `TextBlockRenderer` |
 | Todo renderer | `ui/renderers/TodoBlockRenderer.kt` | `TodoBlockRenderer` |
+| Divider renderer | `ui/renderers/DividerBlockRenderer.kt` | `DividerBlockRenderer` |
 | Editor registry setup | `ui/EditorRegistry.kt` | `createEditorRegistry()` |
 | Drop indicator | `ui/DropIndicator.kt` | `DropIndicator()` |
 | Drag preview | `ui/DragPreview.kt` | `DragPreview()` |
@@ -19,7 +20,11 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Drop target calc | `ui/utils/DragUtils.kt` | `calculateDropTargetIndex()` |
 | Text state local | `ui/LocalBlockTextStates.kt` | `LocalBlockTextStates` |
 | Span state local | `ui/LocalBlockSpanStates.kt` | `LocalBlockSpanStates` |
-| State snapshot | `state/EditorState.kt` | `EditorState`, `DragState` |
+| State snapshot | `state/EditorState.kt` | `EditorState`, `DragState`, `SlashCommandState`, `SlashQueryRange` |
+| Slash command ID | `slash/SlashCommandId.kt` | `SlashCommandId` |
+| Slash command model | `slash/SlashCommandModel.kt` | `SlashCommandItem`, `SlashCommandAction`, `SlashCommandMenu`, `SlashCommandGroup`, `SlashCommandIconKey`, `SlashQueryTextPolicy`, `SlashCommandResult` |
+| Slash command context | `slash/SlashCommandContext.kt` | `SlashCommandContext`, `SlashCommandEditor` |
+| Slash command registry | `slash/SlashCommandRegistry.kt` | `SlashCommandRegistry` |
 | State holder | `state/EditorStateHolder.kt` | `EditorStateHolder`, `rememberEditorState()` |
 | Text state manager | `state/BlockTextStates.kt` | `BlockTextStates` |
 | Span state manager | `state/BlockSpanStates.kt` | `BlockSpanStates` |
@@ -31,7 +36,11 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Text span | `core/TextSpan.kt` | `TextSpan` |
 | Block ID | `core/BlockId.kt` | `BlockId` |
 | Registry | `registry/BlockRegistry.kt` | `BlockRegistry` |
-| Descriptors | `registry/BlockDescriptor.kt` | `BlockDescriptor`, `BlockCategory` |
+| Descriptors | `registry/BlockDescriptor.kt` | `BlockDescriptor` |
+| Built-in slash spec | `slash/BuiltInSlashCommandSpec.kt` | `BuiltInSlashCommandSpec`, `BuiltInBlockSlashBehavior` |
+| Built-in slash factory | `slash/BuiltInSlashCommandFactory.kt` | `BuiltInSlashCommandFactory` |
+| Slash editor host | `slash/SlashCommandEditorHost.kt` | `SlashCommandEditorHost` (internal) |
+| Slash text observer | `slash/SlashCommandTextObserver.kt` | `SlashCommandTextObserver` (internal) |
 | Renderer interface | `registry/BlockRenderer.kt` | `BlockRenderer<T>`, `BlockCallbacks`, `DefaultBlockCallbacks` |
 | Rich text serialization | `serialization/RichTextSchema.kt` | `RichTextSchema` |
 | Span algorithms | `richtext/SpanAlgorithms.kt` | `SpanAlgorithms`, `StyleStatus` |
@@ -47,6 +56,12 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Formatting observer | `richtext/FormattingStateObserver.kt` | `rememberFormattingState()` |
 | Formatting actions impl | `richtext/DefaultFormattingActions.kt` | `DefaultFormattingActions` |
 | Default toolbar UI | `ui/RichTextToolbar.kt` | `RichTextToolbar()` |
+| Slash popup defaults | `ui/SlashPopupDefaults.kt` | `SlashPopupDefaults`, `SlashGroupedItems` |
+| Slash popup overlay | `ui/SlashCommandPopup.kt` | `SlashCommandPopup()` |
+| Slash command row | `ui/SlashCommandRow.kt` | `SlashCommandRow()` |
+| Slash caret rect local | `ui/LocalSlashCaretRect.kt` | `LocalSlashCaretRect`, `SlashCaretRectHolder` |
+| Slash registry local | `ui/LocalSlashCommandRegistry.kt` | `LocalSlashCommandRegistry` |
+| Slash popup items local | `ui/LocalSlashPopupItems.kt` | `LocalSlashPopupItems` |
 
 All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
 
@@ -100,7 +115,7 @@ Custom blocks: implement `CustomBlockType` interface.
 
 **EditorStateHolder** — Compose-friendly mutable wrapper. Use `rememberEditorState(initialBlocks)` to create. Call `stateHolder.dispatch(action)` to modify state.
 
-**BlockTextStates** — single source of truth for text content. One `TextFieldState` per block. Key methods: `getOrCreate()`, `getVisibleText()`, `mergeInto()`, `setText()`, `consumeProgrammaticCommit()`, `extractAllText()`, `cleanup()`. Programmatic text mutations (`mergeInto` / `setText`) register per-block expected committed text so `SpanMaintenanceTextObserver` can skip/rebase non-user commits and avoid duplicate span adjustment. Provided to renderers via `LocalBlockTextStates` CompositionLocal.
+**BlockTextStates** — single source of truth for text content. One `TextFieldState` per block. Key methods: `getOrCreate()`, `getVisibleText()`, `mergeInto()`, `setText()`, `replaceVisibleRange()`, `consumeProgrammaticCommit()`, `extractAllText()`, `cleanup()`. Programmatic text mutations (`mergeInto` / `setText`) register per-block expected committed text so `SpanMaintenanceTextObserver` can skip/rebase non-user commits and avoid duplicate span adjustment. Internal observers (like `SlashCommandTextObserver`) can also perform a non-destructive pending-commit peek when needed without consuming the authoritative span observer entry. Provided to renderers via `LocalBlockTextStates` CompositionLocal.
 
 **BlockSpanStates** — single source of truth for rich text spans during editing. One `MutableState<List<TextSpan>>` per block plus snapshot-aware pending-style state. Key methods: `getOrCreate(..., textLength)`, `getSpans()`, `set(..., textLength)`, `adjustForUserEdit()`, `split()`, `mergeInto()`, `applyStyle()`, `removeStyle()`, `toggleStyle()`, `queryStyleStatus()`, `activeStylesAt()`, `resolveStylesForInsertion()`. Invariants are enforced at API ingress (`getOrCreate` / `set`) by normalizing and clamping spans with current visible text length. Created and remembered in `CascadeEditor`, cleaned up in `LaunchedEffect(state.blocks)` with text-only IDs (`collectTextBlockIds`) to prevent stale span state on non-text transitions, and provided to renderers via `LocalBlockSpanStates` CompositionLocal. Per-block span state is initialized in `TextBlockRenderer` from `BlockContent.Text.spans`. Rendering is applied through a stable per-block `BasicTextField` `outputTransformation` that reads latest spans at render time via `SpanMapper.applyStyles(...)` with defensive clamping in visible coordinates. User-edit span maintenance runs post-commit via `SpanMaintenanceTextObserver`, which consumes/rebases programmatic commit baselines from `BlockTextStates` before applying diff-based user edit maintenance. Programmatic split/merge runtime transfer is executed in `DefaultBlockCallbacks`, and `mergeInto(...)` clears pending styles on both source and target to avoid pending-style bleed after merge. External formatting operations (toolbar, keyboard shortcuts) should use `SpanActionDispatcher` (provided via `LocalSpanActionDispatcher`) which coordinates runtime `BlockSpanStates` update (immediate visual) with full snapshot sync via `UpdateBlockContent` (avoids stale-text-length mismatch). Collapsed-cursor `toggleStyle` toggles pending styles instead of applying zero-width spans. `ApplySpanStyle`/`RemoveSpanStyle` actions are snapshot-only and should not be dispatched directly during active editing. Snapshot span reducers use the same `SpanAlgorithms` normalization contract as runtime for canonical output. `SplitBlock` accepts `newBlockSpans` parameter for runtime-provided spans and always updates source block snapshot. `MergeBlocks` reducer merges snapshot spans alongside text. `DefaultBlockCallbacks` syncs merged text+spans to snapshot via `UpdateBlockContent` before `DeleteBlock` dispatch on merge paths. `UpdateBlockText` explicitly resets spans (callers needing span preservation use `UpdateBlockContent`).
 
@@ -120,7 +135,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 
 **Drag & Drop:** `StartDrag`, `UpdateDragTarget`, `CompleteDrag`, `CancelDrag`
 
-**Slash Commands:** `OpenSlashCommand`, `UpdateSlashCommandQuery`, `CloseSlashCommand`
+**Slash Commands:** `OpenSlashCommand`, `UpdateSlashCommandSession`, `NavigateSlashSubmenu`, `NavigateSlashBack`, `HighlightSlashCommand`, `CloseSlashCommand`
 
 ## Data Flow
 
@@ -163,12 +178,14 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | TextBlockField (shared) | Done | Extracted text editing composable used by all text renderers |
 | Heading font sizes | Done | No bold weight yet |
 | Code monospace font | Done | No syntax highlighting |
-| Slash commands (backend) | Done | Actions + state + search |
-| Slash commands (UI) | Not done | No popup, no "/" detection |
+| Slash commands (backend) | Done | Session state with query range, submenu nav, highlight; enriched reducer API; `BuiltInSlashCommandSpec` on descriptors with `ConvertInPlace`/`AlwaysInsert` behavior policies; `BuiltInSlashCommandFactory` generates `SlashCommandAction`s from descriptor metadata; `SlashCommandEditorHost` provides safe runtime/snapshot editing; `BlockTextStates.replaceVisibleRange()` + `BlockSpanStates.adjustForRangeReplacement()` primitives; `CascadeEditor` exposes public `slashRegistry` parameter for consumer custom commands |
+| Slash commands (integration) | Done | `shouldInvalidateSlashSession()` closes session on drag, selection, or anchor deletion; reactive `LaunchedEffect` + `snapshotFlow` wiring in `CascadeEditor` |
+| Slash commands (text observer) | Done | `SlashCommandTextObserver` detects `/`, tracks `queryRange`, dismisses on invalid state; wired in `TextBlockField` via combined text+selection `snapshotFlow` |
+| Slash commands (UI) | Done | Popup overlay with grouped items, caret-relative positioning, keyboard nav (Up/Down/Enter/Escape), auto-highlight, submenu back-nav, `focusProperties { canFocus = false }` pattern |
 | Todo checkbox UI | Done | `TodoBlockRenderer` with `Checkbox` + `TextBlockField`, `ToggleTodo` action |
 | Bullet/numbered list prefixes | Not done | Render as plain paragraphs |
 | Quote visual styling | Not done | No left border / background |
-| Divider renderer | Not done | Type exists, no UI |
+| Divider renderer | Done | `DividerBlockRenderer` — horizontal line, 1dp, vertical padding |
 | Image renderer | Not done | Type exists, no UI |
 | Rich text spans — domain model | Done | `TextSpan`, `SpanStyle`, `BlockContent.Text.spans` |
 | Rich text spans — algorithms | Done | `SpanAlgorithms`: normalize, adjust, split/merge, apply/remove/toggle, query |
@@ -186,7 +203,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Theming / styling API | Not done | Colors and sizes hardcoded |
 | Block nesting / indentation | Not done | Flat list only |
 | Multi-block drag | Not done | `DragState` supports it, UI doesn't |
-| Keyboard shortcuts | Not done | Only Enter/Backspace handled |
+| Keyboard shortcuts | Not done | Enter/Backspace + slash popup keys (Up/Down/Enter/Escape) handled; general shortcuts not done |
 
 ## Known Gaps
 
@@ -199,10 +216,16 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Test File | Coverage |
 |-----------|----------|
 | `EditorStateTest.kt` | All action reducers incl. span actions, split/merge span transfer, snapshot stability (~87 tests) |
+| `SlashCommandStateTest.kt` | Slash session reducers: open/update/navigate/highlight/close, submenu path, no-op guards |
+| `SlashCommandRegistryTest.kt` | Registry: registration order, dedup, ranking tiers, path-based submenu search, menu discoverability, tie-breaking |
 | `DragActionsTest.kt` | Drag state transitions |
 | `AutoScrollTest.kt` | Hot zones, speed calculation |
 | `DragUtilsTest.kt` | Drop target coordinate math |
-| `BlockRegistryTest.kt` | Descriptor search, block creation |
+| `BuiltInSlashCommandFactoryTest.kt` | Factory filtering, ID stability, metadata copying, icon resolution, behavior preservation via recording executor, deterministic ordering, registry integration |
+| `BlockTextStatesTest.kt` | Range replacement (middle/start/end/full), deletion, missing block, clamping, programmatic commit tracking, cursor positioning, `hasPendingProgrammaticCommit` peek semantics |
+| `SlashCommandEditorHostTest.kt` | replaceQueryText (removal, replacement, span preservation, snapshot sync), updateAnchorText, replaceAnchorBlock (id preservation, focus), insertBlockAfterAnchor (ordering, focus), focusBlock, closeMenu, graceful no-ops for missing anchors |
+| `SlashCommandTextObserverTest.kt` | Session opening (start/middle/empty, non-slash, deletion, replacement), updating (progressive, spaces), closing (slash deletion, cursor outside range, focus lost), programmatic changes (skip, preserve, remove), paste/multi-char excluded, notifySessionClosed, range shifting (insert/delete before slash), within-range edits, after-range cursor, identical no-op, successive open-after-close (~30 tests) |
+| `BlockRegistryTest.kt` | Descriptor search, block creation, slash metadata exposure, behavior policies per built-in type |
 | `BlockTest.kt` | Core block creation |
 | `RichTextSchemaTest.kt` | Span serialization round-trips, normalization, version handling |
 | `SpanAlgorithmsTest.kt` | Normalize, edit adjust, split/merge, apply/remove/toggle, style queries (~62 tests) |
@@ -216,3 +239,5 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `FormattingStateCalculatorTest.kt` | Pure calculator: canFormat conditions, collapsed caret pending/continuation, ranged selection query, reversed bounds, metadata |
 | `DefaultFormattingActionsTest.kt` | Action adapter: ranged/collapsed toggle, apply/remove pass-through, no-op guards (no focus, Code, block selection, drag, non-text), fresh selection resolution |
 | `FormattingIntegrationTest.kt` | Full integration: focus/unfocus cycles, focus switch between styled blocks, pending styles for empty blocks, drag disables formatting, same-style cursor move structural equality, Enter continuation + calculator, toggle + calculator consistency, multi-block selection disable, Code disable, config extensibility, backspace merge continuity, runtime/snapshot sync, collapsed-cursor pending toggle cycle |
+| `SlashPopupUtilsTest.kt` | Popup pure functions: groupSlashItems (empty, single, multiple groups, ordering, ungrouped first, preserve order), calculatePopupOffset (below/above/clamp), resolveNextHighlight (null/down/up/first/last/clamped/unknown) |
+| `CascadeEditorSlashIntegrationTest.kt` | Slash integration: registry coexistence (built-in + custom), custom override, custom execution alongside built-ins, session invalidation pure function (no session, healthy, drag, selection, anchor missing, different block deleted), full scenarios (drag start, anchor deletion) |

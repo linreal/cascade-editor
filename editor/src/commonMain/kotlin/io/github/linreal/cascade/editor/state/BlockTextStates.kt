@@ -139,6 +139,56 @@ public class BlockTextStates {
     }
 
     /**
+     * Returns true if a programmatic commit is pending for [blockId].
+     *
+     * Non-destructive peek — does not consume the entry. Use this when
+     * multiple observers need to know about a pending commit before the
+     * authoritative consumer calls [consumeProgrammaticCommit].
+     */
+    internal fun hasPendingProgrammaticCommit(blockId: BlockId): Boolean {
+        return pendingProgrammaticCommits.containsKey(blockId)
+    }
+
+    /**
+     * Replaces a visible-text range with [replacement] and updates the cursor.
+     *
+     * Registers the result as a programmatic commit so that
+     * `SpanMaintenanceTextObserver` skips/rebases this change.
+     *
+     * @param blockId Target block.
+     * @param start Start offset in visible-text coordinates (inclusive).
+     * @param endExclusive End offset in visible-text coordinates (exclusive).
+     * @param replacement Text to insert at the replaced range. Empty string = pure deletion.
+     * @param cursorPositionAfter Cursor position in visible-text coordinates after the edit.
+     *        When null, the cursor is placed at the end of the inserted replacement.
+     * @return The new visible text, or null if the block does not exist.
+     */
+    public fun replaceVisibleRange(
+        blockId: BlockId,
+        start: Int,
+        endExclusive: Int,
+        replacement: String,
+        cursorPositionAfter: Int? = null,
+    ): String? {
+        val state = states[blockId] ?: return null
+        val visible = state.text.toString().removePrefix(ZWSP)
+        val safeStart = start.coerceIn(0, visible.length)
+        val safeEnd = endExclusive.coerceIn(safeStart, visible.length)
+
+        val newVisible = visible.substring(0, safeStart) + replacement + visible.substring(safeEnd)
+        val cursor = cursorPositionAfter ?: (safeStart + replacement.length)
+
+        state.edit {
+            delete(0, length)
+            append("$ZWSP$newVisible")
+            selection = TextRange(cursor.coerceIn(0, newVisible.length) + 1) // +1 for ZWSP
+        }
+
+        pendingProgrammaticCommits[blockId] = newVisible
+        return newVisible
+    }
+
+    /**
      * Sets cursor position for a block.
      *
      * @param blockId Target block

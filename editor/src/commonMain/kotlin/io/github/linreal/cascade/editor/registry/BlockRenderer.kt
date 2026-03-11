@@ -11,6 +11,7 @@ import io.github.linreal.cascade.editor.action.FocusPreviousBlock
 import io.github.linreal.cascade.editor.action.MergeBlocks
 import io.github.linreal.cascade.editor.action.OpenSlashCommand
 import io.github.linreal.cascade.editor.action.SplitBlock
+import io.github.linreal.cascade.editor.state.SlashQueryRange
 import io.github.linreal.cascade.editor.action.StartDrag
 import io.github.linreal.cascade.editor.action.UpdateBlockContent
 import io.github.linreal.cascade.editor.core.Block
@@ -75,8 +76,12 @@ public interface BlockCallbacks {
 
     /**
      * Called when the user types '/' to open slash commands.
+     *
+     * @param blockId The anchor block where '/' was typed
+     * @param queryRange Visible-text range covering the '/' and any query characters
+     * @param initialQuery The query text after the leading '/' (empty at trigger time)
      */
-    public fun onSlashCommand(blockId: BlockId)
+    public fun onSlashCommand(blockId: BlockId, queryRange: SlashQueryRange, initialQuery: String = "")
 }
 
 /**
@@ -304,8 +309,8 @@ public open class DefaultBlockCallbacks(
         dispatch(StartDrag(blockId, touchOffsetY))
     }
 
-    override fun onSlashCommand(blockId: BlockId) {
-        dispatch(OpenSlashCommand(blockId))
+    override fun onSlashCommand(blockId: BlockId, queryRange: SlashQueryRange, initialQuery: String) {
+        dispatch(OpenSlashCommand(anchorBlockId = blockId, queryRange = queryRange, initialQuery = initialQuery))
     }
 }
 

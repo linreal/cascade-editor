@@ -3,14 +3,35 @@ package io.github.linreal.cascade.editor.state
 import androidx.compose.runtime.Immutable
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockId
+import io.github.linreal.cascade.editor.slash.SlashCommandId
 
 /**
- * State for slash command menu.
+ * Visible-text coordinate range for the slash query (including the leading `/`).
+ *
+ * Half-open interval: the character at [start] is included, the character at [endExclusive] is not.
+ */
+@Immutable
+public data class SlashQueryRange(
+    val start: Int,
+    val endExclusive: Int,
+)
+
+/**
+ * State for an active slash command session.
+ *
+ * @property anchorBlockId The block in which the `/` was typed.
+ * @property query The current search query (text after the leading `/`).
+ * @property queryRange Visible-text range covering the `/` and the query characters.
+ * @property navigationPath Stack of submenu IDs the user has navigated into. Empty = root menu.
+ * @property highlightedCommandId The currently highlighted item in the menu (for keyboard nav).
  */
 @Immutable
 public data class SlashCommandState(
+    val anchorBlockId: BlockId,
     val query: String,
-    val anchorBlockId: BlockId
+    val queryRange: SlashQueryRange,
+    val navigationPath: List<SlashCommandId> = emptyList(),
+    val highlightedCommandId: SlashCommandId? = null,
 )
 
 /**

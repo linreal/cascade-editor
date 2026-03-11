@@ -5,6 +5,9 @@ import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.BlockDescriptor
 import io.github.linreal.cascade.editor.registry.BlockRegistry
+import io.github.linreal.cascade.editor.slash.BuiltInBlockSlashBehavior
+import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandSpec
+import io.github.linreal.cascade.editor.slash.SlashCommandGroup
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -122,5 +125,127 @@ class BlockRegistryTest {
         val searchResults = registry.search("")
 
         assertEquals(allDescriptors.size, searchResults.size)
+    }
+
+    // -- Slash metadata tests --
+
+    @Test
+    fun `descriptors expose slash metadata when configured`() {
+        val registry = BlockRegistry.createDefault()
+
+        val paragraph = registry.getDescriptor("paragraph")!!
+        assertNotNull(paragraph.slash)
+        assertEquals("Basic Blocks", paragraph.slash!!.group.label)
+        assertEquals("basic_blocks", paragraph.slash!!.group.id)
+    }
+
+    @Test
+    fun `descriptors without slash metadata remain valid registry entries`() {
+        val registry = BlockRegistry.create()
+        val noSlash = BlockDescriptor(
+            typeId = "custom:plain",
+            displayName = "Plain",
+            description = "No slash",
+            factory = { id -> Block(id, BlockType.Paragraph, BlockContent.Text("")) }
+        )
+        registry.registerDescriptor(noSlash)
+
+        val descriptor = registry.getDescriptor("custom:plain")
+        assertNotNull(descriptor)
+        assertNull(descriptor.slash)
+        // Still searchable in BlockRegistry
+        assertEquals(1, registry.search("plain").size)
+    }
+
+    @Test
+    fun `all built-in descriptors have slash metadata`() {
+        val registry = BlockRegistry.createDefault()
+        val allDescriptors = registry.getAllDescriptors()
+
+        assertTrue(allDescriptors.isNotEmpty())
+        for (descriptor in allDescriptors) {
+            assertNotNull(
+                descriptor.slash,
+                "Built-in descriptor '${descriptor.typeId}' should have slash metadata"
+            )
+        }
+    }
+
+    @Test
+    fun `text-capable convertible blocks use ConvertInPlace`() {
+        val registry = BlockRegistry.createDefault()
+        val convertTypes = listOf(
+            "paragraph", "heading_1", "heading_2", "heading_3",
+            "heading_4", "heading_5", "heading_6",
+            "todo", "bullet_list", "numbered_list", "quote"
+        )
+
+        for (typeId in convertTypes) {
+            val descriptor = registry.getDescriptor(typeId)!!
+            assertEquals(
+                BuiltInBlockSlashBehavior.ConvertInPlace,
+                descriptor.slash!!.behavior,
+                "Expected ConvertInPlace for '$typeId'"
+            )
+        }
+    }
+
+    @Test
+    fun `code divider and image use AlwaysInsert`() {
+        val registry = BlockRegistry.createDefault()
+        val insertTypes = listOf("code", "divider", "image")
+
+        for (typeId in insertTypes) {
+            val descriptor = registry.getDescriptor(typeId)!!
+            assertEquals(
+                BuiltInBlockSlashBehavior.AlwaysInsert,
+                descriptor.slash!!.behavior,
+                "Expected AlwaysInsert for '$typeId'"
+            )
+        }
+    }
+
+    @Test
+    fun `divider and image are in Media group`() {
+        val registry = BlockRegistry.createDefault()
+
+        assertEquals("Media", registry.getDescriptor("divider")!!.slash!!.group.label)
+        assertEquals("Media", registry.getDescriptor("image")!!.slash!!.group.label)
+    }
+
+    @Test
+    fun `media group sorts after basic blocks group`() {
+        val registry = BlockRegistry.createDefault()
+
+        val basicOrder = registry.getDescriptor("paragraph")!!.slash!!.group.order
+        val mediaOrder = registry.getDescriptor("divider")!!.slash!!.group.order
+
+        assertTrue(
+            mediaOrder > basicOrder,
+            "Media group (order=$mediaOrder) should sort after Basic Blocks (order=$basicOrder)"
+        )
+    }
+
+    @Test
+    fun `custom descriptor with slash spec is preserved`() {
+        val registry = BlockRegistry.create()
+        val customGroup = SlashCommandGroup(id = "custom", label = "Custom", order = 99)
+        val customSpec = BuiltInSlashCommandSpec(
+            group = customGroup,
+            behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
+        )
+        val descriptor = BlockDescriptor(
+            typeId = "custom:widget",
+            displayName = "Widget",
+            description = "A custom widget",
+            slash = customSpec,
+            factory = { id -> Block(id, BlockType.Paragraph, BlockContent.Text("")) }
+        )
+        registry.registerDescriptor(descriptor)
+
+        val retrieved = registry.getDescriptor("custom:widget")!!
+        assertEquals(customSpec, retrieved.slash)
+        assertEquals("Custom", retrieved.slash!!.group.label)
+        assertEquals(BuiltInBlockSlashBehavior.AlwaysInsert, retrieved.slash!!.behavior)
     }
 }

@@ -12,12 +12,15 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import io.github.linreal.cascade.editor.action.CloseSlashCommand
 import io.github.linreal.cascade.editor.action.UpdateDragTarget
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
@@ -28,8 +31,13 @@ import io.github.linreal.cascade.editor.richtext.DefaultFormattingActions
 import io.github.linreal.cascade.editor.richtext.FormattingState
 import io.github.linreal.cascade.editor.richtext.SpanActionDispatcher
 import io.github.linreal.cascade.editor.richtext.rememberFormattingState
+import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandFactory
+import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
+import io.github.linreal.cascade.editor.slash.SlashCommandItem
+import io.github.linreal.cascade.editor.slash.SlashCommandRegistry
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
+import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.EditorStateHolder
 
 /**
@@ -58,6 +66,9 @@ import io.github.linreal.cascade.editor.state.EditorStateHolder
  *
  * @param stateHolder The state holder managing editor state
  * @param registry Block registry with renderers. Defaults to [createEditorRegistry].
+ * @param slashRegistry Slash command registry. Register custom [SlashCommandItem]s here to
+ *        make them appear alongside built-in block commands. Custom items override built-ins
+ *        on ID collisions. Defaults to an empty registry.
  * @param modifier Modifier for the editor container
  * @param toolbar Toolbar slot controlling what formatting toolbar is shown.
  *        [ToolbarSlot.Default] renders the built-in config-driven toolbar.
@@ -71,6 +82,7 @@ import io.github.linreal.cascade.editor.state.EditorStateHolder
 public fun CascadeEditor(
     stateHolder: EditorStateHolder,
     registry: BlockRegistry = remember { createEditorRegistry() },
+    slashRegistry: SlashCommandRegistry = remember { SlashCommandRegistry() },
     modifier: Modifier = Modifier,
     toolbar: ToolbarSlot = ToolbarSlot.Default(),
     onFormattingStateChanged: ((FormattingState) -> Unit)? = null,
@@ -80,6 +92,29 @@ public fun CascadeEditor(
     // Create and remember the text states holder
     val blockTextStates = remember { BlockTextStates() }
     val blockSpanStates = remember { BlockSpanStates() }
+    val slashExecutionScope = rememberCoroutineScope()
+    val slashExecutor = remember(
+        slashRegistry,
+        stateHolder,
+        blockTextStates,
+        blockSpanStates,
+        registry,
+        slashExecutionScope,
+    ) {
+        SlashCommandExecutor(
+            registry = slashRegistry,
+            stateHolder = stateHolder,
+            textStates = blockTextStates,
+            spanStates = blockSpanStates,
+            blockRegistry = registry,
+            executionScope = slashExecutionScope,
+        )
+    }
+
+    val builtInSlashItems = remember(registry, slashExecutor) {
+        val builtInFactory = BuiltInSlashCommandFactory(slashExecutor.builtInExecutor)
+        builtInFactory.generate(registry.getAllDescriptors())
+    }
 
     // Cleanup stale states when blocks change
     LaunchedEffect(state.blocks) {
@@ -87,6 +122,12 @@ public fun CascadeEditor(
         val textBlockIds = collectTextBlockIds(state.blocks)
         blockTextStates.cleanup(allBlockIds)
         blockSpanStates.cleanup(textBlockIds)
+    }
+
+    // Close slash session when drag, selection, or anchor deletion invalidates it.
+    LaunchedEffect(stateHolder) {
+        snapshotFlow { shouldInvalidateSlashSession(stateHolder.state) }
+            .collect { if (it) stateHolder.dispatch(CloseSlashCommand) }
     }
 
     // Create span action dispatcher for coordinated runtime + snapshot style updates
@@ -153,10 +194,44 @@ public fun CascadeEditor(
         }
     }
 
+    // Slash popup support: caret rect holder and search results for keyboard nav.
+    val slashCaretRectHolder = remember { SlashCaretRectHolder() }
+    val slashState = state.slashCommandState
+    val customSlashRootItems = slashRegistry.getRootItems()
+    val effectiveSlashRegistry = remember(builtInSlashItems, customSlashRootItems) {
+        createMergedSlashRegistry(
+            builtInItems = builtInSlashItems,
+            customItems = customSlashRootItems,
+        )
+    }
+    val slashPopupItems = remember(
+        slashState?.query,
+        slashState?.navigationPath,
+        effectiveSlashRegistry,
+    ) {
+        if (slashState != null) {
+            effectiveSlashRegistry.search(slashState.query, slashState.navigationPath)
+        } else {
+            emptyList()
+        }
+    }
+
+    // Empty search results invalidate slash mode per feature spec.
+    LaunchedEffect(slashState?.anchorBlockId, slashState?.query, slashState?.navigationPath, slashPopupItems) {
+        if (slashState != null && slashPopupItems.isEmpty()) {
+            stateHolder.dispatch(CloseSlashCommand)
+        }
+    }
+
     CompositionLocalProvider(
         LocalBlockTextStates provides blockTextStates,
         LocalBlockSpanStates provides blockSpanStates,
         LocalSpanActionDispatcher provides spanActionDispatcher,
+        LocalSlashCommandExecutor provides slashExecutor,
+        LocalSlashSessionAnchorBlockId provides slashState?.anchorBlockId,
+        LocalSlashHighlightedCommandId provides slashState?.highlightedCommandId,
+        LocalSlashCaretRect provides slashCaretRectHolder,
+        LocalSlashPopupItems provides slashPopupItems,
     ) {
         val lazyListState = rememberLazyListState()
 
@@ -173,6 +248,7 @@ public fun CascadeEditor(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .clipToBounds()
                     .blockDragGesture(
                         lazyListState = lazyListState,
                         dragOffsetY = dragOffsetY,
@@ -186,7 +262,7 @@ public fun CascadeEditor(
                     // its Scrollable modifier does not consume pointer events that
                     // belong to our drag handler. Auto-scroll uses dispatchRawDelta
                     // which bypasses gesture handling entirely.
-                    userScrollEnabled = state.dragState == null,
+                    userScrollEnabled = state.dragState == null && state.slashCommandState == null,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(
@@ -258,6 +334,15 @@ public fun CascadeEditor(
                         )
                     }
                 }
+
+                // Slash command popup overlay - shown when a slash session is active.
+                if (slashState != null && slashPopupItems.isNotEmpty()) {
+                    SlashCommandPopup(
+                        slashState = slashState,
+                        stateHolder = stateHolder,
+                        slashExecutor = slashExecutor,
+                    )
+                }
             }
 
          // Toolbar
@@ -286,4 +371,30 @@ internal fun collectTextBlockIds(blocks: List<Block>): Set<BlockId> {
         .filter { block -> block.type.supportsText && block.content is BlockContent.Text }
         .map { block -> block.id }
         .toSet()
+}
+
+/**
+ * Returns `true` when the current [EditorState] indicates the active slash session
+ * should be closed. Reasons: drag active, block selection active, or the anchor block
+ * no longer exists in the block list.
+ *
+ * Returns `false` when there is no active session (nothing to invalidate).
+ */
+internal fun shouldInvalidateSlashSession(state: EditorState): Boolean {
+    val slash = state.slashCommandState ?: return false
+    if (state.dragState != null) return true
+    if (state.selectedBlockIds.isNotEmpty()) return true
+    if (state.blocks.none { it.id == slash.anchorBlockId }) return true
+    return false
+}
+
+internal fun createMergedSlashRegistry(
+    builtInItems: List<SlashCommandItem>,
+    customItems: List<SlashCommandItem>,
+): SlashCommandRegistry {
+    return SlashCommandRegistry().apply {
+        // Built-ins register first, custom items override by ID when duplicated.
+        builtInItems.forEach(::register)
+        customItems.forEach(::register)
+    }
 }

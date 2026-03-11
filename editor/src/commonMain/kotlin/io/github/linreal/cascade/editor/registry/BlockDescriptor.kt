@@ -2,17 +2,19 @@ package io.github.linreal.cascade.editor.registry
 
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockId
+import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandSpec
 
 
 /**
- * Metadata describing a block type for registration, slash commands, and serialization.
+ * Metadata describing a block type for registration and serialization.
  *
  * @property typeId Unique identifier matching [BlockType.typeId]
  * @property displayName Human-readable name shown in UI
  * @property description Brief description for slash command menu
  * @property keywords Search keywords for slash command filtering
- * @property category Category for organizing in menus
- * @property icon Optional icon identifier
+ * @property icon Optional icon identifier for general registry use
+ * @property slash Slash-menu-specific metadata. Only descriptors with non-null [slash] will
+ *   appear as built-in slash entries. Grouping is sourced from [BuiltInSlashCommandSpec.group].
  * @property factory Creates a new block instance with a given ID
  */
 public data class BlockDescriptor(
@@ -21,6 +23,7 @@ public data class BlockDescriptor(
     val description: String,
     val keywords: List<String> = emptyList(),
     val icon: String? = null,
+    val slash: BuiltInSlashCommandSpec? = null,
     val factory: (BlockId) -> Block
 ) {
     /**
