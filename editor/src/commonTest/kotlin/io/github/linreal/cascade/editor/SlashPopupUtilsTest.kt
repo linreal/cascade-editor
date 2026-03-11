@@ -153,7 +153,9 @@ class SlashPopupUtilsTest {
         val offset = SlashPopupDefaults.calculatePopupOffset(
             caretRect = caret,
             popupHeight = 200f,
+            popupWidth = 280f,
             viewportHeight = 600f,
+            viewportWidth = 1080f,
             gap = 4f,
         )
         assertEquals(50f, offset.x)
@@ -166,7 +168,9 @@ class SlashPopupUtilsTest {
         val offset = SlashPopupDefaults.calculatePopupOffset(
             caretRect = caret,
             popupHeight = 200f,
+            popupWidth = 280f,
             viewportHeight = 600f,
+            viewportWidth = 1080f,
             gap = 4f,
         )
         assertEquals(10f, offset.x)
@@ -180,7 +184,9 @@ class SlashPopupUtilsTest {
         val offset = SlashPopupDefaults.calculatePopupOffset(
             caretRect = caret,
             popupHeight = 800f,
+            popupWidth = 280f,
             viewportHeight = 100f,
+            viewportWidth = 1080f,
             gap = 4f,
         )
         assertEquals(0f, offset.x)
@@ -193,11 +199,43 @@ class SlashPopupUtilsTest {
         val offset = SlashPopupDefaults.calculatePopupOffset(
             caretRect = caret,
             popupHeight = 100f,
+            popupWidth = 280f,
             viewportHeight = 200f,
+            viewportWidth = 1080f,
             gap = 0f,
         )
         assertEquals(0f, offset.x)
         assertEquals(20f, offset.y) // bottom(20) + gap(0)
+    }
+
+    @Test
+    fun `calculatePopupOffset - clamps X when caret near right edge`() {
+        val caret = Rect(left = 900f, top = 100f, right = 902f, bottom = 120f)
+        val offset = SlashPopupDefaults.calculatePopupOffset(
+            caretRect = caret,
+            popupHeight = 200f,
+            popupWidth = 280f,
+            viewportHeight = 600f,
+            viewportWidth = 1080f,
+            gap = 4f,
+        )
+        assertEquals(800f, offset.x) // 1080 - 280 = 800
+        assertEquals(124f, offset.y)
+    }
+
+    @Test
+    fun `calculatePopupOffset - X stays at caret when popup fits`() {
+        val caret = Rect(left = 100f, top = 100f, right = 102f, bottom = 120f)
+        val offset = SlashPopupDefaults.calculatePopupOffset(
+            caretRect = caret,
+            popupHeight = 200f,
+            popupWidth = 280f,
+            viewportHeight = 600f,
+            viewportWidth = 1080f,
+            gap = 4f,
+        )
+        assertEquals(100f, offset.x)
+        assertEquals(124f, offset.y)
     }
 
     // =========================================================================

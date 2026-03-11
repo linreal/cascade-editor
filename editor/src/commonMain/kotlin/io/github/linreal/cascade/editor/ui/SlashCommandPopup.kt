@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.action.HighlightSlashCommand
 import io.github.linreal.cascade.editor.action.NavigateSlashBack
+import io.github.linreal.cascade.editor.loge
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
 import io.github.linreal.cascade.editor.slash.SlashCommandItem
 import io.github.linreal.cascade.editor.state.EditorStateHolder
@@ -90,8 +91,9 @@ internal fun SlashCommandPopup(
 
     // Track the parent Box position in window coordinates for offset calculation.
     var parentWindowOffset by remember { mutableStateOf(Offset.Zero) }
-    // Viewport height from the editor content Box (the actual available space).
+    // Viewport dimensions from the editor content Box (the actual available space).
     var viewportHeight by remember { mutableStateOf(Float.MAX_VALUE) }
+    var viewportWidth by remember { mutableStateOf(Float.MAX_VALUE) }
 
     Box(
         modifier = Modifier
@@ -100,6 +102,7 @@ internal fun SlashCommandPopup(
                 // The popup's parent Box shares the editor content Box size.
                 coords.parentLayoutCoordinates?.let { parent ->
                     viewportHeight = parent.size.height.toFloat()
+                    viewportWidth = parent.size.width.toFloat()
                 }
             }
             .focusProperties { canFocus = false },
@@ -112,11 +115,15 @@ internal fun SlashCommandPopup(
             bottom = caretRect.bottom - parentWindowOffset.y,
         )
 
-        val popupOffset = remember(localCaretRect, estimatedPopupHeightPx, viewportHeight) {
+        val popupWidthPx = with(density) { widthDp.toPx() }
+
+        val popupOffset = remember(localCaretRect, estimatedPopupHeightPx, popupWidthPx, viewportHeight, viewportWidth) {
             SlashPopupDefaults.calculatePopupOffset(
                 caretRect = localCaretRect,
                 popupHeight = estimatedPopupHeightPx,
+                popupWidth = popupWidthPx,
                 viewportHeight = viewportHeight,
+                viewportWidth = viewportWidth,
                 gap = gapPx,
             )
         }
@@ -164,21 +171,6 @@ internal fun SlashCommandPopup(
                             HorizontalDivider(
                                 color = Color(0xFFEEEEEE),
                                 modifier = Modifier.padding(vertical = 4.dp),
-                            )
-                        }
-                    }
-                    if (group.groupLabel != null) {
-                        item(key = "group-label-$index-${group.groupLabel}") {
-                            Text(
-                                text = group.groupLabel,
-                                fontSize = 11.sp,
-                                color = Color(0xFF9E9E9E),
-                                modifier = Modifier.padding(
-                                    start = 12.dp,
-                                    end = 12.dp,
-                                    top = if (index > 0) 4.dp else 0.dp,
-                                    bottom = 4.dp,
-                                ),
                             )
                         }
                     }

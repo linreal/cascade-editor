@@ -43,7 +43,7 @@ internal fun SlashCommandRow(
             .background(backgroundColor)
             .clickable(onClick = onClick)
             .focusProperties { canFocus = false }
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(
@@ -51,25 +51,16 @@ internal fun SlashCommandRow(
         ) {
             Text(
                 text = item.title,
-                fontSize = 16.sp,
+                fontSize = 12.sp,
                 color = Color(0xFF212121),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (item.description.isNotEmpty()) {
-                Text(
-                    text = item.description,
-                    fontSize = 12.sp,
-                    color = Color(0xFF757575),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
         }
         if (item is SlashCommandMenu) {
             Text(
                 text = "\u203A", // single right-pointing angle quotation mark
-                fontSize = 18.sp,
+                fontSize = 16.sp,
                 color = Color(0xFF9E9E9E),
                 modifier = Modifier.padding(start = 8.dp),
             )

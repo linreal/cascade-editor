@@ -3,6 +3,7 @@ package io.github.linreal.cascade.editor.ui
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import io.github.linreal.cascade.editor.loge
 import io.github.linreal.cascade.editor.slash.SlashCommandGroup
 import io.github.linreal.cascade.editor.slash.SlashCommandId
 import io.github.linreal.cascade.editor.slash.SlashCommandItem
@@ -25,7 +26,7 @@ internal data class SlashGroupedItems(
 internal object SlashPopupDefaults {
 
     /** Maximum popup height in dp. */
-    const val MAX_HEIGHT_DP: Int = 300
+    const val MAX_HEIGHT_DP: Int = 150
 
     /** Popup width in dp. */
     const val WIDTH_DP: Int = 280
@@ -37,7 +38,7 @@ internal object SlashPopupDefaults {
     const val CONTENT_PADDING_DP: Int = 8
 
     /** Row height in dp. */
-    const val ROW_HEIGHT_DP: Int = 48
+    const val ROW_HEIGHT_DP: Int = 32
 
     /** Back header height in dp. */
     const val BACK_HEADER_HEIGHT_DP: Int = 40
@@ -93,22 +94,28 @@ internal object SlashPopupDefaults {
      * Calculates the popup offset relative to the popup container origin.
      *
      * Places the popup below the caret. If insufficient space below, flips above.
-     * The X coordinate follows the caret's left edge.
+     * The X coordinate follows the caret's left edge, clamped so the popup stays
+     * fully within the viewport width.
      *
      * @param caretRect The caret rectangle in the popup container's coordinate space.
-     * @param popupHeight The measured or estimated popup height.
-     * @param viewportHeight The available viewport height.
+     * @param popupHeight The measured or estimated popup height in px.
+     * @param popupWidth The popup width in px.
+     * @param viewportHeight The available viewport height in px.
+     * @param viewportWidth The available viewport width in px.
      * @param gap Vertical gap between caret and popup edge.
      * @return The top-left offset for the popup.
      */
     fun calculatePopupOffset(
         caretRect: Rect,
         popupHeight: Float,
+        popupWidth: Float,
         viewportHeight: Float,
+        viewportWidth: Float,
         gap: Float = 0f,
     ): Offset {
         val belowY = caretRect.bottom + gap
         val aboveY = caretRect.top - gap - popupHeight
+        loge("1 calculatePopupOffset, belowY: ${belowY}, aboveY: ${aboveY}, popupHeight: ${popupHeight}, viewportHeight: ${viewportHeight}")
 
         val y = if (belowY + popupHeight <= viewportHeight) {
             belowY
@@ -118,8 +125,11 @@ internal object SlashPopupDefaults {
             // Neither fits perfectly; prefer below, clamped to 0.
             belowY.coerceAtLeast(0f)
         }
+        loge("2 calculatePopupOffset, y: ${y}")
 
-        return Offset(caretRect.left, y)
+        val x = caretRect.left.coerceIn(0f, (viewportWidth - popupWidth).coerceAtLeast(0f))
+
+        return Offset(x, y)
     }
 
     /**

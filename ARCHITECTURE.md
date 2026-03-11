@@ -11,6 +11,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Shared text field | `ui/renderers/TextBlockField.kt` | `TextBlockField()` |
 | Text renderer | `ui/renderers/TextBlockRenderer.kt` | `TextBlockRenderer` |
 | Todo renderer | `ui/renderers/TodoBlockRenderer.kt` | `TodoBlockRenderer` |
+| Divider renderer | `ui/renderers/DividerBlockRenderer.kt` | `DividerBlockRenderer` |
 | Editor registry setup | `ui/EditorRegistry.kt` | `createEditorRegistry()` |
 | Drop indicator | `ui/DropIndicator.kt` | `DropIndicator()` |
 | Drag preview | `ui/DragPreview.kt` | `DragPreview()` |
@@ -184,7 +185,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Todo checkbox UI | Done | `TodoBlockRenderer` with `Checkbox` + `TextBlockField`, `ToggleTodo` action |
 | Bullet/numbered list prefixes | Not done | Render as plain paragraphs |
 | Quote visual styling | Not done | No left border / background |
-| Divider renderer | Not done | Type exists, no UI |
+| Divider renderer | Done | `DividerBlockRenderer` — horizontal line, 1dp, vertical padding |
 | Image renderer | Not done | Type exists, no UI |
 | Rich text spans — domain model | Done | `TextSpan`, `SpanStyle`, `BlockContent.Text.spans` |
 | Rich text spans — algorithms | Done | `SpanAlgorithms`: normalize, adjust, split/merge, apply/remove/toggle, query |

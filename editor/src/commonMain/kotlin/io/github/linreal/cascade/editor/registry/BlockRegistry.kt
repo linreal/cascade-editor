@@ -239,7 +239,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             description = "Horizontal line separator",
             keywords = listOf("hr", "line", "separator", "horizontal"),
             slash = BuiltInSlashCommandSpec(
-                group = MediaGroup,
+                group = BasicBlocksGroup,
                 behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
             ),
             factory = { id ->

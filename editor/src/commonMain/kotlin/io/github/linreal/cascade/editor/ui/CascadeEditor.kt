@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import io.github.linreal.cascade.editor.action.CloseSlashCommand
@@ -247,6 +248,7 @@ public fun CascadeEditor(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .clipToBounds()
                     .blockDragGesture(
                         lazyListState = lazyListState,
                         dragOffsetY = dragOffsetY,
@@ -260,7 +262,7 @@ public fun CascadeEditor(
                     // its Scrollable modifier does not consume pointer events that
                     // belong to our drag handler. Auto-scroll uses dispatchRawDelta
                     // which bypasses gesture handling entirely.
-                    userScrollEnabled = state.dragState == null,
+                    userScrollEnabled = state.dragState == null && state.slashCommandState == null,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(
