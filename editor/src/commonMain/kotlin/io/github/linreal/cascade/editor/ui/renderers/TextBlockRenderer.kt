@@ -1,6 +1,9 @@
 package io.github.linreal.cascade.editor.ui.renderers
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
@@ -26,9 +29,14 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
         modifier: Modifier,
         callbacks: BlockCallbacks
     ) {
-        val textStyle = remember(block.type) {
+        val targetStyle = remember(block.type) {
             getTextStyleForType(block.type)
         }
+        val animatedFontSize by animateFloatAsState(
+            targetValue = targetStyle.fontSize.value,
+            animationSpec = tween(durationMillis = 300),
+        )
+        val textStyle = targetStyle.copy(fontSize = animatedFontSize.sp)
 
         TextBlockField(
             block = block,
