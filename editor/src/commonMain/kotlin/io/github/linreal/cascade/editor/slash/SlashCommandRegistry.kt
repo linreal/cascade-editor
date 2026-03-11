@@ -13,12 +13,10 @@ package io.github.linreal.cascade.editor.slash
  * fields (e.g. a backing `MutableList` passed as `keywords`) after calling [register] will
  * **not** be reflected in search results. Re-register the item to update the index.
  *
- * Thread-safety: internal collections are guarded by a lock so `register()` may be called
- * from different coroutines.
+ * **Threading:** this class is **not** thread-safe. All access must happen on the main thread,
+ * which is the standard Compose threading model.
  */
 public class SlashCommandRegistry {
-
-    private val lock = Any()
 
     private val rootItems = linkedMapOf<SlashCommandId, IndexedItem>()
 
@@ -27,18 +25,14 @@ public class SlashCommandRegistry {
      * If an item with the same [SlashCommandItem.id] is already registered, it is replaced.
      */
     public fun register(item: SlashCommandItem) {
-        synchronized(lock) {
-            rootItems[item.id] = IndexedItem(item)
-        }
+        rootItems[item.id] = IndexedItem(item)
     }
 
     /**
      * Returns all root-level items in registration order.
      */
     public fun getRootItems(): List<SlashCommandItem> {
-        synchronized(lock) {
-            return rootItems.values.map { it.item }
-        }
+        return rootItems.values.map { it.item }
     }
 
     /**
@@ -55,10 +49,7 @@ public class SlashCommandRegistry {
         query: String,
         path: List<SlashCommandId> = emptyList(),
     ): List<SlashCommandItem> {
-        val indexed: List<IndexedItem>
-        synchronized(lock) {
-            indexed = resolveLevel(path) ?: return emptyList()
-        }
+        val indexed: List<IndexedItem> = resolveLevel(path) ?: return emptyList()
         if (query.isEmpty()) return indexed.map { it.item }
         val q = query.lowercase()
         return indexed

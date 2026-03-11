@@ -4,11 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.action.ToggleTodo
@@ -16,6 +19,7 @@ import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderer
+import io.github.linreal.cascade.editor.ui.utils.Spacers
 
 /**
  * Renderer for Todo blocks — a checkbox alongside formattable text.
@@ -37,18 +41,20 @@ public class TodoBlockRenderer : BlockRenderer<BlockType.Todo> {
 
         Row(
             modifier = modifier,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
         ) {
-            Checkbox(
-                checked = todoType.checked,
-                onCheckedChange = { callbacks.dispatch(ToggleTodo(block.id)) },
-                modifier = Modifier,
-            )
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                Checkbox(
+                    checked = todoType.checked,
+                    onCheckedChange = { callbacks.dispatch(ToggleTodo(block.id)) },
+                )
+            }
+            Spacers.Horizontal(12.dp)
             TextBlockField(
                 block = block,
                 isFocused = isFocused,
                 textStyle = TextStyle(fontSize = 16.sp),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).padding(top = 3.dp),
                 callbacks = callbacks,
             )
         }
