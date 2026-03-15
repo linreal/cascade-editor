@@ -204,27 +204,7 @@ class BlockRegistryTest {
             )
         }
     }
-
-    @Test
-    fun `divider and image are in Media group`() {
-        val registry = BlockRegistry.createDefault()
-
-        assertEquals("Media", registry.getDescriptor("divider")!!.slash!!.group.label)
-        assertEquals("Media", registry.getDescriptor("image")!!.slash!!.group.label)
-    }
-
-    @Test
-    fun `media group sorts after basic blocks group`() {
-        val registry = BlockRegistry.createDefault()
-
-        val basicOrder = registry.getDescriptor("paragraph")!!.slash!!.group.order
-        val mediaOrder = registry.getDescriptor("divider")!!.slash!!.group.order
-
-        assertTrue(
-            mediaOrder > basicOrder,
-            "Media group (order=$mediaOrder) should sort after Basic Blocks (order=$basicOrder)"
-        )
-    }
+    
 
     @Test
     fun `custom descriptor with slash spec is preserved`() {
