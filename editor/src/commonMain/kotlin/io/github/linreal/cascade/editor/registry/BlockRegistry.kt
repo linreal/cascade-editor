@@ -192,7 +192,7 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
                 behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
             ),
             factory = { id ->
-                Block(id, BlockType.NumberedList, BlockContent.Text(""))
+                Block(id, BlockType.NumberedList(number = 1), BlockContent.Text(""))
             }
         )
     )

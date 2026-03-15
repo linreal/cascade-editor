@@ -34,9 +34,13 @@ import io.github.linreal.cascade.editor.action.UpdateSlashCommandSession
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
+import io.github.linreal.cascade.editor.action.ConvertBlockType
+import io.github.linreal.cascade.editor.action.UpdateBlockContent
+import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.richtext.SpanMapper
 import io.github.linreal.cascade.editor.richtext.SpanMaintenanceTextObserver
 import io.github.linreal.cascade.editor.slash.SlashCommandTextObserver
+import io.github.linreal.cascade.editor.ui.observers.ListAutoDetectObserver
 import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
 import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
@@ -113,6 +117,35 @@ internal fun TextBlockField(
             initialVisibleText = textFieldState.visibleText(),
         )
     }
+    val isCurrentlyList = block.type is BlockType.BulletList || block.type is BlockType.NumberedList
+    val listAutoDetectObserver = remember(block.id, isCurrentlyList, callbacks, blockTextStates, blockSpanStates) {
+        ListAutoDetectObserver(
+            isListBlock = { isCurrentlyList },
+            onListDetected = { newType, prefixLength ->
+                // Remove trigger prefix and adjust spans
+                blockSpanStates.adjustForRangeReplacement(
+                    blockId = block.id,
+                    start = 0,
+                    endExclusive = prefixLength,
+                    replacementLength = 0,
+                )
+                val newText = blockTextStates.replaceVisibleRange(
+                    blockId = block.id,
+                    start = 0,
+                    endExclusive = prefixLength,
+                    replacement = "",
+                    cursorPositionAfter = 0,
+                )
+                // Sync snapshot with cleaned text + adjusted spans before converting
+                if (newText != null) {
+                    val spans = blockSpanStates.getSpans(block.id)
+                    callbacks.dispatch(UpdateBlockContent(block.id, BlockContent.Text(newText, spans)))
+                }
+                callbacks.dispatch(ConvertBlockType(block.id, newType))
+            },
+            initialVisibleText = textFieldState.visibleText(),
+        )
+    }
 
     LaunchedEffect(isFocused) {
         if (isFocused) {
@@ -131,7 +164,7 @@ internal fun TextBlockField(
 
     // Combined text + selection observation keeps ordering deterministic.
     // We observe raw text snapshots and only derive visible text when text actually changes.
-    LaunchedEffect(textFieldState, spanTextObserver, slashTextObserver) {
+    LaunchedEffect(textFieldState, spanTextObserver, slashTextObserver, listAutoDetectObserver) {
         var lastObservedVisibleText = textFieldState.visibleText()
         var lastObservedTextSnapshot = textFieldState.text
 
@@ -150,6 +183,7 @@ internal fun TextBlockField(
                 if (currentVisibleText != lastObservedVisibleText) {
                     slashTextObserver.onTextChanged(currentVisibleText, isProgrammatic, cursor)
                     spanTextObserver.onCommittedVisibleText(currentVisibleText)
+                    listAutoDetectObserver.onTextChanged(currentVisibleText, isProgrammatic)
                     lastObservedVisibleText = currentVisibleText
                 } else {
                     // Snapshot identity can change without visible text mutation.

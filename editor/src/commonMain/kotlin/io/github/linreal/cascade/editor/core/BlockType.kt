@@ -68,9 +68,13 @@ public sealed interface BlockType {
     }
 
     /**
-     * Numbered list item.
+     * Numbered list item with sequential number.
      */
-    public data object NumberedList : BlockType {
+    public data class NumberedList(val number: Int = 1) : BlockType {
+        init {
+            require(number >= 1) { "NumberedList number must be >= 1, got $number" }
+        }
+
         override val typeId: String = "numbered_list"
         override val displayName: String = "Numbered List"
         override val supportsText: Boolean = true

@@ -6,6 +6,7 @@ import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
+import io.github.linreal.cascade.editor.core.renumberNumberedLists
 import io.github.linreal.cascade.editor.richtext.SpanAlgorithms
 import io.github.linreal.cascade.editor.slash.SlashCommandId
 import io.github.linreal.cascade.editor.state.DragState
@@ -42,7 +43,7 @@ public data class InsertBlock(
         val newBlocks = state.blocks.toMutableList().apply {
             add(index, block)
         }
-        return state.copy(blocks = newBlocks)
+        return state.copy(blocks = renumberNumberedLists(newBlocks))
     }
 }
 
@@ -64,7 +65,7 @@ public data class InsertBlockAfter(
         val newBlocks = state.blocks.toMutableList().apply {
             add(index, block)
         }
-        return state.copy(blocks = newBlocks)
+        return state.copy(blocks = renumberNumberedLists(newBlocks))
     }
 }
 
@@ -79,7 +80,7 @@ public data class DeleteBlocks(
         val newFocusedId = if (state.focusedBlockId in blockIds) null else state.focusedBlockId
         val newSelectedIds = state.selectedBlockIds - blockIds
         return state.copy(
-            blocks = newBlocks,
+            blocks = renumberNumberedLists(newBlocks),
             focusedBlockId = newFocusedId,
             selectedBlockIds = newSelectedIds
         )
@@ -140,7 +141,7 @@ public data class ConvertBlockType(
         val newBlocks = state.blocks.map { block ->
             if (block.id == blockId) block.withType(newType) else block
         }
-        return state.copy(blocks = newBlocks)
+        return state.copy(blocks = renumberNumberedLists(newBlocks))
     }
 }
 
@@ -158,7 +159,7 @@ public data class MoveBlocks(
         val newBlocks = remainingBlocks.toMutableList().apply {
             addAll(targetIndex, blocksToMove)
         }
-        return state.copy(blocks = newBlocks)
+        return state.copy(blocks = renumberNumberedLists(newBlocks))
     }
 }
 
@@ -196,7 +197,7 @@ public data class MergeBlocks(
             }
             .filterNot { it.id == sourceId }
         return state.copy(
-            blocks = newBlocks,
+            blocks = renumberNumberedLists(newBlocks),
             focusedBlockId = targetId,
             selectedBlockIds = state.selectedBlockIds - sourceId
         )
@@ -221,7 +222,7 @@ public data class ReplaceBlock(
             state.selectedBlockIds
         }
         return state.copy(
-            blocks = newBlocks,
+            blocks = renumberNumberedLists(newBlocks),
             focusedBlockId = newFocusedId,
             selectedBlockIds = newSelectedIds
         )
@@ -600,9 +601,16 @@ public data class SplitBlock(
             afterText.length,
         )
 
+        // Propagate list type to new block; non-list types default to Paragraph
+        val newBlockType = when (val srcType = block.type) {
+            is BlockType.NumberedList -> BlockType.NumberedList(number = srcType.number + 1)
+            is BlockType.BulletList -> BlockType.BulletList
+            else -> BlockType.Paragraph
+        }
+
         val newBlock = Block(
             id = newBlockId ?: BlockId.generate(),
-            type = BlockType.Paragraph,
+            type = newBlockType,
             content = BlockContent.Text(afterText, resolvedAfterSpans)
         )
 
@@ -613,7 +621,7 @@ public data class SplitBlock(
         }
 
         return state.copy(
-            blocks = newBlocks,
+            blocks = renumberNumberedLists(newBlocks),
             focusedBlockId = newBlock.id
         )
     }

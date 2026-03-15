@@ -66,6 +66,15 @@ public data class Block(
         )
 
         /**
+         * Creates a new numbered list item block.
+         */
+        public fun numberedList(text: String = "", number: Int = 1): Block = Block(
+            id = BlockId.generate(),
+            type = BlockType.NumberedList(number),
+            content = BlockContent.Text(text)
+        )
+
+        /**
          * Creates a new divider block.
          */
         public fun divider(): Block = Block(

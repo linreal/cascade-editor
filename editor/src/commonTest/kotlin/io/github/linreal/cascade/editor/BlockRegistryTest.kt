@@ -204,7 +204,7 @@ class BlockRegistryTest {
             )
         }
     }
-    
+
 
     @Test
     fun `custom descriptor with slash spec is preserved`() {
