@@ -115,8 +115,6 @@ internal object SlashPopupDefaults {
     ): Offset {
         val belowY = caretRect.bottom + gap
         val aboveY = caretRect.top - gap - popupHeight
-        loge("1 calculatePopupOffset, belowY: ${belowY}, aboveY: ${aboveY}, popupHeight: ${popupHeight}, viewportHeight: ${viewportHeight}")
-
         val y = if (belowY + popupHeight <= viewportHeight) {
             belowY
         } else if (aboveY >= 0f) {
@@ -125,8 +123,6 @@ internal object SlashPopupDefaults {
             // Neither fits perfectly; prefer below, clamped to 0.
             belowY.coerceAtLeast(0f)
         }
-        loge("2 calculatePopupOffset, y: ${y}")
-
         val x = caretRect.left.coerceIn(0f, (viewportWidth - popupWidth).coerceAtLeast(0f))
 
         return Offset(x, y)
