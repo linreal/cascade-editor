@@ -35,11 +35,13 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Span style | `core/SpanStyle.kt` | `sealed interface SpanStyle` |
 | Text span | `core/TextSpan.kt` | `TextSpan` |
 | Block ID | `core/BlockId.kt` | `BlockId` |
+| List utilities | `core/ListUtils.kt` | `renumberNumberedLists()` (internal) |
 | Registry | `registry/BlockRegistry.kt` | `BlockRegistry` |
 | Descriptors | `registry/BlockDescriptor.kt` | `BlockDescriptor` |
 | Built-in slash spec | `slash/BuiltInSlashCommandSpec.kt` | `BuiltInSlashCommandSpec`, `BuiltInBlockSlashBehavior` |
 | Built-in slash factory | `slash/BuiltInSlashCommandFactory.kt` | `BuiltInSlashCommandFactory` |
 | Slash editor host | `slash/SlashCommandEditorHost.kt` | `SlashCommandEditorHost` (internal) |
+| List auto-detect observer | `ui/observers/ListAutoDetectObserver.kt` | `ListAutoDetectObserver` (internal) |
 | Slash text observer | `slash/SlashCommandTextObserver.kt` | `SlashCommandTextObserver` (internal) |
 | Renderer interface | `registry/BlockRenderer.kt` | `BlockRenderer<T>`, `BlockCallbacks`, `DefaultBlockCallbacks` |
 | Rich text serialization | `serialization/RichTextSchema.kt` | `RichTextSchema` |
@@ -85,7 +87,7 @@ All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/ed
 
 ## Core Concepts
 
-**Block** = id (`BlockId`) + type (`BlockType`) + content (`BlockContent`). Factory methods: `Block.paragraph()`, `Block.heading()`, `Block.todo()`, etc.
+**Block** = id (`BlockId`) + type (`BlockType`) + content (`BlockContent`). Factory methods: `Block.paragraph()`, `Block.heading()`, `Block.todo()`, `Block.bulletList()`, `Block.numberedList()`, `Block.divider()`.
 
 **BlockType** — sealed interface:
 
@@ -95,7 +97,7 @@ All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/ed
 | `Heading(level)` | Yes | H1-H6 |
 | `Todo(checked)` | Yes | Has `checked` boolean |
 | `BulletList` | Yes | |
-| `NumberedList` | Yes | |
+| `NumberedList(number)` | Yes | Has `number` int (>= 1, default 1) |
 | `Quote` | Yes | |
 | `Code(language)` | Yes | Has `language` string |
 | `Divider` | No | |
@@ -183,7 +185,9 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Slash commands (text observer) | Done | `SlashCommandTextObserver` detects `/`, tracks `queryRange`, dismisses on invalid state; wired in `TextBlockField` via combined text+selection `snapshotFlow` |
 | Slash commands (UI) | Done | Popup overlay with grouped items, caret-relative positioning, keyboard nav (Up/Down/Enter/Escape), auto-highlight, submenu back-nav, `focusProperties { canFocus = false }` pattern |
 | Todo checkbox UI | Done | `TodoBlockRenderer` with `Checkbox` + `TextBlockField`, `ToggleTodo` action |
-| Bullet/numbered list prefixes | Not done | Render as plain paragraphs |
+| Bullet/numbered list prefixes | Done | `TextBlockRenderer` wraps list types in `Row` with non-editable prefix gutter (`•` / `N.`) |
+| List auto-detection | Done | `ListAutoDetectObserver` detects `- ` and `N. ` triggers, converts block type, removes prefix text |
+| List enter/backspace behavior | Done | Empty-enter exits to Paragraph, backspace at start un-lists, enter in list continues list type |
 | Quote visual styling | Not done | No left border / background |
 | Divider renderer | Done | `DividerBlockRenderer` — horizontal line, 1dp, vertical padding |
 | Image renderer | Not done | Type exists, no UI |
@@ -226,7 +230,10 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `SlashCommandEditorHostTest.kt` | replaceQueryText (removal, replacement, span preservation, snapshot sync), updateAnchorText, replaceAnchorBlock (id preservation, focus), insertBlockAfterAnchor (ordering, focus), focusBlock, closeMenu, graceful no-ops for missing anchors |
 | `SlashCommandTextObserverTest.kt` | Session opening (start/middle/empty, non-slash, deletion, replacement), updating (progressive, spaces), closing (slash deletion, cursor outside range, focus lost), programmatic changes (skip, preserve, remove), paste/multi-char excluded, notifySessionClosed, range shifting (insert/delete before slash), within-range edits, after-range cursor, identical no-op, successive open-after-close (~30 tests) |
 | `BlockRegistryTest.kt` | Descriptor search, block creation, slash metadata exposure, behavior policies per built-in type |
-| `BlockTest.kt` | Core block creation |
+| `BlockTest.kt` | Core block creation, NumberedList type validation |
+| `ListUtilsTest.kt` | renumberNumberedLists: empty, no numbered, single/multiple runs, non-1 base, referential equality, bullet breaks run |
+| `ListAutoDetectObserverTest.kt` | Bullet trigger (dash+space), numbered trigger (N.+space), no-trigger guards (mid-text, already-list, paste, programmatic, zero, deletion, replacement) |
+| `ListIntegrationTest.kt` | Multi-step list scenarios: auto-detect→enter→sequential numbers, delete middle→renumber, empty-enter exit→paragraph+renumber, backspace un-list→run split, move blocks→both runs renumber, mid-text split with spans, full lifecycle |
 | `RichTextSchemaTest.kt` | Span serialization round-trips, normalization, version handling |
 | `SpanAlgorithmsTest.kt` | Normalize, edit adjust, split/merge, apply/remove/toggle, style queries (~62 tests) |
 | `BlockSpanStatesTest.kt` | Lifecycle, edit adjustment, split/merge transfer, style ops, queries, pending styles, aliasing/invariant edge cases (~57 tests) |

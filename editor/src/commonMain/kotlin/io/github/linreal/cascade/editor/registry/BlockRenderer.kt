@@ -3,6 +3,7 @@ package io.github.linreal.cascade.editor.registry
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import io.github.linreal.cascade.editor.action.ClearFocus
+import io.github.linreal.cascade.editor.action.ConvertBlockType
 import io.github.linreal.cascade.editor.action.DeleteBlock
 import io.github.linreal.cascade.editor.action.EditorAction
 import io.github.linreal.cascade.editor.action.FocusBlock
@@ -113,10 +114,23 @@ public open class DefaultBlockCallbacks(
     override fun onEnter(blockId: BlockId, cursorPosition: Int) {
         val textStates = blockTextStates
         val newBlockId = BlockId.generate()
+        val state = stateProvider?.invoke()
+        val currentBlock = state?.getBlock(blockId)
+
+        // Empty list item exit: convert to Paragraph instead of splitting.
+        val blockType = currentBlock?.type
+        if (blockType is BlockType.BulletList || blockType is BlockType.NumberedList) {
+            val visibleText = textStates?.getVisibleText(blockId)
+                ?: (currentBlock.content as? BlockContent.Text)?.text.orEmpty()
+            if (visibleText.isEmpty()) {
+                dispatch(ConvertBlockType(blockId, BlockType.Paragraph))
+                return
+            }
+        }
 
         if (textStates != null) {
             // Get current text from TextFieldState (source of truth)
-            val fallbackText = (stateProvider?.invoke()?.getBlock(blockId)?.content as? BlockContent.Text)?.text.orEmpty()
+            val fallbackText = (currentBlock?.content as? BlockContent.Text)?.text.orEmpty()
             val currentText = textStates.getVisibleText(blockId) ?: fallbackText
             val splitPosition = cursorPosition.coerceIn(0, currentText.length)
 
@@ -179,6 +193,13 @@ public open class DefaultBlockCallbacks(
     override fun onBackspaceAtStart(blockId: BlockId) {
         val state = stateProvider?.invoke()
         val textStates = blockTextStates
+
+        // List item un-list: convert to Paragraph instead of merging with previous block.
+        val blockType = state?.getBlock(blockId)?.type
+        if (blockType is BlockType.BulletList || blockType is BlockType.NumberedList) {
+            dispatch(ConvertBlockType(blockId, BlockType.Paragraph))
+            return
+        }
 
         if (state != null) {
             val blockIndex = state.indexOfBlock(blockId)

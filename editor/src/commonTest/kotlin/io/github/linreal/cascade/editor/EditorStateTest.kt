@@ -10,6 +10,7 @@ import io.github.linreal.cascade.editor.core.TextSpan
 import io.github.linreal.cascade.editor.state.EditorState
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -636,6 +637,181 @@ class EditorStateTest {
 
         val content = removed.blocks[0].content as BlockContent.Text
         assertTrue(content.spans.isEmpty())
+    }
+
+    // Renumbering wiring tests
+
+    private fun createNumberedBlock(id: String, text: String = "", number: Int = 1): Block = Block(
+        id = BlockId(id),
+        type = BlockType.NumberedList(number),
+        content = BlockContent.Text(text),
+    )
+
+    @Test
+    fun `SplitBlock on numbered list propagates type and renumbers`() {
+        val blocks = listOf(
+            createNumberedBlock("a", "First", 1),
+            createNumberedBlock("b", "SecondThird", 2),
+            createNumberedBlock("c", "Fourth", 3),
+        )
+        val state = EditorState.withBlocks(blocks)
+
+        val newState = SplitBlock(
+            blockId = BlockId("b"),
+            atPosition = 6,
+        ).reduce(state)
+
+        // 4 blocks now: a(1), b(2), new(3), c(4) — all NumberedList, sequential
+        assertEquals(4, newState.blocks.size)
+        assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
+        assertEquals(2, (newState.blocks[1].type as BlockType.NumberedList).number)
+        assertIs<BlockType.NumberedList>(newState.blocks[2].type)
+        assertEquals(3, (newState.blocks[2].type as BlockType.NumberedList).number)
+        assertEquals(4, (newState.blocks[3].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `SplitBlock on bullet list propagates BulletList type`() {
+        val bullet = Block(
+            id = BlockId("b"),
+            type = BlockType.BulletList,
+            content = BlockContent.Text("HelloWorld"),
+        )
+        val state = EditorState.withBlocks(listOf(bullet))
+
+        val newState = SplitBlock(BlockId("b"), atPosition = 5).reduce(state)
+
+        assertEquals(2, newState.blocks.size)
+        assertEquals(BlockType.BulletList, newState.blocks[0].type)
+        assertEquals(BlockType.BulletList, newState.blocks[1].type)
+    }
+
+    @Test
+    fun `SplitBlock on non-list block creates Paragraph`() {
+        val heading = Block(
+            id = BlockId("h"),
+            type = BlockType.Heading(2),
+            content = BlockContent.Text("HelloWorld"),
+        )
+        val state = EditorState.withBlocks(listOf(heading))
+
+        val newState = SplitBlock(BlockId("h"), atPosition = 5).reduce(state)
+
+        assertEquals(2, newState.blocks.size)
+        assertEquals(BlockType.Paragraph, newState.blocks[1].type)
+    }
+
+    @Test
+    fun `DeleteBlock on numbered list renumbers remaining`() {
+        val blocks = listOf(
+            createNumberedBlock("a", "First", 1),
+            createNumberedBlock("b", "Second", 2),
+            createNumberedBlock("c", "Third", 3),
+        )
+        val state = EditorState.withBlocks(blocks)
+
+        val newState = DeleteBlock(BlockId("b")).reduce(state)
+
+        assertEquals(2, newState.blocks.size)
+        assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
+        assertEquals(2, (newState.blocks[1].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `DeleteBlocks on numbered list renumbers remaining`() {
+        val blocks = listOf(
+            createNumberedBlock("a", "First", 1),
+            createNumberedBlock("b", "Second", 2),
+            createNumberedBlock("c", "Third", 3),
+            createNumberedBlock("d", "Fourth", 4),
+        )
+        val state = EditorState.withBlocks(blocks)
+
+        val newState = DeleteBlocks(setOf(BlockId("b"), BlockId("c"))).reduce(state)
+
+        assertEquals(2, newState.blocks.size)
+        assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
+        assertEquals(2, (newState.blocks[1].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `MoveBlocks renumbers both source and destination runs`() {
+        val blocks = listOf(
+            createNumberedBlock("a", "A", 1),
+            createNumberedBlock("b", "B", 2),
+            createNumberedBlock("c", "C", 3),
+            createTestBlock("sep", "---"),
+            createNumberedBlock("d", "D", 1),
+            createNumberedBlock("e", "E", 2),
+        )
+        val state = EditorState.withBlocks(blocks)
+
+        // Move block "b" to after separator (index 3 in remaining list after removal)
+        val newState = MoveBlocks(setOf(BlockId("b")), toIndex = 3).reduce(state)
+
+        // Source run: a(1), c(2)
+        assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
+        assertEquals(2, (newState.blocks[1].type as BlockType.NumberedList).number)
+        // Destination run: b should be inserted and run renumbered
+        // After move: a, c, sep, b, d, e
+        val destRunStart = 3 // b
+        assertIs<BlockType.NumberedList>(newState.blocks[destRunStart].type)
+        val bNum = (newState.blocks[destRunStart].type as BlockType.NumberedList).number
+        val dNum = (newState.blocks[destRunStart + 1].type as BlockType.NumberedList).number
+        val eNum = (newState.blocks[destRunStart + 2].type as BlockType.NumberedList).number
+        assertEquals(bNum + 1, dNum)
+        assertEquals(bNum + 2, eNum)
+    }
+
+    @Test
+    fun `ConvertBlockType to NumberedList renumbers run`() {
+        val blocks = listOf(
+            createNumberedBlock("a", "First", 1),
+            createTestBlock("b", "Second"),  // Paragraph in the middle
+            createNumberedBlock("c", "Third", 1),
+        )
+        val state = EditorState.withBlocks(blocks)
+
+        // Convert paragraph to NumberedList — joins the two runs
+        val newState = ConvertBlockType(BlockId("b"), BlockType.NumberedList()).reduce(state)
+
+        assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
+        assertEquals(2, (newState.blocks[1].type as BlockType.NumberedList).number)
+        assertEquals(3, (newState.blocks[2].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `ConvertBlockType from NumberedList renumbers remaining run`() {
+        val blocks = listOf(
+            createNumberedBlock("a", "First", 1),
+            createNumberedBlock("b", "Second", 2),
+            createNumberedBlock("c", "Third", 3),
+        )
+        val state = EditorState.withBlocks(blocks)
+
+        // Convert middle item away from NumberedList — splits the run
+        val newState = ConvertBlockType(BlockId("b"), BlockType.Paragraph).reduce(state)
+
+        assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
+        assertEquals(BlockType.Paragraph, newState.blocks[1].type)
+        // Block c starts a new run with its original base
+        assertEquals(3, (newState.blocks[2].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `MergeBlocks on numbered list renumbers remaining`() {
+        val blocks = listOf(
+            createNumberedBlock("a", "First", 1),
+            createNumberedBlock("b", "Second", 2),
+            createNumberedBlock("c", "Third", 3),
+        )
+        val state = EditorState.withBlocks(blocks)
+
+        val newState = MergeBlocks(sourceId = BlockId("b"), targetId = BlockId("a")).reduce(state)
+
+        assertEquals(2, newState.blocks.size)
+        assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
+        assertEquals(2, (newState.blocks[1].type as BlockType.NumberedList).number)
     }
 
     @Test

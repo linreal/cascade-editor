@@ -1,7 +1,10 @@
 package io.github.linreal.cascade.editor
 
 import androidx.compose.ui.text.TextRange
+import io.github.linreal.cascade.editor.action.ConvertBlockType
+import io.github.linreal.cascade.editor.action.DeleteBlock
 import io.github.linreal.cascade.editor.action.EditorAction
+import io.github.linreal.cascade.editor.action.MergeBlocks
 import io.github.linreal.cascade.editor.action.SplitBlock
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
@@ -15,6 +18,7 @@ import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorState
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -27,6 +31,7 @@ class EnterContinuationTest {
         text: String,
         spans: List<TextSpan> = emptyList(),
         pendingStyles: Set<SpanStyle>? = null,
+        blockType: BlockType = BlockType.Paragraph,
     ) {
         val dispatched = mutableListOf<EditorAction>()
         val blockTextStates = BlockTextStates()
@@ -36,7 +41,7 @@ class EnterContinuationTest {
         init {
             val block = Block(
                 id = BlockId("block-1"),
-                type = BlockType.Paragraph,
+                type = blockType,
                 content = BlockContent.Text(text, spans),
             )
             state = EditorState.withBlocks(listOf(block))
@@ -58,6 +63,30 @@ class EnterContinuationTest {
             val split = dispatched.filterIsInstance<SplitBlock>().firstOrNull()
             return split?.newBlockId
         }
+    }
+
+    /** Harness for multi-block scenarios (e.g., backspace merge regression). */
+    private class MultiBlockHarness(blocks: List<Block>) {
+        val dispatched = mutableListOf<EditorAction>()
+        val blockTextStates = BlockTextStates()
+        val blockSpanStates = BlockSpanStates()
+        val state = EditorState.withBlocks(blocks)
+
+        init {
+            for (block in blocks) {
+                val text = (block.content as? BlockContent.Text)?.text.orEmpty()
+                val spans = (block.content as? BlockContent.Text)?.spans.orEmpty()
+                blockTextStates.getOrCreate(block.id, text)
+                blockSpanStates.getOrCreate(block.id, spans, text.length)
+            }
+        }
+
+        val callbacks = DefaultBlockCallbacks(
+            dispatchFn = { dispatched.add(it) },
+            stateProvider = { state },
+            blockTextStates = blockTextStates,
+            blockSpanStates = blockSpanStates,
+        )
     }
 
  // Pending styles transferred to new block
@@ -315,5 +344,183 @@ class EnterContinuationTest {
             splitAction.newBlockSpans,
             "Runtime split and dispatched payload must reference the same split target ID",
         )
+    }
+
+    // --- Empty list item exit (Task 6) ---
+
+    @Test
+    fun `enter on empty BulletList dispatches ConvertBlockType to Paragraph`() {
+        val harness = TestHarness(text = "", blockType = BlockType.BulletList)
+
+        harness.callbacks.onEnter(blockId, cursorPosition = 0)
+
+        val convert = harness.dispatched.filterIsInstance<ConvertBlockType>().singleOrNull()
+        assertNotNull(convert, "Expected ConvertBlockType action")
+        assertEquals(blockId, convert.blockId)
+        assertEquals(BlockType.Paragraph, convert.newType)
+        // No SplitBlock should be dispatched
+        assertTrue(harness.dispatched.none { it is SplitBlock })
+    }
+
+    @Test
+    fun `enter on empty NumberedList dispatches ConvertBlockType to Paragraph`() {
+        val harness = TestHarness(text = "", blockType = BlockType.NumberedList(3))
+
+        harness.callbacks.onEnter(blockId, cursorPosition = 0)
+
+        val convert = harness.dispatched.filterIsInstance<ConvertBlockType>().singleOrNull()
+        assertNotNull(convert, "Expected ConvertBlockType action")
+        assertEquals(blockId, convert.blockId)
+        assertEquals(BlockType.Paragraph, convert.newType)
+        assertTrue(harness.dispatched.none { it is SplitBlock })
+    }
+
+    @Test
+    fun `enter on empty Paragraph still splits normally`() {
+        val harness = TestHarness(text = "", blockType = BlockType.Paragraph)
+
+        harness.callbacks.onEnter(blockId, cursorPosition = 0)
+
+        // Should dispatch SplitBlock, NOT ConvertBlockType
+        assertTrue(harness.dispatched.any { it is SplitBlock })
+        assertTrue(harness.dispatched.none { it is ConvertBlockType })
+    }
+
+    @Test
+    fun `enter on non-empty BulletList splits normally`() {
+        val harness = TestHarness(text = "Item text", blockType = BlockType.BulletList)
+
+        harness.callbacks.onEnter(blockId, cursorPosition = 9)
+
+        // Non-empty list item → split, not convert
+        assertTrue(harness.dispatched.any { it is SplitBlock })
+        assertTrue(harness.dispatched.none { it is ConvertBlockType })
+    }
+
+    @Test
+    fun `enter on non-empty NumberedList splits normally`() {
+        val harness = TestHarness(text = "Item text", blockType = BlockType.NumberedList(2))
+
+        harness.callbacks.onEnter(blockId, cursorPosition = 9)
+
+        assertTrue(harness.dispatched.any { it is SplitBlock })
+        assertTrue(harness.dispatched.none { it is ConvertBlockType })
+    }
+
+    @Test
+    fun `empty list exit renumbers remaining items via ConvertBlockType reducer`() {
+        // Verify at reducer level: converting middle NumberedList to Paragraph splits the run.
+        // renumberNumberedLists preserves the first block's number as the base of each run.
+        val blocks = listOf(
+            Block(BlockId("a"), BlockType.NumberedList(1), BlockContent.Text("First")),
+            Block(BlockId("b"), BlockType.NumberedList(2), BlockContent.Text("")),
+            Block(BlockId("c"), BlockType.NumberedList(3), BlockContent.Text("Third")),
+            Block(BlockId("d"), BlockType.NumberedList(4), BlockContent.Text("Fourth")),
+        )
+        val state = EditorState.withBlocks(blocks)
+
+        val newState = ConvertBlockType(BlockId("b"), BlockType.Paragraph).reduce(state)
+
+        // Block b is now Paragraph
+        assertEquals(BlockType.Paragraph, newState.blocks[1].type)
+        // Block a stays 1 (single-item run, base preserved)
+        assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
+        // Block c starts a new run with its original number (3) as base
+        assertIs<BlockType.NumberedList>(newState.blocks[2].type)
+        assertEquals(3, (newState.blocks[2].type as BlockType.NumberedList).number)
+        // Block d is renumbered sequentially from c's base: 3+1=4
+        assertEquals(4, (newState.blocks[3].type as BlockType.NumberedList).number)
+    }
+
+    // --- Backspace at start of list item un-lists (Task 7) ---
+
+    @Test
+    fun `backspace at start of BulletList converts to Paragraph`() {
+        val harness = TestHarness(text = "Some text", blockType = BlockType.BulletList)
+
+        harness.callbacks.onBackspaceAtStart(blockId)
+
+        val convert = harness.dispatched.filterIsInstance<ConvertBlockType>().singleOrNull()
+        assertNotNull(convert, "Expected ConvertBlockType action")
+        assertEquals(blockId, convert.blockId)
+        assertEquals(BlockType.Paragraph, convert.newType)
+        // No merge actions should be dispatched
+        assertTrue(harness.dispatched.none { it is DeleteBlock })
+        assertTrue(harness.dispatched.none { it is MergeBlocks })
+    }
+
+    @Test
+    fun `backspace at start of NumberedList converts to Paragraph`() {
+        val harness = TestHarness(text = "Item text", blockType = BlockType.NumberedList(5))
+
+        harness.callbacks.onBackspaceAtStart(blockId)
+
+        val convert = harness.dispatched.filterIsInstance<ConvertBlockType>().singleOrNull()
+        assertNotNull(convert, "Expected ConvertBlockType action")
+        assertEquals(blockId, convert.blockId)
+        assertEquals(BlockType.Paragraph, convert.newType)
+        assertTrue(harness.dispatched.none { it is DeleteBlock })
+        assertTrue(harness.dispatched.none { it is MergeBlocks })
+    }
+
+    @Test
+    fun `backspace at start of empty BulletList converts to Paragraph`() {
+        val harness = TestHarness(text = "", blockType = BlockType.BulletList)
+
+        harness.callbacks.onBackspaceAtStart(blockId)
+
+        val convert = harness.dispatched.filterIsInstance<ConvertBlockType>().singleOrNull()
+        assertNotNull(convert)
+        assertEquals(BlockType.Paragraph, convert.newType)
+    }
+
+    @Test
+    fun `backspace at start of Paragraph merges with previous block`() {
+        val prev = Block(BlockId("prev"), BlockType.Paragraph, BlockContent.Text("Hello"))
+        val current = Block(blockId, BlockType.Paragraph, BlockContent.Text("World"))
+        val harness = MultiBlockHarness(listOf(prev, current))
+
+        harness.callbacks.onBackspaceAtStart(blockId)
+
+        // Should merge (DeleteBlock dispatched), NOT convert
+        assertTrue(harness.dispatched.none { it is ConvertBlockType })
+        assertTrue(harness.dispatched.any { it is DeleteBlock })
+    }
+
+    @Test
+    fun `backspace at start of Heading does not convert to Paragraph`() {
+        val prev = Block(BlockId("prev"), BlockType.Paragraph, BlockContent.Text("Hello"))
+        val current = Block(blockId, BlockType.Heading(2), BlockContent.Text("Title"))
+        val harness = MultiBlockHarness(listOf(prev, current))
+
+        harness.callbacks.onBackspaceAtStart(blockId)
+
+        // Should merge with previous, not convert
+        assertTrue(harness.dispatched.none { it is ConvertBlockType })
+        assertTrue(harness.dispatched.any { it is DeleteBlock })
+    }
+
+    @Test
+    fun `backspace un-list preserves text via ConvertBlockType reducer`() {
+        // Reducer-level: ConvertBlockType only changes type, text stays intact
+        val block = Block(blockId, BlockType.BulletList, BlockContent.Text("Keep this text"))
+        val state = EditorState.withBlocks(listOf(block))
+
+        val newState = ConvertBlockType(blockId, BlockType.Paragraph).reduce(state)
+
+        assertEquals(BlockType.Paragraph, newState.blocks[0].type)
+        assertEquals("Keep this text", (newState.blocks[0].content as BlockContent.Text).text)
+    }
+
+    @Test
+    fun `backspace un-list preserves spans via ConvertBlockType reducer`() {
+        val spans = listOf(TextSpan(0, 4, SpanStyle.Bold))
+        val block = Block(blockId, BlockType.NumberedList(1), BlockContent.Text("Bold", spans))
+        val state = EditorState.withBlocks(listOf(block))
+
+        val newState = ConvertBlockType(blockId, BlockType.Paragraph).reduce(state)
+
+        assertEquals(BlockType.Paragraph, newState.blocks[0].type)
+        assertEquals(spans, (newState.blocks[0].content as BlockContent.Text).spans)
     }
 }
