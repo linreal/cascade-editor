@@ -53,8 +53,8 @@ class FormattingIntegrationTest {
         dragState: DragState? = null,
     ) {
         val dispatched = mutableListOf<EditorAction>()
-        val blockTextStates = BlockTextStates()
-        val blockSpanStates = BlockSpanStates()
+        val textStates = BlockTextStates()
+        val spanStates = BlockSpanStates()
         val stateHolder = EditorStateHolder(
             EditorState(
                 blocks = blocks,
@@ -70,13 +70,13 @@ class FormattingIntegrationTest {
                 dispatched.add(action)
                 stateHolder.dispatch(action)
             },
-            blockTextStates = blockTextStates,
-            blockSpanStates = blockSpanStates,
+            textStates = textStates,
+            spanStates = spanStates,
         )
 
         val formattingActions = DefaultFormattingActions(
             stateHolder = stateHolder,
-            blockTextStates = blockTextStates,
+            textStates = textStates,
             spanActionDispatcher = spanActionDispatcher,
         )
 
@@ -86,8 +86,8 @@ class FormattingIntegrationTest {
                 stateHolder.dispatch(action)
             },
             stateProvider = { stateHolder.state },
-            blockTextStates = blockTextStates,
-            blockSpanStates = blockSpanStates,
+            textStates = textStates,
+            spanStates = spanStates,
         )
 
         /**
@@ -101,9 +101,9 @@ class FormattingIntegrationTest {
             selectionStart: Int = 0,
             selectionEnd: Int = selectionStart,
         ) {
-            blockTextStates.getOrCreate(blockId, text)
-            blockSpanStates.getOrCreate(blockId, spans, text.length)
-            val tfs = blockTextStates.get(blockId)!!
+            textStates.getOrCreate(blockId, text)
+            spanStates.getOrCreate(blockId, spans, text.length)
+            val tfs = textStates.get(blockId)!!
             tfs.edit { selection = TextRange(selectionStart + 1, selectionEnd + 1) }
         }
 
@@ -119,14 +119,14 @@ class FormattingIntegrationTest {
             val hasBlockSelection = state.selectedBlockIds.isNotEmpty()
             val isDragging = state.dragState != null
 
-            val tfs = blockId?.let { blockTextStates.get(it) }
+            val tfs = blockId?.let { textStates.get(it) }
             // Simulate visibleSelection: raw selection - 1, clamped to 0
             val rawSel = tfs?.selection ?: TextRange(0, 0)
             val selStart = (rawSel.start - 1).coerceAtLeast(0)
             val selEnd = (rawSel.end - 1).coerceAtLeast(0)
 
-            val spans = blockId?.let { blockSpanStates.getSpans(it) } ?: emptyList()
-            val pendingStyles = blockId?.let { blockSpanStates.getPendingStyles(it) }
+            val spans = blockId?.let { spanStates.getSpans(it) } ?: emptyList()
+            val pendingStyles = blockId?.let { spanStates.getPendingStyles(it) }
 
             return FormattingStateCalculator.compute(
                 focusedBlockId = blockId,
@@ -191,7 +191,7 @@ class FormattingIntegrationTest {
         val block = Block(blockId, BlockType.Paragraph, BlockContent.Text(""))
         val harness = Harness(blocks = listOf(block), focusedBlockId = blockId)
         harness.initBlock(blockId, "", selectionStart = 0)
-        harness.blockSpanStates.setPendingStyles(blockId, setOf(SpanStyle.Bold))
+        harness.spanStates.setPendingStyles(blockId, setOf(SpanStyle.Bold))
 
         val state = harness.computeFormattingState()
         assertTrue(state.canFormat)
@@ -247,7 +247,7 @@ class FormattingIntegrationTest {
 
         harness.formattingActions.toggleStyle(SpanStyle.Bold)
         assertTrue(harness.dispatched.isEmpty())
-        assertTrue(harness.blockSpanStates.getSpans(blockId).isEmpty())
+        assertTrue(harness.spanStates.getSpans(blockId).isEmpty())
     }
 
  // 4. Same-style cursor move produces structurally equal state
@@ -262,7 +262,7 @@ class FormattingIntegrationTest {
         val state1 = harness.computeFormattingState()
 
         // Move cursor to different position within the same bold range
-        harness.blockTextStates.get(blockId)!!.edit { selection = TextRange(6, 6) } // visible pos 5
+        harness.textStates.get(blockId)!!.edit { selection = TextRange(6, 6) } // visible pos 5
         val state2 = harness.computeFormattingState()
 
         // Structural equality: no redundant observer/callback notifications
@@ -281,7 +281,7 @@ class FormattingIntegrationTest {
         assertEquals(StyleStatus.FullyActive, styled.styleStatusOf(SpanStyle.Bold))
 
         // Move cursor outside bold range (position 8, position-1=7, outside [0,5))
-        harness.blockTextStates.get(blockId)!!.edit { selection = TextRange(9, 9) } // visible pos 8
+        harness.textStates.get(blockId)!!.edit { selection = TextRange(9, 9) } // visible pos 8
         val unstyled = harness.computeFormattingState()
         assertEquals(StyleStatus.Absent, unstyled.styleStatusOf(SpanStyle.Bold))
 
@@ -308,14 +308,14 @@ class FormattingIntegrationTest {
         assertNotNull(newBlockId)
 
         // New block's pending styles should carry Bold continuation
-        val pendingOnNew = harness.blockSpanStates.getPendingStyles(newBlockId)
+        val pendingOnNew = harness.spanStates.getPendingStyles(newBlockId)
         assertNotNull(pendingOnNew)
         assertTrue(SpanStyle.Bold in pendingOnNew)
 
         // Simulate focus moving to new block (as SplitBlock reducer does)
         // Initialize text state for new block (empty text, cursor at 0)
-        harness.blockTextStates.getOrCreate(newBlockId, "")
-        harness.blockTextStates.get(newBlockId)!!.edit { selection = TextRange(1, 1) } // raw 1 = visible 0
+        harness.textStates.getOrCreate(newBlockId, "")
+        harness.textStates.get(newBlockId)!!.edit { selection = TextRange(1, 1) } // raw 1 = visible 0
 
         // Compute formatting state for new block
         val state = FormattingStateCalculator.compute(
@@ -325,8 +325,8 @@ class FormattingIntegrationTest {
             isDragging = false,
             visibleSelectionStart = 0,
             visibleSelectionEnd = 0,
-            spans = harness.blockSpanStates.getSpans(newBlockId),
-            pendingStyles = harness.blockSpanStates.getPendingStyles(newBlockId),
+            spans = harness.spanStates.getSpans(newBlockId),
+            pendingStyles = harness.spanStates.getPendingStyles(newBlockId),
             trackedStyles = defaultTracked,
         )
 
@@ -536,7 +536,7 @@ class FormattingIntegrationTest {
         harness.callbacks.onBackspaceAtStart(b2)
 
         // After merge: b1 should have "HelloWorld" with Bold[0,5) + Italic[5,10)
-        val mergedSpans = harness.blockSpanStates.getSpans(b1)
+        val mergedSpans = harness.spanStates.getSpans(b1)
         assertEquals(2, mergedSpans.size)
         assertTrue(mergedSpans.any { it.style == SpanStyle.Bold && it.start == 0 && it.end == 5 })
         assertTrue(mergedSpans.any { it.style == SpanStyle.Italic && it.start == 5 && it.end == 10 })
@@ -550,7 +550,7 @@ class FormattingIntegrationTest {
             visibleSelectionStart = 5,
             visibleSelectionEnd = 5,
             spans = mergedSpans,
-            pendingStyles = harness.blockSpanStates.getPendingStyles(b1),
+            pendingStyles = harness.spanStates.getPendingStyles(b1),
             trackedStyles = defaultTracked,
         )
         assertEquals(StyleStatus.FullyActive, state.styleStatusOf(SpanStyle.Bold))
@@ -571,11 +571,11 @@ class FormattingIntegrationTest {
 
         harness.callbacks.onDeleteAtEnd(b1)
 
-        val mergedSpans = harness.blockSpanStates.getSpans(b1)
+        val mergedSpans = harness.spanStates.getSpans(b1)
         assertEquals(2, mergedSpans.size)
         assertTrue(mergedSpans.any { it.style == SpanStyle.Bold && it.start == 0 && it.end == 5 })
         assertTrue(mergedSpans.any { it.style == SpanStyle.Italic && it.start == 5 && it.end == 10 })
-        assertEquals(null, harness.blockSpanStates.get(b2))
+        assertEquals(null, harness.spanStates.get(b2))
 
         val snapshotMerged = harness.stateHolder.state.getBlock(b1)?.content as? BlockContent.Text
         assertNotNull(snapshotMerged)
@@ -603,7 +603,7 @@ class FormattingIntegrationTest {
         harness.formattingActions.applyStyle(SpanStyle.Bold)
 
         // Runtime
-        val runtimeSpans = harness.blockSpanStates.getSpans(blockId)
+        val runtimeSpans = harness.spanStates.getSpans(blockId)
         assertEquals(1, runtimeSpans.size)
         assertEquals(TextSpan(0, 5, SpanStyle.Bold), runtimeSpans[0])
 
@@ -625,7 +625,7 @@ class FormattingIntegrationTest {
         harness.formattingActions.removeStyle(SpanStyle.Bold)
 
         // Runtime: Bold removed from [0,5), remaining [5,11)
-        val runtimeSpans = harness.blockSpanStates.getSpans(blockId)
+        val runtimeSpans = harness.spanStates.getSpans(blockId)
         assertEquals(1, runtimeSpans.size)
         assertEquals(TextSpan(5, 11, SpanStyle.Bold), runtimeSpans[0])
 

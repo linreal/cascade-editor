@@ -19,7 +19,7 @@ import io.github.linreal.cascade.editor.ui.visibleSelection
 @Stable
 internal class DefaultFormattingActions(
     private val stateHolder: EditorStateHolder,
-    private val blockTextStates: BlockTextStates,
+    private val textStates: BlockTextStates,
     private val spanActionDispatcher: SpanActionDispatcher,
 ) : FormattingActions {
 
@@ -53,7 +53,7 @@ internal class DefaultFormattingActions(
         if (state.selectedBlockIds.isNotEmpty()) return null
         if (state.dragState != null) return null
 
-        val textFieldState = blockTextStates.get(blockId) ?: return null
+        val textFieldState = textStates.get(blockId) ?: return null
         val sel = textFieldState.visibleSelection()
 
         return FormattingContext(

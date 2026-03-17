@@ -65,6 +65,12 @@ import io.github.linreal.cascade.editor.state.EditorStateHolder
  * internal [Scrollable] modifier does not compete for pointer events.
  *
  * @param stateHolder The state holder managing editor state
+ * @param textStates Runtime text field states. Pass your own instance to access
+ *        live text from outside the composition (e.g., for save/load). Defaults to
+ *        an internally remembered instance.
+ * @param spanStates Runtime rich-text span states. Pass your own instance to access
+ *        live spans from outside the composition (e.g., for save/load). Defaults to
+ *        an internally remembered instance.
  * @param registry Block registry with renderers. Defaults to [createEditorRegistry].
  * @param slashRegistry Slash command registry. Register custom [SlashCommandItem]s here to
  *        make them appear alongside built-in block commands. Custom items override built-ins
@@ -81,6 +87,8 @@ import io.github.linreal.cascade.editor.state.EditorStateHolder
 @Composable
 public fun CascadeEditor(
     stateHolder: EditorStateHolder,
+    textStates: BlockTextStates = remember { BlockTextStates() },
+    spanStates: BlockSpanStates = remember { BlockSpanStates() },
     registry: BlockRegistry = remember { createEditorRegistry() },
     slashRegistry: SlashCommandRegistry = remember { SlashCommandRegistry() },
     modifier: Modifier = Modifier,
@@ -89,23 +97,20 @@ public fun CascadeEditor(
 ) {
     val state = stateHolder.state
 
-    // Create and remember the text states holder
-    val blockTextStates = remember { BlockTextStates() }
-    val blockSpanStates = remember { BlockSpanStates() }
     val slashExecutionScope = rememberCoroutineScope()
     val slashExecutor = remember(
         slashRegistry,
         stateHolder,
-        blockTextStates,
-        blockSpanStates,
+        textStates,
+        spanStates,
         registry,
         slashExecutionScope,
     ) {
         SlashCommandExecutor(
             registry = slashRegistry,
             stateHolder = stateHolder,
-            textStates = blockTextStates,
-            spanStates = blockSpanStates,
+            textStates = textStates,
+            spanStates = spanStates,
             blockRegistry = registry,
             executionScope = slashExecutionScope,
         )
@@ -120,8 +125,8 @@ public fun CascadeEditor(
     LaunchedEffect(state.blocks) {
         val allBlockIds = state.blocks.map { it.id }.toSet()
         val textBlockIds = collectTextBlockIds(state.blocks)
-        blockTextStates.cleanup(allBlockIds)
-        blockSpanStates.cleanup(textBlockIds)
+        textStates.cleanup(allBlockIds)
+        spanStates.cleanup(textBlockIds)
     }
 
     // Close slash session when drag, selection, or anchor deletion invalidates it.
@@ -131,21 +136,21 @@ public fun CascadeEditor(
     }
 
     // Create span action dispatcher for coordinated runtime + snapshot style updates
-    val spanActionDispatcher = remember(stateHolder, blockTextStates, blockSpanStates) {
+    val spanActionDispatcher = remember(stateHolder, textStates, spanStates) {
         SpanActionDispatcher(
             dispatchFn = { action -> stateHolder.dispatch(action) },
-            blockTextStates = blockTextStates,
-            blockSpanStates = blockSpanStates,
+            textStates = textStates,
+            spanStates = spanStates,
         )
     }
 
     // Create callbacks with state access and text states for proper merge handling
-    val callbacks = remember(stateHolder, blockTextStates, blockSpanStates) {
+    val callbacks = remember(stateHolder, textStates, spanStates) {
         DefaultBlockCallbacks(
             dispatchFn = { action -> stateHolder.dispatch(action) },
             stateProvider = { stateHolder.state },
-            blockTextStates = blockTextStates,
-            blockSpanStates = blockSpanStates,
+            textStates = textStates,
+            spanStates = spanStates,
         )
     }
 
@@ -165,8 +170,8 @@ public fun CascadeEditor(
     val formattingState = if (needsFormattingState) {
         rememberFormattingState(
             stateHolder = stateHolder,
-            blockTextStates = blockTextStates,
-            blockSpanStates = blockSpanStates,
+            textStates = textStates,
+            spanStates = spanStates,
             trackedStyles = trackedStyles,
         )
     } else {
@@ -174,10 +179,10 @@ public fun CascadeEditor(
     }
 
     val formattingActions = if (needsFormattingState) {
-        remember(stateHolder, blockTextStates, spanActionDispatcher) {
+        remember(stateHolder, textStates, spanActionDispatcher) {
             DefaultFormattingActions(
                 stateHolder = stateHolder,
-                blockTextStates = blockTextStates,
+                textStates = textStates,
                 spanActionDispatcher = spanActionDispatcher,
             )
         }
@@ -224,8 +229,8 @@ public fun CascadeEditor(
     }
 
     CompositionLocalProvider(
-        LocalBlockTextStates provides blockTextStates,
-        LocalBlockSpanStates provides blockSpanStates,
+        LocalBlockTextStates provides textStates,
+        LocalBlockSpanStates provides spanStates,
         LocalSpanActionDispatcher provides spanActionDispatcher,
         LocalSlashCommandExecutor provides slashExecutor,
         LocalSlashSessionAnchorBlockId provides slashState?.anchorBlockId,
@@ -273,8 +278,8 @@ public fun CascadeEditor(
                         val isSelected = block.id in state.selectedBlockIds
                         val isDragging = state.dragState?.draggingBlockIds?.contains(block.id) == true
 
-                        // Look up renderer for this block type
-                        val renderer = registry.getRenderer(block.type.typeId)
+                        // Look up renderer for this block type (includes unknown-block fallback)
+                        val renderer = registry.getRenderer(block.type)
 
                         renderer?.Render(
                             block = block,

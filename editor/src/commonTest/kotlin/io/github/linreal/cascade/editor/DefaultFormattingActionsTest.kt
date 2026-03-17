@@ -23,20 +23,20 @@ import kotlin.test.assertTrue
 
 class DefaultFormattingActionsTest {
 
-    private val blockTextStates = BlockTextStates()
-    private val blockSpanStates = BlockSpanStates()
+    private val textStates = BlockTextStates()
+    private val spanStates = BlockSpanStates()
     private val dispatchedActions = mutableListOf<EditorAction>()
     private val stateHolder = EditorStateHolder()
 
     private val spanActionDispatcher = SpanActionDispatcher(
         dispatchFn = { dispatchedActions.add(it) },
-        blockTextStates = blockTextStates,
-        blockSpanStates = blockSpanStates,
+        textStates = textStates,
+        spanStates = spanStates,
     )
 
     private val actions = DefaultFormattingActions(
         stateHolder = stateHolder,
-        blockTextStates = blockTextStates,
+        textStates = textStates,
         spanActionDispatcher = spanActionDispatcher,
     )
 
@@ -57,10 +57,10 @@ class DefaultFormattingActionsTest {
         stateHolder.setState(
             EditorState.withBlocks(listOf(block)).copy(focusedBlockId = blockId)
         )
-        val tfs = blockTextStates.getOrCreate(blockId, text)
+        val tfs = textStates.getOrCreate(blockId, text)
         // Set selection in raw coordinates (+1 for ZWSP sentinel)
         tfs.edit { selection = TextRange(selectionStart + 1, selectionEnd + 1) }
-        blockSpanStates.getOrCreate(blockId, spans, text.length)
+        spanStates.getOrCreate(blockId, spans, text.length)
     }
 
  // Toggle on ranged selection
@@ -71,7 +71,7 @@ class DefaultFormattingActionsTest {
 
         actions.toggleStyle(SpanStyle.Bold)
 
-        val runtimeSpans = blockSpanStates.getSpans(blockId)
+        val runtimeSpans = spanStates.getSpans(blockId)
         assertEquals(1, runtimeSpans.size)
         assertEquals(TextSpan(0, 5, SpanStyle.Bold), runtimeSpans[0])
         assertEquals(1, dispatchedActions.size)
@@ -89,7 +89,7 @@ class DefaultFormattingActionsTest {
 
         actions.toggleStyle(SpanStyle.Bold)
 
-        val runtimeSpans = blockSpanStates.getSpans(blockId)
+        val runtimeSpans = spanStates.getSpans(blockId)
         assertTrue(runtimeSpans.isEmpty())
         assertEquals(1, dispatchedActions.size)
     }
@@ -104,7 +104,7 @@ class DefaultFormattingActionsTest {
 
         // No snapshot dispatch for pending styles
         assertTrue(dispatchedActions.isEmpty())
-        val pending = blockSpanStates.getPendingStyles(blockId)
+        val pending = spanStates.getPendingStyles(blockId)
         assertNotNull(pending)
         assertTrue(SpanStyle.Bold in pending)
     }
@@ -121,7 +121,7 @@ class DefaultFormattingActionsTest {
         actions.toggleStyle(SpanStyle.Bold)
 
         assertTrue(dispatchedActions.isEmpty())
-        val pending = blockSpanStates.getPendingStyles(blockId)
+        val pending = spanStates.getPendingStyles(blockId)
         assertNotNull(pending)
         assertTrue(SpanStyle.Bold !in pending)
     }
@@ -134,13 +134,13 @@ class DefaultFormattingActionsTest {
         stateHolder.setState(
             EditorState.withBlocks(listOf(block)) // no focusedBlockId
         )
-        blockTextStates.getOrCreate(blockId, "Hello")
-        blockSpanStates.getOrCreate(blockId, emptyList(), 5)
+        textStates.getOrCreate(blockId, "Hello")
+        spanStates.getOrCreate(blockId, emptyList(), 5)
 
         actions.toggleStyle(SpanStyle.Bold)
 
         assertTrue(dispatchedActions.isEmpty())
-        assertTrue(blockSpanStates.getSpans(blockId).isEmpty())
+        assertTrue(spanStates.getSpans(blockId).isEmpty())
     }
 
  // No-op: Code block
@@ -170,9 +170,9 @@ class DefaultFormattingActionsTest {
                 selectedBlockIds = setOf(blockId),
             )
         )
-        val tfs = blockTextStates.getOrCreate(blockId, "Hello")
+        val tfs = textStates.getOrCreate(blockId, "Hello")
         tfs.edit { selection = TextRange(1, 6) } // full visible selection
-        blockSpanStates.getOrCreate(blockId, emptyList(), 5)
+        spanStates.getOrCreate(blockId, emptyList(), 5)
 
         actions.toggleStyle(SpanStyle.Bold)
 
@@ -193,9 +193,9 @@ class DefaultFormattingActionsTest {
                 ),
             )
         )
-        val tfs = blockTextStates.getOrCreate(blockId, "Hello")
+        val tfs = textStates.getOrCreate(blockId, "Hello")
         tfs.edit { selection = TextRange(1, 6) }
-        blockSpanStates.getOrCreate(blockId, emptyList(), 5)
+        spanStates.getOrCreate(blockId, emptyList(), 5)
 
         actions.toggleStyle(SpanStyle.Bold)
 
@@ -225,18 +225,18 @@ class DefaultFormattingActionsTest {
         // First toggle applies Bold to [0, 5)
         actions.toggleStyle(SpanStyle.Bold)
         assertEquals(1, dispatchedActions.size)
-        val spans1 = blockSpanStates.getSpans(blockId)
+        val spans1 = spanStates.getSpans(blockId)
         assertEquals(listOf(TextSpan(0, 5, SpanStyle.Bold)), spans1)
 
         // Change selection to [6, 11) — actions must pick up the new selection
-        val tfs = blockTextStates.get(blockId)!!
+        val tfs = textStates.get(blockId)!!
         tfs.edit { selection = TextRange(7, 12) } // raw coords: +1 for sentinel
 
         dispatchedActions.clear()
         actions.toggleStyle(SpanStyle.Italic)
 
         assertEquals(1, dispatchedActions.size)
-        val spans2 = blockSpanStates.getSpans(blockId)
+        val spans2 = spanStates.getSpans(blockId)
         assertEquals(2, spans2.size)
         // Bold on [0,5) + Italic on [6,11)
         assertTrue(spans2.any { it.style == SpanStyle.Bold && it.start == 0 && it.end == 5 })
@@ -251,7 +251,7 @@ class DefaultFormattingActionsTest {
 
         actions.applyStyle(SpanStyle.Italic)
 
-        val runtimeSpans = blockSpanStates.getSpans(blockId)
+        val runtimeSpans = spanStates.getSpans(blockId)
         assertEquals(1, runtimeSpans.size)
         assertEquals(TextSpan(0, 5, SpanStyle.Italic), runtimeSpans[0])
         assertEquals(1, dispatchedActions.size)
@@ -268,7 +268,7 @@ class DefaultFormattingActionsTest {
 
         actions.removeStyle(SpanStyle.Bold)
 
-        val runtimeSpans = blockSpanStates.getSpans(blockId)
+        val runtimeSpans = spanStates.getSpans(blockId)
         assertEquals(1, runtimeSpans.size)
         assertEquals(TextSpan(5, 11, SpanStyle.Bold), runtimeSpans[0])
     }

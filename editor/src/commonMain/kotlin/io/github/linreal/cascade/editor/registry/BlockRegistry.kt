@@ -3,6 +3,7 @@ package io.github.linreal.cascade.editor.registry
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockType
+import io.github.linreal.cascade.editor.core.UnknownBlockType
 import io.github.linreal.cascade.editor.slash.BuiltInBlockSlashBehavior
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandSpec
 import io.github.linreal.cascade.editor.slash.SlashCommandGroup
@@ -19,6 +20,7 @@ import io.github.linreal.cascade.editor.slash.SlashCommandGroup
 public class BlockRegistry {
     private val descriptors = mutableMapOf<String, BlockDescriptor>()
     private val renderers = mutableMapOf<String, BlockRenderer<*>>()
+    private var unknownBlockFallback: BlockRenderer<*>? = null
 
     /**
      * Registers a block descriptor.
@@ -51,6 +53,27 @@ public class BlockRegistry {
      * Gets a renderer by type ID.
      */
     public fun getRenderer(typeId: String): BlockRenderer<*>? = renderers[typeId]
+
+    /**
+     * Gets a renderer for a [BlockType].
+     *
+     * Looks up the renderer by [BlockType.typeId]. If no renderer is registered
+     * and the type is [UnknownBlockType], returns the fallback set via
+     * [setUnknownBlockRenderer]. Returns `null` for any other unregistered type
+     * (signals a missing registration, not an unknown deserialized type).
+     */
+    public fun getRenderer(blockType: BlockType): BlockRenderer<*>? {
+        renderers[blockType.typeId]?.let { return it }
+        if (blockType is UnknownBlockType) return unknownBlockFallback
+        return null
+    }
+
+    /**
+     * Sets the fallback renderer used for [UnknownBlockType] blocks.
+     */
+    public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>) {
+        unknownBlockFallback = renderer
+    }
 
     /**
      * Gets all registered descriptors.

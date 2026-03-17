@@ -79,10 +79,11 @@ internal fun TextBlockField(
     val focusManager = LocalFocusManager.current
     var hasComposeFocus by remember { mutableStateOf(false) }
 
-    // Get TextFieldState from the shared holder
-    val blockTextStates = LocalBlockTextStates.current
-    val textFieldState = remember(block.id) {
-        blockTextStates.getOrCreate(block.id, textContent.text)
+    // Get TextFieldState from the shared holder.
+    // generation key invalidates the cache when loadFromJson clears all states.
+    val textStates = LocalBlockTextStates.current
+    val textFieldState = remember(block.id, textStates.generation) {
+        textStates.getOrCreate(block.id, textContent.text)
     }
     val slashCommandExecutor = LocalSlashCommandExecutor.current
     val slashSessionAnchorBlockId = LocalSlashSessionAnchorBlockId.current
@@ -90,21 +91,21 @@ internal fun TextBlockField(
     val slashCaretRectHolder = LocalSlashCaretRect.current
     val slashPopupItems = LocalSlashPopupItems.current
 
-    // Get span state from the shared holder
-    val blockSpanStates = LocalBlockSpanStates.current
-    val spanState = remember(block.id) {
-        blockSpanStates.getOrCreate(block.id, textContent.spans, textContent.text.length)
+    // Get span state from the shared holder — same generation-key rationale.
+    val spanStates = LocalBlockSpanStates.current
+    val spanState = remember(block.id, spanStates.generation) {
+        spanStates.getOrCreate(block.id, textContent.spans, textContent.text.length)
     }
     val outputTransformation = remember(block.id, spanState) {
         OutputTransformation {
             SpanMapper.run { applyStyles(spanState.value) }
         }
     }
-    val spanTextObserver = remember(block.id, blockTextStates, blockSpanStates) {
+    val spanTextObserver = remember(block.id, textStates, spanStates) {
         SpanMaintenanceTextObserver(
             blockId = block.id,
-            blockTextStates = blockTextStates,
-            blockSpanStates = blockSpanStates,
+            textStates = textStates,
+            spanStates = spanStates,
             initialVisibleText = textFieldState.visibleText(),
         )
     }
@@ -118,18 +119,18 @@ internal fun TextBlockField(
         )
     }
     val isCurrentlyList = block.type is BlockType.BulletList || block.type is BlockType.NumberedList
-    val listAutoDetectObserver = remember(block.id, isCurrentlyList, callbacks, blockTextStates, blockSpanStates) {
+    val listAutoDetectObserver = remember(block.id, isCurrentlyList, callbacks, textStates, spanStates) {
         ListAutoDetectObserver(
             isListBlock = { isCurrentlyList },
             onListDetected = { newType, prefixLength ->
                 // Remove trigger prefix and adjust spans
-                blockSpanStates.adjustForRangeReplacement(
+                spanStates.adjustForRangeReplacement(
                     blockId = block.id,
                     start = 0,
                     endExclusive = prefixLength,
                     replacementLength = 0,
                 )
-                val newText = blockTextStates.replaceVisibleRange(
+                val newText = textStates.replaceVisibleRange(
                     blockId = block.id,
                     start = 0,
                     endExclusive = prefixLength,
@@ -138,7 +139,7 @@ internal fun TextBlockField(
                 )
                 // Sync snapshot with cleaned text + adjusted spans before converting
                 if (newText != null) {
-                    val spans = blockSpanStates.getSpans(block.id)
+                    val spans = spanStates.getSpans(block.id)
                     callbacks.dispatch(UpdateBlockContent(block.id, BlockContent.Text(newText, spans)))
                 }
                 callbacks.dispatch(ConvertBlockType(block.id, newType))
@@ -178,7 +179,7 @@ internal fun TextBlockField(
             if (textSnapshotChanged) {
                 val currentVisibleText = visibleTextFromSnapshot(currentTextSnapshot)
                 // Peek before span observer consumes the commit
-                val isProgrammatic = blockTextStates.hasPendingProgrammaticCommit(block.id)
+                val isProgrammatic = textStates.hasPendingProgrammaticCommit(block.id)
                 val cursor = if (selection.collapsed) selection.start else -1
                 if (currentVisibleText != lastObservedVisibleText) {
                     slashTextObserver.onTextChanged(currentVisibleText, isProgrammatic, cursor)

@@ -6,12 +6,13 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 
 | Concept | File | Key Symbol |
 |---------|------|------------|
-| Main composable | `ui/CascadeEditor.kt` | `CascadeEditor(stateHolder, registry, slashRegistry, ...)` |
+| Main composable | `ui/CascadeEditor.kt` | `CascadeEditor(stateHolder, textStates, spanStates, registry, slashRegistry, ...)` |
 | Text input | `ui/BackspaceAwareTextEdit.kt` | `BackspaceAwareTextField()` |
 | Shared text field | `ui/renderers/TextBlockField.kt` | `TextBlockField()` |
 | Text renderer | `ui/renderers/TextBlockRenderer.kt` | `TextBlockRenderer` |
 | Todo renderer | `ui/renderers/TodoBlockRenderer.kt` | `TodoBlockRenderer` |
 | Divider renderer | `ui/renderers/DividerBlockRenderer.kt` | `DividerBlockRenderer` |
+| Unknown block renderer | `ui/renderers/UnknownBlockRenderer.kt` | `UnknownBlockRenderer` (internal, via `BlockRegistry.setUnknownBlockRenderer`) |
 | Editor registry setup | `ui/EditorRegistry.kt` | `createEditorRegistry()` |
 | Drop indicator | `ui/DropIndicator.kt` | `DropIndicator()` |
 | Drag preview | `ui/DragPreview.kt` | `DragPreview()` |
@@ -44,7 +45,19 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | List auto-detect observer | `ui/observers/ListAutoDetectObserver.kt` | `ListAutoDetectObserver` (internal) |
 | Slash text observer | `slash/SlashCommandTextObserver.kt` | `SlashCommandTextObserver` (internal) |
 | Renderer interface | `registry/BlockRenderer.kt` | `BlockRenderer<T>`, `BlockCallbacks`, `DefaultBlockCallbacks` |
+| Unknown block type | `core/UnknownBlockType.kt` | `UnknownBlockType` (implements `CustomBlockType`) |
+| Document serialization | `serialization/DocumentSchema.kt` | `DocumentSchema` (encode/decode full document) |
 | Rich text serialization | `serialization/RichTextSchema.kt` | `RichTextSchema` |
+| Doc serialization types | `serialization/BlockIdMode.kt` | `BlockIdMode` |
+| Doc serialization types | `serialization/DuplicateIdMode.kt` | `DuplicateIdMode` |
+| Doc serialization types | `serialization/CustomDataMode.kt` | `CustomDataMode` |
+| Doc encode options | `serialization/DocumentEncodeOptions.kt` | `DocumentEncodeOptions` |
+| Doc decode options | `serialization/DocumentDecodeOptions.kt` | `DocumentDecodeOptions` |
+| Doc decode warnings | `serialization/DocumentDecodeWarning.kt` | `DocumentDecodeWarning` (sealed class) |
+| Doc decode result | `serialization/DocumentDecodeResult.kt` | `DocumentDecodeResult` |
+| Block type codec | `serialization/BlockTypeCodec.kt` | `BlockTypeCodec` |
+| Block content codec | `serialization/BlockContentCodec.kt` | `BlockContentCodec` |
+| Editor serialization ext | `serialization/DocumentSerializationExt.kt` | `EditorStateHolder.toJson()`, `EditorStateHolder.loadFromJson()` |
 | Span algorithms | `richtext/SpanAlgorithms.kt` | `SpanAlgorithms`, `StyleStatus` |
 | Span mapper | `richtext/SpanMapper.kt` | `SpanMapper` |
 | Span edit observer | `richtext/SpanMaintenanceTextObserver.kt` | `SpanMaintenanceTextObserver` |
@@ -149,7 +162,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 
 ## Registry System
 
-**BlockRegistry** — maps `typeId` string to `BlockDescriptor` (metadata + factory) and `BlockRenderer` (UI). Use `registry.search(query)` for slash command filtering. Use `registry.getRenderer(typeId)` for rendering. `createEditorRegistry()` pre-registers all built-in types: `TodoBlockRenderer` for "todo", `TextBlockRenderer` for all other text-supporting types. All text-editing renderers share the `TextBlockField` composable for text input, spans, and focus.
+**BlockRegistry** — maps `typeId` string to `BlockDescriptor` (metadata + factory) and `BlockRenderer` (UI). Use `registry.search(query)` for slash command filtering. Use `registry.getRenderer(blockType)` for rendering (includes unknown-block fallback) or `registry.getRenderer(typeId)` for direct lookup. `setUnknownBlockRenderer()` registers a fallback renderer for `UnknownBlockType` blocks. `createEditorRegistry()` pre-registers all built-in types: `TodoBlockRenderer` for "todo", `TextBlockRenderer` for all other text-supporting types, and `UnknownBlockRenderer` as the unknown-block fallback. All text-editing renderers share the `TextBlockField` composable for text input, spans, and focus.
 
 **BlockCallbacks** — interface passed to renderers for interaction handling. `DefaultBlockCallbacks` wires `onEnter` → split, `onBackspaceAtStart` → merge, `onDeleteAtEnd` → forward-merge, `onDragStart` → drag initiation, `onSlashCommand` → open menu. Stubs: `onClick`, `onLongClick`.
 
@@ -202,7 +215,8 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Text transformation panel | Not done | |
 | Block anchor / action menu | Not done | |
 | Serialization — rich text spans | Done | `RichTextSchema` encode/decode with version switch |
-| Serialization — full document | Not done | `extractAllText()` helper exists |
+| Serialization — doc foundation types | Done | Enums, options, warnings, codecs, `UnknownBlockType` |
+| Serialization — full document | Done | `DocumentSchema` encode/decode, `EditorStateHolder.toJson()`/`loadFromJson()` extensions |
 | Undo / Redo | Not done | |
 | Theming / styling API | Not done | Colors and sizes hardcoded |
 | Block nesting / indentation | Not done | Flat list only |
@@ -234,6 +248,10 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `ListUtilsTest.kt` | renumberNumberedLists: empty, no numbered, single/multiple runs, non-1 base, referential equality, bullet breaks run |
 | `ListAutoDetectObserverTest.kt` | Bullet trigger (dash+space), numbered trigger (N.+space), no-trigger guards (mid-text, already-list, paste, programmatic, zero, deletion, replacement) |
 | `ListIntegrationTest.kt` | Multi-step list scenarios: auto-detect→enter→sequential numbers, delete middle→renumber, empty-enter exit→paragraph+renumber, backspace un-list→run split, move blocks→both runs renumber, mid-text split with spans, full lifecycle |
+| `UnknownBlockTypeTest.kt` | UnknownBlockType properties (supportsText, isConvertible, displayName, rawTypeJson), registry getRenderer unchanged |
+| `DocumentSchemaEncodeTest.kt` | Document encode: envelope, all built-in types, content kinds, custom data, codec hooks, UnknownBlockType re-emit |
+| `DocumentSchemaDecodeTest.kt` | Document decode: round-trips, version guard, heading/todo/numbered defaults, ID modes, malformed blocks, codecs, renumbering, warnings |
+| `DocumentSerializationExtTest.kt` | Editor integration: toJson runtime/snapshot resolution, loadFromJson state replacement, runtime clearing, codec pass-through |
 | `RichTextSchemaTest.kt` | Span serialization round-trips, normalization, version handling |
 | `SpanAlgorithmsTest.kt` | Normalize, edit adjust, split/merge, apply/remove/toggle, style queries (~62 tests) |
 | `BlockSpanStatesTest.kt` | Lifecycle, edit adjustment, split/merge transfer, style ops, queries, pending styles, aliasing/invariant edge cases (~57 tests) |

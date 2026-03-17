@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "blocks": [
+    {
+      "id": "default-1",
+      "type": { "typeId": "heading_1" },
+      "content": { "kind": "text", "version": 1, "text": "Cascade Editor", "spans": [] }
+    },
+    {
+      "id": "default-2",
+      "type": { "typeId": "paragraph" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "A modular, block-based document editor built with Compose Multiplatform.",
+        "spans": [
+          { "start": 11, "end": 22, "style": { "type": "bold" } },
+          { "start": 50, "end": 71, "style": { "type": "italic" } }
+        ]
+      }
+    },
+    {
+      "id": "default-3",
+      "type": { "typeId": "divider" },
+      "content": { "kind": "empty" }
+    },
+    {
+      "id": "default-4",
+      "type": { "typeId": "heading_2" },
+      "content": { "kind": "text", "version": 1, "text": "Rich Text Formatting", "spans": [] }
+    },
+    {
+      "id": "default-5",
+      "type": { "typeId": "paragraph" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Supports bold, italic, underline, strikethrough, code, highlights, and links.",
+        "spans": [
+          { "start": 9, "end": 13, "style": { "type": "bold" } },
+          { "start": 15, "end": 21, "style": { "type": "italic" } },
+          { "start": 23, "end": 32, "style": { "type": "underline" } },
+          { "start": 34, "end": 47, "style": { "type": "strikethrough" } },
+          { "start": 49, "end": 53, "style": { "type": "inline_code" } },
+          { "start": 55, "end": 65, "style": { "type": "highlight", "colorArgb": 4294961979 } },
+          { "start": 71, "end": 76, "style": { "type": "link", "url": "https://github.com" } }
+        ]
+      }
+    },
+    {
+      "id": "default-6",
+      "type": { "typeId": "heading_2" },
+      "content": { "kind": "text", "version": 1, "text": "Block Types", "spans": [] }
+    },
+    {
+      "id": "default-7",
+      "type": { "typeId": "bullet_list" },
+      "content": { "kind": "text", "version": 1, "text": "Drag any block to reorder", "spans": [] }
+    },
+    {
+      "id": "default-8",
+      "type": { "typeId": "bullet_list" },
+      "content": { "kind": "text", "version": 1, "text": "Type / to open the slash command menu", "spans": [] }
+    },
+    {
+      "id": "default-9",
+      "type": { "typeId": "bullet_list" },
+      "content": { "kind": "text", "version": 1, "text": "Press Enter to create new blocks", "spans": [] }
+    },
+    {
+      "id": "default-10",
+      "type": { "typeId": "numbered_list", "number": 1 },
+      "content": { "kind": "text", "version": 1, "text": "First numbered item", "spans": [] }
+    },
+    {
+      "id": "default-11",
+      "type": { "typeId": "numbered_list", "number": 2 },
+      "content": { "kind": "text", "version": 1, "text": "Second numbered item", "spans": [] }
+    },
+    {
+      "id": "default-12",
+      "type": { "typeId": "numbered_list", "number": 3 },
+      "content": { "kind": "text", "version": 1, "text": "Third numbered item", "spans": [] }
+    },
+    {
+      "id": "default-13",
+      "type": { "typeId": "todo", "checked": true },
+      "content": { "kind": "text", "version": 1, "text": "Completed task", "spans": [] }
+    },
+    {
+      "id": "default-14",
+      "type": { "typeId": "todo", "checked": false },
+      "content": { "kind": "text", "version": 1, "text": "Pending task", "spans": [] }
+    },
+    {
+      "id": "default-15",
+      "type": { "typeId": "code" },
+      "content": { "kind": "text", "version": 1, "text": "val editor = CascadeEditor()", "spans": [] }
+    },
+    {
+      "id": "default-16",
+      "type": { "typeId": "quote" },
+      "content": { "kind": "text", "version": 1, "text": "The best way to predict the future is to invent it.", "spans": [] }
+    },
+    {
+      "id": "default-17",
+      "type": { "typeId": "divider" },
+      "content": { "kind": "empty" }
+    },
+    {
+      "id": "default-18",
+      "type": { "typeId": "paragraph" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Edit this document freely. Your changes are saved automatically!",
+        "spans": [
+          { "start": 44, "end": 63, "style": { "type": "underline" } }
+        ]
+      }
+    }
+  ]
+}

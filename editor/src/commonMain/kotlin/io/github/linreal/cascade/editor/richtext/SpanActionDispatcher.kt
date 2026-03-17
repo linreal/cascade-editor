@@ -20,14 +20,14 @@ import io.github.linreal.cascade.editor.state.BlockTextStates
  *   text + spans, avoiding stale-text-length mismatch)
  *
  * @param dispatchFn Function to dispatch [EditorAction]s to the state holder
- * @param blockTextStates Text state manager for visible text length resolution
- * @param blockSpanStates Runtime span state manager
+ * @param textStates Text state manager for visible text length resolution
+ * @param spanStates Runtime span state manager
  */
 @Stable
 public class SpanActionDispatcher(
     private val dispatchFn: (EditorAction) -> Unit,
-    private val blockTextStates: BlockTextStates,
-    private val blockSpanStates: BlockSpanStates,
+    private val textStates: BlockTextStates,
+    private val spanStates: BlockSpanStates,
 ) {
 
     /**
@@ -42,8 +42,8 @@ public class SpanActionDispatcher(
         rangeEnd: Int,
         style: SpanStyle,
     ) {
-        val visibleText = blockTextStates.getVisibleText(blockId) ?: return
-        blockSpanStates.applyStyle(blockId, rangeStart, rangeEnd, style, visibleText.length)
+        val visibleText = textStates.getVisibleText(blockId) ?: return
+        spanStates.applyStyle(blockId, rangeStart, rangeEnd, style, visibleText.length)
         syncSnapshot(blockId, visibleText)
     }
 
@@ -59,8 +59,8 @@ public class SpanActionDispatcher(
         rangeEnd: Int,
         style: SpanStyle,
     ) {
-        val visibleText = blockTextStates.getVisibleText(blockId) ?: return
-        blockSpanStates.removeStyle(blockId, rangeStart, rangeEnd, style)
+        val visibleText = textStates.getVisibleText(blockId) ?: return
+        spanStates.removeStyle(blockId, rangeStart, rangeEnd, style)
         syncSnapshot(blockId, visibleText)
     }
 
@@ -81,27 +81,27 @@ public class SpanActionDispatcher(
         rangeEnd: Int,
         style: SpanStyle,
     ) {
-        if (blockTextStates.getVisibleText(blockId) == null) return
+        if (textStates.getVisibleText(blockId) == null) return
 
         // Collapsed cursor: toggle pending style for next insertion
         if (rangeStart == rangeEnd) {
-            val pending = blockSpanStates.getPendingStyles(blockId) ?: run {
+            val pending = spanStates.getPendingStyles(blockId) ?: run {
                 if (rangeStart <= 0) {
                     emptySet()
                 } else {
                     // Keep toggle semantics aligned with insertion continuation (`position - 1`).
-                    blockSpanStates.activeStylesAt(blockId, rangeStart - 1)
+                    spanStates.activeStylesAt(blockId, rangeStart - 1)
                 }
             }
             if (style in pending) {
-                blockSpanStates.setPendingStyles(blockId, pending - style)
+                spanStates.setPendingStyles(blockId, pending - style)
             } else {
-                blockSpanStates.setPendingStyles(blockId, pending + style)
+                spanStates.setPendingStyles(blockId, pending + style)
             }
             return
         }
 
-        val status = blockSpanStates.queryStyleStatus(blockId, rangeStart, rangeEnd, style)
+        val status = spanStates.queryStyleStatus(blockId, rangeStart, rangeEnd, style)
         when (status) {
             StyleStatus.FullyActive -> removeStyle(blockId, rangeStart, rangeEnd, style)
             else -> applyStyle(blockId, rangeStart, rangeEnd, style)
@@ -114,7 +114,7 @@ public class SpanActionDispatcher(
      * [ApplySpanStyle]/[RemoveSpanStyle] directly against the snapshot.
      */
     private fun syncSnapshot(blockId: BlockId, visibleText: String) {
-        val spans = blockSpanStates.getSpans(blockId)
+        val spans = spanStates.getSpans(blockId)
         dispatchFn(UpdateBlockContent(blockId, BlockContent.Text(visibleText, spans)))
     }
 }

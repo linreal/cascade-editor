@@ -29,8 +29,8 @@ import io.github.linreal.cascade.editor.ui.visibleSelection
 @Composable
 internal fun rememberFormattingState(
     stateHolder: EditorStateHolder,
-    blockTextStates: BlockTextStates,
-    blockSpanStates: BlockSpanStates,
+    textStates: BlockTextStates,
+    spanStates: BlockSpanStates,
     trackedStyles: List<SpanStyle>,
 ): State<FormattingState> {
 
@@ -64,7 +64,7 @@ internal fun rememberFormattingState(
     // state are read, so cursor/span changes in non-focused blocks are
     // invisible to this derivation.
 
-    return remember(stateHolder, blockTextStates, blockSpanStates, trackedStyles) {
+    return remember(stateHolder, textStates, spanStates, trackedStyles) {
         derivedStateOf {
             val blockId = focusedBlockId.value
             val blockType = focusedBlockType.value
@@ -72,11 +72,11 @@ internal fun rememberFormattingState(
             val dragging = isDragging.value
 
             // Per-block reads — only executed when a block is focused.
-            val textFieldState = blockId?.let { blockTextStates.get(it) }
+            val textFieldState = blockId?.let { textStates.get(it) }
             val sel = textFieldState?.visibleSelection() ?: TextRange(0, 0)
 
-            val spans = blockId?.let { blockSpanStates.getSpans(it) } ?: emptyList()
-            val pendingStyles = blockId?.let { blockSpanStates.getPendingStyles(it) }
+            val spans = blockId?.let { spanStates.getSpans(it) } ?: emptyList()
+            val pendingStyles = blockId?.let { spanStates.getPendingStyles(it) }
 
             FormattingStateCalculator.compute(
                 focusedBlockId = blockId,

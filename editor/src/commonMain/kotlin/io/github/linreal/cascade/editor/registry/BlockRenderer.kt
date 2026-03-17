@@ -93,14 +93,14 @@ public interface BlockCallbacks {
  *
  * @param dispatchFn Function to dispatch actions
  * @param stateProvider Optional provider for current editor state, enables merge/delete logic
- * @param blockTextStates Manager for per-block TextFieldState instances
- * @param blockSpanStates Manager for per-block runtime spans
+ * @param textStates Manager for per-block TextFieldState instances
+ * @param spanStates Manager for per-block runtime spans
  */
 public open class DefaultBlockCallbacks(
     private val dispatchFn: (EditorAction) -> Unit,
     private val stateProvider: (() -> EditorState)? = null,
-    private val blockTextStates: BlockTextStates? = null,
-    private val blockSpanStates: BlockSpanStates? = null,
+    private val textStates: BlockTextStates? = null,
+    private val spanStates: BlockSpanStates? = null,
 ) : BlockCallbacks {
 
     override fun dispatch(action: EditorAction) {
@@ -112,7 +112,6 @@ public open class DefaultBlockCallbacks(
     }
 
     override fun onEnter(blockId: BlockId, cursorPosition: Int) {
-        val textStates = blockTextStates
         val newBlockId = BlockId.generate()
         val state = stateProvider?.invoke()
         val currentBlock = state?.getBlock(blockId)
@@ -142,7 +141,7 @@ public open class DefaultBlockCallbacks(
             // Only for collapsed-cursor splits (ranged split → no continuation).
             val selectionCollapsed = textStates.get(blockId)?.selection?.collapsed ?: true
             val continuationStyles = if (selectionCollapsed) {
-                blockSpanStates?.let { spanStates ->
+                spanStates?.let { spanStates ->
                     val pending = spanStates.getPendingStyles(blockId)
                     when {
                         pending != null -> pending
@@ -156,7 +155,7 @@ public open class DefaultBlockCallbacks(
             }
 
             // Runtime span split must happen before source text truncation.
-            blockSpanStates?.split(
+            spanStates?.split(
                 sourceBlockId = blockId,
                 newBlockId = newBlockId,
                 position = splitPosition,
@@ -164,13 +163,13 @@ public open class DefaultBlockCallbacks(
 
             // Transfer continuation styles to the new block after split.
             if (!continuationStyles.isNullOrEmpty()) {
-                blockSpanStates?.setPendingStyles(newBlockId, continuationStyles)
+                spanStates?.setPendingStyles(newBlockId, continuationStyles)
             }
 
             // Update current block's text to only have the "before" portion
             textStates.setText(blockId, beforeText, beforeText.length)
             val sourceRuntimeText = textStates.getVisibleText(blockId) ?: beforeText
-            val sourceRuntimeSpans = blockSpanStates?.getSpans(blockId)
+            val sourceRuntimeSpans = spanStates?.getSpans(blockId)
 
             // Dispatch split action with the "after" text and runtime spans for the new block
             dispatch(
@@ -179,7 +178,7 @@ public open class DefaultBlockCallbacks(
                     atPosition = splitPosition,
                     newBlockText = afterText,
                     newBlockId = newBlockId,
-                    newBlockSpans = blockSpanStates?.getSpans(newBlockId),
+                    newBlockSpans = spanStates?.getSpans(newBlockId),
                     sourceBlockText = sourceRuntimeText,
                     sourceBlockSpans = sourceRuntimeSpans,
                 )
@@ -192,7 +191,6 @@ public open class DefaultBlockCallbacks(
 
     override fun onBackspaceAtStart(blockId: BlockId) {
         val state = stateProvider?.invoke()
-        val textStates = blockTextStates
 
         // List item un-list: convert to Paragraph instead of merging with previous block.
         val blockType = state?.getBlock(blockId)?.type
@@ -215,15 +213,15 @@ public open class DefaultBlockCallbacks(
                         textStates.getOrCreate(previousBlock.id, targetContent.text)
 
                         // Ensure span states exist before merge (block may not have been rendered yet).
-                        blockSpanStates?.getOrCreate(blockId, sourceContent?.spans.orEmpty(), sourceContent?.text?.length ?: 0)
-                        blockSpanStates?.getOrCreate(previousBlock.id, targetContent.spans, targetContent.text.length)
+                        spanStates?.getOrCreate(blockId, sourceContent?.spans.orEmpty(), sourceContent?.text?.length ?: 0)
+                        spanStates?.getOrCreate(previousBlock.id, targetContent.spans, targetContent.text.length)
 
                         val targetTextLength = textStates.mergeInto(
                             sourceId = blockId,
                             targetId = previousBlock.id,
                         )
                         if (targetTextLength != null) {
-                            blockSpanStates?.mergeInto(
+                            spanStates?.mergeInto(
                                 sourceId = blockId,
                                 targetId = previousBlock.id,
                                 targetTextLength = targetTextLength,
@@ -232,7 +230,7 @@ public open class DefaultBlockCallbacks(
                             // Sync snapshot with merged content before deleting source
                             val mergedText = textStates.getVisibleText(previousBlock.id)
                             if (mergedText != null) {
-                                val mergedSpans = blockSpanStates?.getSpans(previousBlock.id).orEmpty()
+                                val mergedSpans = spanStates?.getSpans(previousBlock.id).orEmpty()
                                 dispatch(UpdateBlockContent(previousBlock.id, BlockContent.Text(mergedText, mergedSpans)))
                             }
 
@@ -263,7 +261,6 @@ public open class DefaultBlockCallbacks(
 
     override fun onDeleteAtEnd(blockId: BlockId) {
         val state = stateProvider?.invoke()
-        val textStates = blockTextStates
 
         if (state != null) {
             val blockIndex = state.indexOfBlock(blockId)
@@ -279,8 +276,8 @@ public open class DefaultBlockCallbacks(
                         textStates.getOrCreate(nextBlock.id, sourceContent.text)
 
                         // Ensure span states exist before merge (block may not have been rendered yet).
-                        blockSpanStates?.getOrCreate(blockId, targetContent?.spans.orEmpty(), targetContent?.text?.length ?: 0)
-                        blockSpanStates?.getOrCreate(nextBlock.id, sourceContent.spans, sourceContent.text.length)
+                        spanStates?.getOrCreate(blockId, targetContent?.spans.orEmpty(), targetContent?.text?.length ?: 0)
+                        spanStates?.getOrCreate(nextBlock.id, sourceContent.spans, sourceContent.text.length)
 
                         // Get cursor position before merge (end of current text)
                         val cursorPos = textStates.getVisibleText(blockId)?.length
@@ -291,7 +288,7 @@ public open class DefaultBlockCallbacks(
                             targetId = blockId,
                         )
                         if (targetTextLength != null) {
-                            blockSpanStates?.mergeInto(
+                            spanStates?.mergeInto(
                                 sourceId = nextBlock.id,
                                 targetId = blockId,
                                 targetTextLength = targetTextLength,
@@ -300,7 +297,7 @@ public open class DefaultBlockCallbacks(
                             // Sync snapshot with merged content before deleting source
                             val mergedText = textStates.getVisibleText(blockId)
                             if (mergedText != null) {
-                                val mergedSpans = blockSpanStates?.getSpans(blockId).orEmpty()
+                                val mergedSpans = spanStates?.getSpans(blockId).orEmpty()
                                 dispatch(UpdateBlockContent(blockId, BlockContent.Text(mergedText, mergedSpans)))
                             }
 

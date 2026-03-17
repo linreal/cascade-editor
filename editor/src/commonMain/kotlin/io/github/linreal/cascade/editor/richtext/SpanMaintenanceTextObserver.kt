@@ -13,14 +13,14 @@ import kotlin.math.min
  */
 internal class SpanMaintenanceTextObserver(
     private val blockId: BlockId,
-    private val blockTextStates: BlockTextStates,
-    private val blockSpanStates: BlockSpanStates,
+    private val textStates: BlockTextStates,
+    private val spanStates: BlockSpanStates,
     initialVisibleText: String,
 ) {
     private var previousVisibleText: String = initialVisibleText
 
     internal fun onCommittedVisibleText(currentVisibleText: String) {
-        val expectedProgrammaticText = blockTextStates.consumeProgrammaticCommit(blockId)
+        val expectedProgrammaticText = textStates.consumeProgrammaticCommit(blockId)
         if (expectedProgrammaticText != null) {
             if (currentVisibleText == expectedProgrammaticText) {
                 previousVisibleText = currentVisibleText
@@ -32,7 +32,7 @@ internal class SpanMaintenanceTextObserver(
         val edit = computeEdit(previousVisibleText, currentVisibleText) ?: return
         previousVisibleText = currentVisibleText
 
-        blockSpanStates.adjustForUserEdit(
+        spanStates.adjustForUserEdit(
             blockId = blockId,
             editStart = edit.start,
             deletedLength = edit.deletedLength,
@@ -57,19 +57,19 @@ internal class SpanMaintenanceTextObserver(
         val insertEnd = (editStart + insertedLength).coerceIn(insertStart, visibleTextLength)
         if (insertStart >= insertEnd) return
 
-        val explicitPending = blockSpanStates.getPendingStyles(blockId)
+        val explicitPending = spanStates.getPendingStyles(blockId)
         if (explicitPending != null) {
-            blockSpanStates.clearPendingStyles(blockId)
+            spanStates.clearPendingStyles(blockId)
         }
 
-        val resolvedStyles = explicitPending ?: blockSpanStates.resolveStylesForInsertion(
+        val resolvedStyles = explicitPending ?: spanStates.resolveStylesForInsertion(
             blockId = blockId,
             position = insertStart,
         )
-        val currentStyles = blockSpanStates.activeStylesAt(blockId, insertStart)
+        val currentStyles = spanStates.activeStylesAt(blockId, insertStart)
 
         for (style in currentStyles - resolvedStyles) {
-            blockSpanStates.removeStyle(
+            spanStates.removeStyle(
                 blockId = blockId,
                 rangeStart = insertStart,
                 rangeEnd = insertEnd,
@@ -78,7 +78,7 @@ internal class SpanMaintenanceTextObserver(
         }
 
         for (style in resolvedStyles - currentStyles) {
-            blockSpanStates.applyStyle(
+            spanStates.applyStyle(
                 blockId = blockId,
                 rangeStart = insertStart,
                 rangeEnd = insertEnd,
