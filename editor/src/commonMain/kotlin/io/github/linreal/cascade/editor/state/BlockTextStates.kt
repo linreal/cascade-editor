@@ -3,6 +3,9 @@ package io.github.linreal.cascade.editor.state
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import io.github.linreal.cascade.editor.core.BlockId
 
@@ -19,6 +22,12 @@ private const val ZWSP = "\u200B"
 @Stable
 public class BlockTextStates {
     private val states = mutableMapOf<BlockId, TextFieldState>()
+    /**
+     * Monotonically increasing counter, incremented on [clear].
+     * Used as a `remember` key so composables re-fetch from the map after a bulk reset.
+     */
+    internal var generation: Int by mutableIntStateOf(0)
+        private set
     // Last-write-wins: only the most recent programmatic text per block is tracked.
     // Current callers (mergeInto, setText) never issue multiple programmatic edits
     // on the same block before the observer consumes the entry.
@@ -223,5 +232,6 @@ public class BlockTextStates {
     public fun clear() {
         states.clear()
         pendingProgrammaticCommits.clear()
+        generation++
     }
 }

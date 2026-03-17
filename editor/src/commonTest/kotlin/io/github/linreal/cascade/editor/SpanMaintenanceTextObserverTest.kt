@@ -25,8 +25,8 @@ class SpanMaintenanceTextObserverTest {
         )
         val observer = SpanMaintenanceTextObserver(
             blockId = blockId,
-            blockTextStates = textStates,
-            blockSpanStates = spanStates,
+            textStates = textStates,
+            spanStates = spanStates,
             initialVisibleText = "ab",
         )
 
@@ -66,8 +66,8 @@ class SpanMaintenanceTextObserverTest {
         )
         val observer = SpanMaintenanceTextObserver(
             blockId = blockId,
-            blockTextStates = textStates,
-            blockSpanStates = spanStates,
+            textStates = textStates,
+            spanStates = spanStates,
             initialVisibleText = "ab",
         )
 

@@ -34,8 +34,8 @@ class EnterContinuationTest {
         blockType: BlockType = BlockType.Paragraph,
     ) {
         val dispatched = mutableListOf<EditorAction>()
-        val blockTextStates = BlockTextStates()
-        val blockSpanStates = BlockSpanStates()
+        val textStates = BlockTextStates()
+        val spanStates = BlockSpanStates()
         val state: EditorState
 
         init {
@@ -45,18 +45,18 @@ class EnterContinuationTest {
                 content = BlockContent.Text(text, spans),
             )
             state = EditorState.withBlocks(listOf(block))
-            blockTextStates.getOrCreate(BlockId("block-1"), text)
-            blockSpanStates.getOrCreate(BlockId("block-1"), spans, text.length)
+            textStates.getOrCreate(BlockId("block-1"), text)
+            spanStates.getOrCreate(BlockId("block-1"), spans, text.length)
             if (pendingStyles != null) {
-                blockSpanStates.setPendingStyles(BlockId("block-1"), pendingStyles)
+                spanStates.setPendingStyles(BlockId("block-1"), pendingStyles)
             }
         }
 
         val callbacks = DefaultBlockCallbacks(
             dispatchFn = { dispatched.add(it) },
             stateProvider = { state },
-            blockTextStates = blockTextStates,
-            blockSpanStates = blockSpanStates,
+            textStates = textStates,
+            spanStates = spanStates,
         )
 
         fun newBlockId(): BlockId? {
@@ -68,24 +68,24 @@ class EnterContinuationTest {
     /** Harness for multi-block scenarios (e.g., backspace merge regression). */
     private class MultiBlockHarness(blocks: List<Block>) {
         val dispatched = mutableListOf<EditorAction>()
-        val blockTextStates = BlockTextStates()
-        val blockSpanStates = BlockSpanStates()
+        val textStates = BlockTextStates()
+        val spanStates = BlockSpanStates()
         val state = EditorState.withBlocks(blocks)
 
         init {
             for (block in blocks) {
                 val text = (block.content as? BlockContent.Text)?.text.orEmpty()
                 val spans = (block.content as? BlockContent.Text)?.spans.orEmpty()
-                blockTextStates.getOrCreate(block.id, text)
-                blockSpanStates.getOrCreate(block.id, spans, text.length)
+                textStates.getOrCreate(block.id, text)
+                spanStates.getOrCreate(block.id, spans, text.length)
             }
         }
 
         val callbacks = DefaultBlockCallbacks(
             dispatchFn = { dispatched.add(it) },
             stateProvider = { state },
-            blockTextStates = blockTextStates,
-            blockSpanStates = blockSpanStates,
+            textStates = textStates,
+            spanStates = spanStates,
         )
     }
 
@@ -102,7 +102,7 @@ class EnterContinuationTest {
 
         val newId = harness.newBlockId()
         assertNotNull(newId)
-        val pendingOnNew = harness.blockSpanStates.getPendingStyles(newId)
+        val pendingOnNew = harness.spanStates.getPendingStyles(newId)
         assertNotNull(pendingOnNew)
         assertEquals(setOf(SpanStyle.Bold, SpanStyle.Italic), pendingOnNew)
     }
@@ -117,7 +117,7 @@ class EnterContinuationTest {
         harness.callbacks.onEnter(blockId, cursorPosition = 5)
 
         // split() clears pending on source
-        assertNull(harness.blockSpanStates.getPendingStyles(blockId))
+        assertNull(harness.spanStates.getPendingStyles(blockId))
     }
 
  // End-of-block inheritance
@@ -133,7 +133,7 @@ class EnterContinuationTest {
 
         val newId = harness.newBlockId()
         assertNotNull(newId)
-        val pendingOnNew = harness.blockSpanStates.getPendingStyles(newId)
+        val pendingOnNew = harness.spanStates.getPendingStyles(newId)
         assertNotNull(pendingOnNew)
         assertTrue(SpanStyle.Bold in pendingOnNew)
     }
@@ -152,7 +152,7 @@ class EnterContinuationTest {
 
         val newId = harness.newBlockId()
         assertNotNull(newId)
-        val pendingOnNew = harness.blockSpanStates.getPendingStyles(newId)
+        val pendingOnNew = harness.spanStates.getPendingStyles(newId)
         assertNotNull(pendingOnNew)
         assertEquals(setOf(SpanStyle.Bold, SpanStyle.Italic), pendingOnNew)
     }
@@ -169,7 +169,7 @@ class EnterContinuationTest {
 
         val newId = harness.newBlockId()
         assertNotNull(newId)
-        val pendingOnNew = harness.blockSpanStates.getPendingStyles(newId)
+        val pendingOnNew = harness.spanStates.getPendingStyles(newId)
         assertNotNull(pendingOnNew)
         assertTrue(SpanStyle.Bold in pendingOnNew)
     }
@@ -182,7 +182,7 @@ class EnterContinuationTest {
 
         val newId = harness.newBlockId()
         assertNotNull(newId)
-        assertNull(harness.blockSpanStates.getPendingStyles(newId))
+        assertNull(harness.spanStates.getPendingStyles(newId))
     }
 
  // Mid-block split: no continuation
@@ -200,7 +200,7 @@ class EnterContinuationTest {
         val newId = harness.newBlockId()
         assertNotNull(newId)
         // No positional continuation — new block gets its spans from the split algorithm
-        assertNull(harness.blockSpanStates.getPendingStyles(newId))
+        assertNull(harness.spanStates.getPendingStyles(newId))
     }
 
     @Test
@@ -216,7 +216,7 @@ class EnterContinuationTest {
         val newId = harness.newBlockId()
         assertNotNull(newId)
         // Collapsed cursor with pending → continuation transfers
-        val pendingOnNew = harness.blockSpanStates.getPendingStyles(newId)
+        val pendingOnNew = harness.spanStates.getPendingStyles(newId)
         assertNotNull(pendingOnNew)
         assertEquals(setOf(SpanStyle.Bold), pendingOnNew)
     }
@@ -229,7 +229,7 @@ class EnterContinuationTest {
         )
         // Set a ranged (non-collapsed) selection on the TextFieldState
         // Raw coords: +1 for sentinel, so visible [1,4) → raw [2,5)
-        harness.blockTextStates.get(blockId)?.edit {
+        harness.textStates.get(blockId)?.edit {
             selection = TextRange(2, 5)
         }
 
@@ -238,7 +238,7 @@ class EnterContinuationTest {
         val newId = harness.newBlockId()
         assertNotNull(newId)
         // Ranged split → no continuation per D2 policy
-        assertNull(harness.blockSpanStates.getPendingStyles(newId))
+        assertNull(harness.spanStates.getPendingStyles(newId))
     }
 
     @Test
@@ -248,7 +248,7 @@ class EnterContinuationTest {
             spans = listOf(TextSpan(0, 5, SpanStyle.Bold)),
         )
         // Ranged selection [3,5) → raw [4,6)
-        harness.blockTextStates.get(blockId)?.edit {
+        harness.textStates.get(blockId)?.edit {
             selection = TextRange(4, 6)
         }
 
@@ -257,7 +257,7 @@ class EnterContinuationTest {
         val newId = harness.newBlockId()
         assertNotNull(newId)
         // Ranged → no continuation even though cursor is at styled position
-        assertNull(harness.blockSpanStates.getPendingStyles(newId))
+        assertNull(harness.spanStates.getPendingStyles(newId))
     }
 
     @Test
@@ -271,7 +271,7 @@ class EnterContinuationTest {
 
         val newId = harness.newBlockId()
         assertNotNull(newId)
-        assertNull(harness.blockSpanStates.getPendingStyles(newId))
+        assertNull(harness.spanStates.getPendingStyles(newId))
     }
 
  // Empty block with pending styles
@@ -287,7 +287,7 @@ class EnterContinuationTest {
 
         val newId = harness.newBlockId()
         assertNotNull(newId)
-        val pendingOnNew = harness.blockSpanStates.getPendingStyles(newId)
+        val pendingOnNew = harness.spanStates.getPendingStyles(newId)
         assertNotNull(pendingOnNew)
         assertEquals(setOf(SpanStyle.Underline), pendingOnNew)
     }
@@ -300,7 +300,7 @@ class EnterContinuationTest {
 
         val newId = harness.newBlockId()
         assertNotNull(newId)
-        assertNull(harness.blockSpanStates.getPendingStyles(newId))
+        assertNull(harness.spanStates.getPendingStyles(newId))
     }
 
  // Pending styles take precedence over position inheritance
@@ -318,7 +318,7 @@ class EnterContinuationTest {
 
         val newId = harness.newBlockId()
         assertNotNull(newId)
-        val pendingOnNew = harness.blockSpanStates.getPendingStyles(newId)
+        val pendingOnNew = harness.spanStates.getPendingStyles(newId)
         assertNotNull(pendingOnNew)
         // Pending wins over position-based Bold
         assertEquals(setOf(SpanStyle.Italic), pendingOnNew)
@@ -337,7 +337,7 @@ class EnterContinuationTest {
         val dispatchedNewId = splitAction.newBlockId
         assertNotNull(dispatchedNewId)
 
-        val runtimeSpansOnDispatchedTarget = harness.blockSpanStates.getSpans(dispatchedNewId)
+        val runtimeSpansOnDispatchedTarget = harness.spanStates.getSpans(dispatchedNewId)
         assertEquals(listOf(TextSpan(0, 5, SpanStyle.Bold)), runtimeSpansOnDispatchedTarget)
         assertEquals(
             runtimeSpansOnDispatchedTarget,

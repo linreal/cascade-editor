@@ -16,21 +16,21 @@ import kotlin.test.assertTrue
 
 class SpanActionDispatcherTest {
 
-    private val blockTextStates = BlockTextStates()
-    private val blockSpanStates = BlockSpanStates()
+    private val textStates = BlockTextStates()
+    private val spanStates = BlockSpanStates()
     private val dispatchedActions = mutableListOf<EditorAction>()
 
     private val dispatcher = SpanActionDispatcher(
         dispatchFn = { dispatchedActions.add(it) },
-        blockTextStates = blockTextStates,
-        blockSpanStates = blockSpanStates,
+        textStates = textStates,
+        spanStates = spanStates,
     )
 
     private val blockId = BlockId("test")
 
     private fun setupBlock(text: String, spans: List<TextSpan> = emptyList()) {
-        blockTextStates.getOrCreate(blockId, text)
-        blockSpanStates.getOrCreate(blockId, spans, text.length)
+        textStates.getOrCreate(blockId, text)
+        spanStates.getOrCreate(blockId, spans, text.length)
     }
 
  // applyStyle
@@ -42,7 +42,7 @@ class SpanActionDispatcherTest {
         dispatcher.applyStyle(blockId, 0, 5, SpanStyle.Bold)
 
         // Runtime updated
-        val runtimeSpans = blockSpanStates.getSpans(blockId)
+        val runtimeSpans = spanStates.getSpans(blockId)
         assertEquals(1, runtimeSpans.size)
         assertEquals(TextSpan(0, 5, SpanStyle.Bold), runtimeSpans[0])
 
@@ -70,7 +70,7 @@ class SpanActionDispatcherTest {
 
         dispatcher.removeStyle(blockId, 0, 5, SpanStyle.Bold)
 
-        val runtimeSpans = blockSpanStates.getSpans(blockId)
+        val runtimeSpans = spanStates.getSpans(blockId)
         assertEquals(1, runtimeSpans.size)
         assertEquals(TextSpan(5, 11, SpanStyle.Bold), runtimeSpans[0])
 
@@ -96,7 +96,7 @@ class SpanActionDispatcherTest {
 
         dispatcher.toggleStyle(blockId, 0, 5, SpanStyle.Bold)
 
-        val runtimeSpans = blockSpanStates.getSpans(blockId)
+        val runtimeSpans = spanStates.getSpans(blockId)
         assertEquals(1, runtimeSpans.size)
         assertEquals(TextSpan(0, 5, SpanStyle.Bold), runtimeSpans[0])
 
@@ -109,7 +109,7 @@ class SpanActionDispatcherTest {
 
         dispatcher.toggleStyle(blockId, 0, 5, SpanStyle.Bold)
 
-        val runtimeSpans = blockSpanStates.getSpans(blockId)
+        val runtimeSpans = spanStates.getSpans(blockId)
         assertTrue(runtimeSpans.isEmpty())
 
         assertTrue(dispatchedActions[0] is UpdateBlockContent)
@@ -121,7 +121,7 @@ class SpanActionDispatcherTest {
 
         dispatcher.toggleStyle(blockId, 0, 5, SpanStyle.Bold)
 
-        val runtimeSpans = blockSpanStates.getSpans(blockId)
+        val runtimeSpans = spanStates.getSpans(blockId)
         assertEquals(1, runtimeSpans.size)
         assertEquals(TextSpan(0, 5, SpanStyle.Bold), runtimeSpans[0])
 
@@ -147,7 +147,7 @@ class SpanActionDispatcherTest {
         assertTrue(dispatchedActions.isEmpty())
 
         // Pending style set
-        val pending = blockSpanStates.getPendingStyles(blockId)
+        val pending = spanStates.getPendingStyles(blockId)
         assertTrue(pending != null && SpanStyle.Bold in pending)
     }
 
@@ -160,7 +160,7 @@ class SpanActionDispatcherTest {
         assertTrue(dispatchedActions.isEmpty())
 
         // Bold was active at cursor from spans, toggling removes it from pending
-        val pending = blockSpanStates.getPendingStyles(blockId)
+        val pending = spanStates.getPendingStyles(blockId)
         assertTrue(pending != null && SpanStyle.Bold !in pending)
     }
 
@@ -172,7 +172,7 @@ class SpanActionDispatcherTest {
         dispatcher.toggleStyle(blockId, 5, 5, SpanStyle.Bold)
 
         assertTrue(dispatchedActions.isEmpty())
-        val pending = blockSpanStates.getPendingStyles(blockId)
+        val pending = spanStates.getPendingStyles(blockId)
         assertTrue(pending != null && SpanStyle.Bold !in pending)
     }
 
@@ -180,12 +180,12 @@ class SpanActionDispatcherTest {
     fun `toggleStyle collapsed cursor toggles within existing pending styles`() {
         setupBlock("Hello World")
         // Pre-set pending styles with Italic
-        blockSpanStates.setPendingStyles(blockId, setOf(SpanStyle.Italic))
+        spanStates.setPendingStyles(blockId, setOf(SpanStyle.Italic))
 
         // Toggle Bold on — should add to existing pending
         dispatcher.toggleStyle(blockId, 3, 3, SpanStyle.Bold)
 
-        val pending = blockSpanStates.getPendingStyles(blockId)
+        val pending = spanStates.getPendingStyles(blockId)
         assertTrue(pending != null)
         assertTrue(SpanStyle.Bold in pending!!)
         assertTrue(SpanStyle.Italic in pending)
@@ -193,7 +193,7 @@ class SpanActionDispatcherTest {
         // Toggle Bold off — should remove from pending
         dispatcher.toggleStyle(blockId, 3, 3, SpanStyle.Bold)
 
-        val pendingAfter = blockSpanStates.getPendingStyles(blockId)
+        val pendingAfter = spanStates.getPendingStyles(blockId)
         assertTrue(pendingAfter != null)
         assertTrue(SpanStyle.Bold !in pendingAfter!!)
         assertTrue(SpanStyle.Italic in pendingAfter)
@@ -204,7 +204,7 @@ class SpanActionDispatcherTest {
         dispatcher.toggleStyle(blockId, 3, 3, SpanStyle.Bold)
 
         assertTrue(dispatchedActions.isEmpty())
-        assertNull(blockSpanStates.getPendingStyles(blockId))
+        assertNull(spanStates.getPendingStyles(blockId))
     }
 
  // Coordinated consistency
@@ -215,7 +215,7 @@ class SpanActionDispatcherTest {
 
         dispatcher.applyStyle(blockId, 2, 8, SpanStyle.Italic)
 
-        val runtimeSpans = blockSpanStates.getSpans(blockId)
+        val runtimeSpans = spanStates.getSpans(blockId)
         assertEquals(listOf(TextSpan(2, 8, SpanStyle.Italic)), runtimeSpans)
 
         val action = dispatchedActions[0] as UpdateBlockContent
@@ -231,7 +231,7 @@ class SpanActionDispatcherTest {
         dispatcher.applyStyle(blockId, 0, 5, SpanStyle.Bold)
         dispatcher.applyStyle(blockId, 6, 11, SpanStyle.Italic)
 
-        val runtimeSpans = blockSpanStates.getSpans(blockId)
+        val runtimeSpans = spanStates.getSpans(blockId)
         assertEquals(2, runtimeSpans.size)
         assertEquals(2, dispatchedActions.size)
     }

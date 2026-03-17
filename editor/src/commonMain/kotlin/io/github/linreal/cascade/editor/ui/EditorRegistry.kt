@@ -4,6 +4,7 @@ import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.ui.renderers.DividerBlockRenderer
 import io.github.linreal.cascade.editor.ui.renderers.TextBlockRenderer
 import io.github.linreal.cascade.editor.ui.renderers.TodoBlockRenderer
+import io.github.linreal.cascade.editor.ui.renderers.UnknownBlockRenderer
 
 /**
  * Creates a [BlockRegistry] with all built-in descriptors and renderers.
@@ -43,4 +44,7 @@ public fun BlockRegistry.registerBuiltInRenderers() {
     registerRenderer("divider", DividerBlockRenderer())
 
     // TODO: Register ImageRenderer for "image"
+
+    // Fallback for UnknownBlockType (deserialized blocks with unrecognized typeId)
+    setUnknownBlockRenderer(UnknownBlockRenderer)
 }

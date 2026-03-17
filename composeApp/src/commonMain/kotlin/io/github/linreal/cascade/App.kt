@@ -1,108 +1,122 @@
 package io.github.linreal.cascade
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.linreal.cascade.editor.core.Block
-import io.github.linreal.cascade.editor.core.SpanStyle
-import io.github.linreal.cascade.editor.core.TextSpan
+import cascadeeditor.composeapp.generated.resources.Res
+import io.github.linreal.cascade.editor.serialization.loadFromJson
+import io.github.linreal.cascade.editor.serialization.toJson
+import io.github.linreal.cascade.editor.state.BlockSpanStates
+import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.rememberEditorState
 import io.github.linreal.cascade.editor.ui.CascadeEditor
 import io.github.linreal.cascade.editor.ui.utils.Spacers
+import io.github.linreal.cascade.storage.rememberDocumentStorage
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 
+@OptIn(FlowPreview::class)
 @Composable
 @Preview
 fun App() {
     MaterialTheme {
-        // Create initial blocks for the editor
-        val initialBlocks = remember {
-            val richDemoText = "1. Rich demo: bold italic underline strike code highlight link."
-            fun spanFor(token: String, style: SpanStyle): TextSpan {
-                val start = richDemoText.indexOf(token)
-                check(start >= 0) { "Token '$token' not found in rich demo text." }
-                return TextSpan(start = start, end = start + token.length, style = style)
+        val storage = rememberDocumentStorage()
+        val scope = rememberCoroutineScope()
+
+        val textStates = remember { BlockTextStates() }
+        val spanStates = remember { BlockSpanStates() }
+        val editorState = rememberEditorState()
+        var isLoaded by remember { mutableStateOf(false) }
+
+        // Load saved document or fall back to bundled default
+        LaunchedEffect(Unit) {
+            val json = storage.read() ?: loadDefaultDocument()
+            try {
+                editorState.loadFromJson(json, textStates, spanStates)
+            } catch (_: Exception) {
+                // Corrupted saved document — reset to default
+                storage.delete()
+                editorState.loadFromJson(loadDefaultDocument(), textStates, spanStates)
             }
-
-            listOf(
-                Block.paragraph(
-                    text = richDemoText,
-                    spans = listOf(
-                        spanFor("bold", SpanStyle.Bold),
-                        spanFor("italic", SpanStyle.Italic),
-                        spanFor("underline", SpanStyle.Underline),
-                        spanFor("strike", SpanStyle.StrikeThrough),
-                        spanFor("code", SpanStyle.InlineCode),
-                        spanFor("highlight", SpanStyle.Highlight(0xFFFFEB3BL)),
-                        spanFor(
-                            "link",
-                            SpanStyle.Link("https://developer.android.com/jetpack/compose")
-                        ),
-                    )
-                ),
-                Block.todo("1.5 Checked Todo list item", checked = true),
-                Block.todo("1.6 Unchecked Todo list item", checked = false),
-
-                Block.paragraph("2. Short block."),
-                Block.paragraph(
-                    "3. This is a medium sized block that contains a bit more information about how this editor works and what you can do with it."
-                ),
-                Block.paragraph(
-                    "4. Multiple blocks make it easier to test scrolling and drag-and-drop features that were recently implemented."
-                ),
-                Block.paragraph("5. Another short one."),
-                Block.paragraph("6. Let's add a very long block here. " + "Word ".repeat(50)),
-                Block.paragraph("7. Block number seven is here to stay."),
-                Block.paragraph("8. Press Enter to split a block."),
-                Block.paragraph(
-                    "9. Press Backspace at the start to merge with the previous block."
-                ),
-                Block.paragraph(
-                    "10. Halfway there! This editor supports various block types and interactions."
-                ),
-                Block.paragraph(
-                    "11. Text alignment and styling are important for a good reading experience."
-                ),
-                Block.paragraph("12. " + "Expanding content ".repeat(10)),
-                Block.paragraph("13. Small."),
-                Block.paragraph(
-                    "14. Large blocks help verify that the auto-scrolling during drag-and-drop works correctly even when the item is taller than the viewport."
-                ),
-                Block.paragraph("15. Just some more text to fill the space."),
-                Block.paragraph("16. Number sixteen."),
-                Block.paragraph("17. Almost at the end of our initial list."),
-                Block.paragraph("18. " + "Longer text for 18. ".repeat(5)),
-                Block.paragraph("19. One more to go."),
-                Block.paragraph(
-                    "20. The final block in our initial set. Enjoy using CascadeEditor!"
-                )
-            )
+            isLoaded = true
         }
 
-        val editorState = rememberEditorState(initialBlocks)
+        // Auto-save 2s after last state change
+        if (isLoaded) {
+            LaunchedEffect(Unit) {
+                snapshotFlow { editorState.state }
+                    .drop(1)
+                    .debounce(2_000)
+                    .collect {
+                        val json = editorState.toJson(textStates, spanStates)
+                        storage.write(json)
+                    }
+            }
+        }
 
         Column(
             modifier = Modifier.background(Color.White).safeContentPadding().fillMaxSize(),
         ) {
-            Text(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                text = "Cascade Editor",
-                color = Color.Black,
-                fontSize = 40.sp,
-                textAlign = TextAlign.Center
-            )
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Cascade Editor",
+                    color = Color.Black,
+                    fontSize = 40.sp,
+                    textAlign = TextAlign.Center,
+                )
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            storage.delete()
+                            val json = loadDefaultDocument()
+                            editorState.loadFromJson(json, textStates, spanStates)
+                        }
+                    }
+                ) {
+                    Text("Reset")
+                }
+            }
             Spacers.Vertical(40.dp)
-            CascadeEditor(stateHolder = editorState, modifier = Modifier.fillMaxSize())
+            if (isLoaded) {
+                CascadeEditor(
+                    stateHolder = editorState,
+                    textStates = textStates,
+                    spanStates = spanStates,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     }
+}
+
+private suspend fun loadDefaultDocument(): String {
+    return Res.readBytes("files/default_document.json").decodeToString()
 }

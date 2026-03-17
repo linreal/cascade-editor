@@ -4,8 +4,11 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
@@ -26,6 +29,12 @@ import io.github.linreal.cascade.editor.richtext.StyleStatus
 public class BlockSpanStates {
 
     private val states = mutableMapOf<BlockId, MutableState<List<TextSpan>>>()
+    /**
+     * Monotonically increasing counter, incremented on [clear].
+     * Used as a `remember` key so composables re-fetch from the map after a bulk reset.
+     */
+    internal var generation: Int by mutableIntStateOf(0)
+        private set
     // Snapshot-aware map so pending style changes can drive Compose recomposition.
     private val pendingStyles = mutableStateMapOf<BlockId, Set<SpanStyle>>()
 
@@ -106,6 +115,7 @@ public class BlockSpanStates {
     public fun clear() {
         states.clear()
         pendingStyles.clear()
+        generation++
     }
 
  // Edit Adjustment
