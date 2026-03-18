@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.action.HighlightSlashCommand
 import io.github.linreal.cascade.editor.action.NavigateSlashBack
-import io.github.linreal.cascade.editor.loge
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
 import io.github.linreal.cascade.editor.slash.SlashCommandItem
 import io.github.linreal.cascade.editor.state.EditorStateHolder
@@ -74,14 +73,10 @@ internal fun SlashCommandPopup(
         stateHolder.dispatch(HighlightSlashCommand(items.firstOrNull()?.id))
     }
 
-    val groupedItems = remember(items) {
-        SlashPopupDefaults.groupSlashItems(items)
-    }
-
     val density = LocalDensity.current
-    val estimatedPopupHeightDp = remember(groupedItems, slashState.navigationPath) {
+    val estimatedPopupHeightDp = remember(items.size, slashState.navigationPath) {
         SlashPopupDefaults.estimatePopupHeightDp(
-            groupedItems = groupedItems,
+            itemCount = items.size,
             hasBackHeader = slashState.navigationPath.isNotEmpty(),
         )
     }
@@ -165,25 +160,15 @@ internal fun SlashCommandPopup(
                     .padding(vertical = SlashPopupDefaults.CONTENT_PADDING_DP.dp)
                     .focusProperties { canFocus = false },
             ) {
-                groupedItems.forEachIndexed { index, group ->
-                    if (index > 0) {
-                        item(key = "group-divider-$index") {
-                            HorizontalDivider(
-                                color = Color(0xFFEEEEEE),
-                                modifier = Modifier.padding(vertical = 4.dp),
-                            )
-                        }
-                    }
-                    items(
-                        items = group.items,
-                        key = { item -> item.id.value },
-                    ) { item ->
-                        SlashCommandRow(
-                            item = item,
-                            isHighlighted = item.id == slashState.highlightedCommandId,
-                            onClick = { onItemClicked(item, slashExecutor) },
-                        )
-                    }
+                items(
+                    items = items,
+                    key = { item -> item.id.value },
+                ) { item ->
+                    SlashCommandRow(
+                        item = item,
+                        isHighlighted = item.id == slashState.highlightedCommandId,
+                        onClick = { onItemClicked(item, slashExecutor) },
+                    )
                 }
             }
         }

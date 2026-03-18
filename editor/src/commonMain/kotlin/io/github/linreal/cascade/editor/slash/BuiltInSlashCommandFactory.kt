@@ -42,7 +42,6 @@ internal class BuiltInSlashCommandFactory(
                 description = descriptor.description,
                 keywords = descriptor.keywords,
                 icon = spec.icon ?: descriptor.icon?.let(::SlashCommandIconKey),
-                group = spec.group,
                 queryTextPolicy = SlashQueryTextPolicy.RemoveBeforeExecute,
                 onExecute = { builtInExecutor(typeId, behavior) },
             )

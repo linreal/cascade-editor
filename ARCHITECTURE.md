@@ -23,7 +23,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Span state local | `ui/LocalBlockSpanStates.kt` | `LocalBlockSpanStates` |
 | State snapshot | `state/EditorState.kt` | `EditorState`, `DragState`, `SlashCommandState`, `SlashQueryRange` |
 | Slash command ID | `slash/SlashCommandId.kt` | `SlashCommandId` |
-| Slash command model | `slash/SlashCommandModel.kt` | `SlashCommandItem`, `SlashCommandAction`, `SlashCommandMenu`, `SlashCommandGroup`, `SlashCommandIconKey`, `SlashQueryTextPolicy`, `SlashCommandResult` |
+| Slash command model | `slash/SlashCommandModel.kt` | `SlashCommandItem`, `SlashCommandAction`, `SlashCommandMenu`, `SlashCommandIconKey`, `SlashQueryTextPolicy`, `SlashCommandResult` |
 | Slash command context | `slash/SlashCommandContext.kt` | `SlashCommandContext`, `SlashCommandEditor` |
 | Slash command registry | `slash/SlashCommandRegistry.kt` | `SlashCommandRegistry` |
 | State holder | `state/EditorStateHolder.kt` | `EditorStateHolder`, `rememberEditorState()` |
@@ -71,7 +71,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Formatting observer | `richtext/FormattingStateObserver.kt` | `rememberFormattingState()` |
 | Formatting actions impl | `richtext/DefaultFormattingActions.kt` | `DefaultFormattingActions` |
 | Default toolbar UI | `ui/RichTextToolbar.kt` | `RichTextToolbar()` |
-| Slash popup defaults | `ui/SlashPopupDefaults.kt` | `SlashPopupDefaults`, `SlashGroupedItems` |
+| Slash popup defaults | `ui/SlashPopupDefaults.kt` | `SlashPopupDefaults` |
 | Slash popup overlay | `ui/SlashCommandPopup.kt` | `SlashCommandPopup()` |
 | Slash command row | `ui/SlashCommandRow.kt` | `SlashCommandRow()` |
 | Slash caret rect local | `ui/LocalSlashCaretRect.kt` | `LocalSlashCaretRect`, `SlashCaretRectHolder` |
@@ -264,5 +264,5 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `FormattingStateCalculatorTest.kt` | Pure calculator: canFormat conditions, collapsed caret pending/continuation, ranged selection query, reversed bounds, metadata |
 | `DefaultFormattingActionsTest.kt` | Action adapter: ranged/collapsed toggle, apply/remove pass-through, no-op guards (no focus, Code, block selection, drag, non-text), fresh selection resolution |
 | `FormattingIntegrationTest.kt` | Full integration: focus/unfocus cycles, focus switch between styled blocks, pending styles for empty blocks, drag disables formatting, same-style cursor move structural equality, Enter continuation + calculator, toggle + calculator consistency, multi-block selection disable, Code disable, config extensibility, backspace merge continuity, runtime/snapshot sync, collapsed-cursor pending toggle cycle |
-| `SlashPopupUtilsTest.kt` | Popup pure functions: groupSlashItems (empty, single, multiple groups, ordering, ungrouped first, preserve order), calculatePopupOffset (below/above/clamp), resolveNextHighlight (null/down/up/first/last/clamped/unknown) |
+| `SlashPopupUtilsTest.kt` | Popup pure functions: estimatePopupHeightDp (compact/clamped), calculatePopupOffset (below/above/clamp), resolveNextHighlight (null/down/up/first/last/clamped/unknown) |
 | `CascadeEditorSlashIntegrationTest.kt` | Slash integration: registry coexistence (built-in + custom), custom override, custom execution alongside built-ins, session invalidation pure function (no session, healthy, drag, selection, anchor missing, different block deleted), full scenarios (drag start, anchor deletion) |

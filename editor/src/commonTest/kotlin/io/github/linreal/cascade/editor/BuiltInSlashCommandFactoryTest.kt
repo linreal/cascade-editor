@@ -8,14 +8,12 @@ import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.slash.BuiltInBlockSlashBehavior
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandFactory
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandSpec
-import io.github.linreal.cascade.editor.slash.SlashCommandGroup
 import io.github.linreal.cascade.editor.slash.SlashCommandIconKey
 import io.github.linreal.cascade.editor.slash.SlashCommandResult
 import io.github.linreal.cascade.editor.slash.SlashQueryTextPolicy
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -105,21 +103,10 @@ class BuiltInSlashCommandFactoryTest {
     }
 
     @Test
-    fun `group is copied from slash spec`() {
-        val items = factory.generate(listOf(paragraphDescriptor()))
-        val group = items[0].group
-        assertNotNull(group)
-        assertEquals("basic_blocks", group.id)
-        assertEquals("Basic Blocks", group.label)
-        assertEquals(0, group.order)
-    }
-
-    @Test
     fun `slash icon is used when present`() {
         val descriptor = paragraphDescriptor().copy(
             icon = "fallback_icon",
             slash = BuiltInSlashCommandSpec(
-                group = basicGroup,
                 behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
                 icon = SlashCommandIconKey("slash_icon"),
             )
@@ -134,7 +121,6 @@ class BuiltInSlashCommandFactoryTest {
         val descriptor = paragraphDescriptor().copy(
             icon = "descriptor_icon",
             slash = BuiltInSlashCommandSpec(
-                group = basicGroup,
                 behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
                 icon = null,
             )
@@ -149,7 +135,6 @@ class BuiltInSlashCommandFactoryTest {
         val descriptor = paragraphDescriptor().copy(
             icon = null,
             slash = BuiltInSlashCommandSpec(
-                group = basicGroup,
                 behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
                 icon = null,
             )
@@ -238,19 +223,7 @@ class BuiltInSlashCommandFactoryTest {
         assertTrue(items.all { it.id.value.startsWith("builtin.block.") })
     }
 
-    @Test
-    fun `built-in generation preserves groups from descriptors`() {
-        val registry = BlockRegistry.createDefault()
-        val items = factory.generate(registry.getAllDescriptors())
-
-        val groupIds = items.mapNotNull { it.group?.id }.toSet()
-        assertEquals(setOf("basic_blocks", "media"), groupIds)
-    }
-
     // -- Helpers --
-
-    private val basicGroup = SlashCommandGroup(id = "basic_blocks", label = "Basic Blocks", order = 0)
-    private val mediaGroup = SlashCommandGroup(id = "media", label = "Media", order = 10)
 
     private fun paragraphDescriptor() = BlockDescriptor(
         typeId = "paragraph",
@@ -258,7 +231,6 @@ class BuiltInSlashCommandFactoryTest {
         description = "Plain text paragraph",
         keywords = listOf("text", "p"),
         slash = BuiltInSlashCommandSpec(
-            group = basicGroup,
             behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
         ),
         factory = { id -> Block(id, BlockType.Paragraph, BlockContent.Text("")) }
@@ -270,7 +242,6 @@ class BuiltInSlashCommandFactoryTest {
         description = "Heading level 1",
         keywords = listOf("h1", "heading", "title"),
         slash = BuiltInSlashCommandSpec(
-            group = basicGroup,
             behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
         ),
         factory = { id -> Block(id, BlockType.Heading(1), BlockContent.Text("")) }
@@ -282,7 +253,6 @@ class BuiltInSlashCommandFactoryTest {
         description = "Horizontal line separator",
         keywords = listOf("hr", "line", "separator"),
         slash = BuiltInSlashCommandSpec(
-            group = mediaGroup,
             behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
         ),
         factory = { id -> Block(id, BlockType.Divider, BlockContent.Empty) }

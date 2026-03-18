@@ -11,20 +11,6 @@ import kotlin.jvm.JvmInline
 public value class SlashCommandIconKey(public val value: String)
 
 /**
- * Grouping label and sort order for slash menu items.
- *
- * @property id Stable identifier for analytics, localization, and de-dup.
- * @property label Human-readable group header shown in the popup.
- * @property order Lower values sort first. Groups with the same order are sorted by label.
- */
-@Immutable
-public data class SlashCommandGroup(
-    val id: String,
-    val label: String,
-    val order: Int = 0,
-)
-
-/**
  * Policy for what happens to the slash query text when a command is executed.
  */
 public enum class SlashQueryTextPolicy {
@@ -52,7 +38,7 @@ public sealed interface SlashCommandResult {
 /**
  * Sealed hierarchy for items that can appear in the slash menu.
  *
- * Every item has a unique [id], display metadata, and an optional [group].
+ * Every item has a unique [id] and display metadata.
  */
 public sealed interface SlashCommandItem {
     public val id: SlashCommandId
@@ -60,7 +46,6 @@ public sealed interface SlashCommandItem {
     public val description: String
     public val keywords: List<String>
     public val icon: SlashCommandIconKey?
-    public val group: SlashCommandGroup?
 }
 
 /**
@@ -76,7 +61,6 @@ public data class SlashCommandAction(
     override val description: String,
     override val keywords: List<String> = emptyList(),
     override val icon: SlashCommandIconKey? = null,
-    override val group: SlashCommandGroup? = null,
     val queryTextPolicy: SlashQueryTextPolicy = SlashQueryTextPolicy.RemoveBeforeExecute,
     val onExecute: suspend SlashCommandContext.() -> SlashCommandResult,
 ) : SlashCommandItem
@@ -93,6 +77,5 @@ public data class SlashCommandMenu(
     override val description: String,
     override val keywords: List<String> = emptyList(),
     override val icon: SlashCommandIconKey? = null,
-    override val group: SlashCommandGroup? = null,
     val children: List<SlashCommandItem> = emptyList(),
 ) : SlashCommandItem

@@ -14,7 +14,7 @@ import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandSpec
  * @property keywords Search keywords for slash command filtering
  * @property icon Optional icon identifier for general registry use
  * @property slash Slash-menu-specific metadata. Only descriptors with non-null [slash] will
- *   appear as built-in slash entries. Grouping is sourced from [BuiltInSlashCommandSpec.group].
+ *   appear as built-in slash entries.
  * @property factory Creates a new block instance with a given ID
  */
 public data class BlockDescriptor(

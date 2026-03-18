@@ -4,7 +4,7 @@
 
 The Slash Command Palette provides a Notion-style `/` menu that lets users convert block types and insert new blocks inline. When a user types `/` in any text block, a popup appears with a searchable list of commands (headings, lists, code, divider, image, etc.). The user can filter by typing, navigate with arrow keys, and execute with Enter or tap.
 
-The feature is fully extensible: consumers register custom `SlashCommandItem`s alongside auto-generated built-in commands derived from `BlockDescriptor` metadata. The palette supports submenu navigation, grouped display, and keyboard-driven workflows without stealing focus from the text field.
+The feature is fully extensible: consumers register custom `SlashCommandItem`s alongside auto-generated built-in commands derived from `BlockDescriptor` metadata. The palette supports submenu navigation and keyboard-driven workflows without stealing focus from the text field.
 
 ## 2. Architecture & Design Decisions
 
@@ -14,14 +14,14 @@ The feature is fully extensible: consumers register custom `SlashCommandItem`s a
 |-------|-------------------|------|
 | **Model** | `SlashCommandItem` (sealed), `SlashCommandAction`, `SlashCommandMenu` | Polymorphic menu items — leaf actions vs. expandable submenus |
 | **Identity** | `SlashCommandId` (value class) | Type-safe command identifier |
-| **Metadata** | `SlashCommandGroup`, `SlashCommandIconKey` | Grouping/sorting and icon indirection |
+| **Metadata** | `SlashCommandIconKey` | Icon indirection |
 | **Registry** | `SlashCommandRegistry` | Thread-safe registration + ranked fuzzy search |
 | **Observer** | `SlashCommandTextObserver` | Detects `/` insertion, tracks query range, fires open/update/close callbacks |
 | **Execution** | `SlashCommandExecutor` | Resolves items, routes menus vs. actions, manages query-text removal and result lifecycle |
 | **Editor Host** | `SlashCommandEditorHost` (implements `SlashCommandEditor`) | Safe mutation facade: replaces query text, swaps blocks, inserts blocks, syncs runtime + snapshot state |
 | **Context** | `SlashCommandContext` | Execution-time receiver providing `anchorBlockId`, `query`, `queryRange`, and `editor` handle |
 | **Factory** | `BuiltInSlashCommandFactory` | Generates `SlashCommandAction`s from `BlockDescriptor`s with `BuiltInSlashCommandSpec` metadata |
-| **Spec** | `BuiltInSlashCommandSpec`, `BuiltInBlockSlashBehavior` | Per-descriptor slash config: group + execution semantics (`ConvertInPlace` vs. `AlwaysInsert`) |
+| **Spec** | `BuiltInSlashCommandSpec`, `BuiltInBlockSlashBehavior` | Per-descriptor slash config: execution semantics (`ConvertInPlace` vs. `AlwaysInsert`) |
 | **State** | `SlashCommandState`, `SlashQueryRange` | Immutable snapshot of the active session (anchor, query, navigation path, highlighted item) |
 | **UI** | `SlashCommandPopup`, `SlashCommandRow`, `SlashPopupDefaults` | Compose overlay, row rendering, layout math |
 | **Locals** | `LocalSlashCaretRect`, `LocalSlashCommandExecutor`, `LocalSlashHighlightedCommandId`, `LocalSlashPopupItems`, `LocalSlashSessionAnchorBlockId` | CompositionLocals bridging CascadeEditor to TextBlockField and popup |
@@ -160,7 +160,7 @@ class SlashCommandRegistry {
 }
 
 // Model
-sealed interface SlashCommandItem { id, title, description, keywords, icon, group }
+sealed interface SlashCommandItem { id, title, description, keywords, icon }
 data class SlashCommandAction(..., onExecute: suspend SlashCommandContext.() -> SlashCommandResult)
 data class SlashCommandMenu(..., children: List<SlashCommandItem>)
 
@@ -184,8 +184,7 @@ enum class SlashQueryTextPolicy { RemoveBeforeExecute, KeepText }
 // Supporting types
 value class SlashCommandId(val value: String)
 value class SlashCommandIconKey(val value: String)
-data class SlashCommandGroup(id, label, order)
-data class BuiltInSlashCommandSpec(group, behavior, icon?)
+data class BuiltInSlashCommandSpec(behavior, icon?)
 sealed interface BuiltInBlockSlashBehavior { ConvertInPlace, AlwaysInsert }
 
 // State (read-only for consumers)

@@ -6,7 +6,6 @@ import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.UnknownBlockType
 import io.github.linreal.cascade.editor.slash.BuiltInBlockSlashBehavior
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandSpec
-import io.github.linreal.cascade.editor.slash.SlashCommandGroup
 
 /**
  * Central registry for block types, descriptors, and renderers.
@@ -124,12 +123,6 @@ public class BlockRegistry {
 }
 
 /**
- * Shared group definitions for built-in slash menu items.
- */
-private val BasicBlocksGroup = SlashCommandGroup(id = "basic_blocks", label = "Basic Blocks", order = 0)
-private val MediaGroup = SlashCommandGroup(id = "media", label = "Media", order = 10)
-
-/**
  * Registers all built-in block type descriptors.
  */
 private fun BlockRegistry.registerBuiltInDescriptors() {
@@ -141,7 +134,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             description = "Plain text paragraph",
             keywords = listOf("text", "p"),
             slash = BuiltInSlashCommandSpec(
-                group = BasicBlocksGroup,
                 behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
             ),
             factory = { id ->
@@ -159,7 +151,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
                 description = "Heading level $level",
                 keywords = listOf("h$level", "heading", "title"),
                 slash = BuiltInSlashCommandSpec(
-                    group = BasicBlocksGroup,
                     behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
                 ),
                 factory = { id ->
@@ -177,7 +168,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             description = "Task with checkbox",
             keywords = listOf("checkbox", "task", "check", "todo"),
             slash = BuiltInSlashCommandSpec(
-                group = BasicBlocksGroup,
                 behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
             ),
             factory = { id ->
@@ -194,7 +184,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             description = "Unordered list item",
             keywords = listOf("list", "bullet", "ul", "unordered"),
             slash = BuiltInSlashCommandSpec(
-                group = BasicBlocksGroup,
                 behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
             ),
             factory = { id ->
@@ -211,7 +200,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             description = "Ordered list item",
             keywords = listOf("list", "number", "ol", "ordered"),
             slash = BuiltInSlashCommandSpec(
-                group = BasicBlocksGroup,
                 behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
             ),
             factory = { id ->
@@ -228,7 +216,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             description = "Quoted text block",
             keywords = listOf("blockquote", "citation"),
             slash = BuiltInSlashCommandSpec(
-                group = BasicBlocksGroup,
                 behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
             ),
             factory = { id ->
@@ -245,7 +232,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             description = "Code block with syntax highlighting",
             keywords = listOf("code", "snippet", "programming"),
             slash = BuiltInSlashCommandSpec(
-                group = BasicBlocksGroup,
                 behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
             ),
             factory = { id ->
@@ -262,7 +248,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             description = "Horizontal line separator",
             keywords = listOf("hr", "line", "separator", "horizontal"),
             slash = BuiltInSlashCommandSpec(
-                group = BasicBlocksGroup,
                 behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
             ),
             factory = { id ->
@@ -279,7 +264,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             description = "Embedded image",
             keywords = listOf("picture", "photo", "img"),
             slash = BuiltInSlashCommandSpec(
-                group = MediaGroup,
                 behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
             ),
             factory = { id ->

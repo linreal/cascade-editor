@@ -1,7 +1,6 @@
 package io.github.linreal.cascade.editor
 
 import io.github.linreal.cascade.editor.slash.SlashCommandAction
-import io.github.linreal.cascade.editor.slash.SlashCommandGroup
 import io.github.linreal.cascade.editor.slash.SlashCommandId
 import io.github.linreal.cascade.editor.slash.SlashCommandItem
 import io.github.linreal.cascade.editor.slash.SlashCommandMenu
@@ -18,13 +17,11 @@ class SlashCommandRegistryTest {
         title: String,
         description: String = "",
         keywords: List<String> = emptyList(),
-        group: SlashCommandGroup? = null,
     ): SlashCommandAction = SlashCommandAction(
         id = SlashCommandId(id),
         title = title,
         description = description,
         keywords = keywords,
-        group = group,
         onExecute = { SlashCommandResult.Done },
     )
 

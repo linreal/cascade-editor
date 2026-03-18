@@ -7,7 +7,6 @@ import io.github.linreal.cascade.editor.registry.BlockDescriptor
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.slash.BuiltInBlockSlashBehavior
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandSpec
-import io.github.linreal.cascade.editor.slash.SlashCommandGroup
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -135,8 +134,7 @@ class BlockRegistryTest {
 
         val paragraph = registry.getDescriptor("paragraph")!!
         assertNotNull(paragraph.slash)
-        assertEquals("Basic Blocks", paragraph.slash!!.group.label)
-        assertEquals("basic_blocks", paragraph.slash!!.group.id)
+        assertEquals(BuiltInBlockSlashBehavior.ConvertInPlace, paragraph.slash!!.behavior)
     }
 
     @Test
@@ -209,9 +207,7 @@ class BlockRegistryTest {
     @Test
     fun `custom descriptor with slash spec is preserved`() {
         val registry = BlockRegistry.create()
-        val customGroup = SlashCommandGroup(id = "custom", label = "Custom", order = 99)
         val customSpec = BuiltInSlashCommandSpec(
-            group = customGroup,
             behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
         )
         val descriptor = BlockDescriptor(
@@ -225,7 +221,6 @@ class BlockRegistryTest {
 
         val retrieved = registry.getDescriptor("custom:widget")!!
         assertEquals(customSpec, retrieved.slash)
-        assertEquals("Custom", retrieved.slash!!.group.label)
         assertEquals(BuiltInBlockSlashBehavior.AlwaysInsert, retrieved.slash!!.behavior)
     }
 }
