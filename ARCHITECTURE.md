@@ -77,6 +77,13 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Slash caret rect local | `ui/LocalSlashCaretRect.kt` | `LocalSlashCaretRect`, `SlashCaretRectHolder` |
 | Slash registry local | `ui/LocalSlashCommandRegistry.kt` | `LocalSlashCommandRegistry` |
 | Slash popup items local | `ui/LocalSlashPopupItems.kt` | `LocalSlashPopupItems` |
+| Theme colors | `theme/CascadeEditorColors.kt` | `CascadeEditorColors` |
+| Theme typography | `theme/CascadeEditorTypography.kt` | `CascadeEditorTypography` |
+| Theme top-level | `theme/CascadeEditorTheme.kt` | `CascadeEditorTheme` |
+| Theme local | `theme/LocalCascadeTheme.kt` | `LocalCascadeTheme` |
+| UI strings | `theme/CascadeEditorStrings.kt` | `CascadeEditorStrings` |
+| Block strings | `theme/CascadeEditorBlockStrings.kt` | `CascadeEditorBlockStrings`, `BlockLocalizedStrings` |
+| Strings locals | `theme/LocalCascadeStrings.kt` | `LocalCascadeStrings`, `LocalCascadeBlockStrings` |
 
 All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
 
@@ -218,7 +225,12 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Serialization — doc foundation types | Done | Enums, options, warnings, codecs, `UnknownBlockType` |
 | Serialization — full document | Done | `DocumentSchema` encode/decode, `EditorStateHolder.toJson()`/`loadFromJson()` extensions |
 | Undo / Redo | Not done | |
-| Theming / styling API | Not done | Colors and sizes hardcoded |
+| Theming / styling API — data models | Done | `CascadeEditorTheme`, `CascadeEditorColors`, `CascadeEditorTypography`, `LocalCascadeTheme`; light/dark presets |
+| Theming / styling API — color migration | Done | All UI colors read from `LocalCascadeTheme.current.colors` |
+| Theming / styling API — typography migration | Done | All UI typography reads from `LocalCascadeTheme.current.typography` |
+| Localization — data models | Done | `CascadeEditorStrings`, `CascadeEditorBlockStrings`, `BlockLocalizedStrings`, `LocalCascadeStrings`, `LocalCascadeBlockStrings` |
+| Localization — UI string migration | Done | `SlashCommandPopup`, `UnknownBlockRenderer`, `RichTextToolbar` read from `LocalCascadeStrings` |
+| Localization — slash command system | Done | `BuiltInSlashCommandFactory.generate()` accepts `CascadeEditorBlockStrings?` for localized titles/descriptions/keywords |
 | Block nesting / indentation | Not done | Flat list only |
 | Multi-block drag | Not done | `DragState` supports it, UI doesn't |
 | Keyboard shortcuts | Not done | Enter/Backspace + slash popup keys (Up/Down/Enter/Escape) handled; general shortcuts not done |
@@ -266,3 +278,8 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `FormattingIntegrationTest.kt` | Full integration: focus/unfocus cycles, focus switch between styled blocks, pending styles for empty blocks, drag disables formatting, same-style cursor move structural equality, Enter continuation + calculator, toggle + calculator consistency, multi-block selection disable, Code disable, config extensibility, backspace merge continuity, runtime/snapshot sync, collapsed-cursor pending toggle cycle |
 | `SlashPopupUtilsTest.kt` | Popup pure functions: estimatePopupHeightDp (compact/clamped), calculatePopupOffset (below/above/clamp), resolveNextHighlight (null/down/up/first/last/clamped/unknown) |
 | `CascadeEditorSlashIntegrationTest.kt` | Slash integration: registry coexistence (built-in + custom), custom override, custom execution alongside built-ins, session invalidation pure function (no session, healthy, drag, selection, anchor missing, different block deleted), full scenarios (drag start, anchor deletion) |
+| `CascadeEditorColorsTest.kt` | Light/dark presets: non-transparent slots, known values, light vs dark differ on key slots, copy/equality semantics |
+| `CascadeEditorTypographyTest.kt` | Default preset: positive font sizes, monotonically decreasing headings, monospace code, medium-weight toolbar, copy/equality |
+| `CascadeEditorStringsTest.kt` | Default preset: non-empty strings, unsupportedBlock interpolation, copy with custom values, known English defaults |
+| `CascadeEditorBlockStringsTest.kt` | Default preset: all built-in typeIds present, non-empty displayName/description/keywords, forType null for unknown, BlockLocalizedStrings defaults |
+| `BuiltInSlashCommandFactoryLocalizationTest.kt` | Localized slash generation: title/description override, keyword merging + dedup, null blockStrings fallback, missing typeId fallback, mixed localized/unlocalized, English keywords always present |

@@ -42,6 +42,7 @@ import io.github.linreal.cascade.editor.richtext.SpanMaintenanceTextObserver
 import io.github.linreal.cascade.editor.slash.SlashCommandTextObserver
 import io.github.linreal.cascade.editor.ui.observers.ListAutoDetectObserver
 import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
+import androidx.compose.ui.graphics.SolidColor
 import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
 import io.github.linreal.cascade.editor.ui.LocalSlashCaretRect
@@ -52,6 +53,7 @@ import io.github.linreal.cascade.editor.ui.LocalSlashSessionAnchorBlockId
 import io.github.linreal.cascade.editor.ui.SlashPopupDefaults
 import io.github.linreal.cascade.editor.ui.visibleSelection
 import io.github.linreal.cascade.editor.ui.visibleText
+import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 
 /**
  * Shared text editing composable used by renderers that need formattable text input.
@@ -75,6 +77,7 @@ internal fun TextBlockField(
     callbacks: BlockCallbacks,
 ) {
     val textContent = block.content as? BlockContent.Text ?: return
+    val colors = LocalCascadeTheme.current.colors
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     var hasComposeFocus by remember { mutableStateOf(false) }
@@ -96,9 +99,11 @@ internal fun TextBlockField(
     val spanState = remember(block.id, spanStates.generation) {
         spanStates.getOrCreate(block.id, textContent.spans, textContent.text.length)
     }
-    val outputTransformation = remember(block.id, spanState) {
+    val linkColor = colors.linkText
+    val inlineCodeBackground = colors.inlineCodeBackground
+    val outputTransformation = remember(block.id, spanState, linkColor, inlineCodeBackground) {
         OutputTransformation {
-            SpanMapper.run { applyStyles(spanState.value) }
+            SpanMapper.run { applyStyles(spanState.value, linkColor, inlineCodeBackground) }
         }
     }
     val spanTextObserver = remember(block.id, textStates, spanStates) {
@@ -234,6 +239,8 @@ internal fun TextBlockField(
         )
     }
 
+    val cursorBrush = remember(colors.cursor) { SolidColor(colors.cursor) }
+
     Box(modifier = modifier) {
         BackspaceAwareTextField(
             state = textFieldState,
@@ -291,6 +298,7 @@ internal fun TextBlockField(
                     }
                 },
             textStyle = textStyle,
+            cursorBrush = cursorBrush,
             outputTransformation = outputTransformation,
             onTextLayout = { result -> textLayoutResult = result() },
             focusRequester = focusRequester,

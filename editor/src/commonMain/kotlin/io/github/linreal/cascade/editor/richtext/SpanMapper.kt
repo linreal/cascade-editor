@@ -19,9 +19,6 @@ import io.github.linreal.cascade.editor.core.TextSpan
 internal object SpanMapper {
 
     private const val sentinelOffset: Int = 1
-    // TODO: inject via theme when theming/styling API is implemented
-    private val linkColor: Color = Color(0xFF0B57D0)
-    private val inlineCodeBackground: Color = Color(0x14000000)
     private val combinedDecoration: TextDecoration = TextDecoration.combine(
         listOf(TextDecoration.Underline, TextDecoration.LineThrough)
     )
@@ -36,10 +33,14 @@ internal object SpanMapper {
      *
      * Returns `null` when there are no renderable spans.
      */
-    fun toOutputTransformation(spans: List<TextSpan>): OutputTransformation? {
+    fun toOutputTransformation(
+        spans: List<TextSpan>,
+        linkColor: Color,
+        inlineCodeBackground: Color,
+    ): OutputTransformation? {
         if (spans.isEmpty()) return null
 
-        val mapped = mapRenderableSpans(spans)
+        val mapped = mapRenderableSpans(spans, linkColor, inlineCodeBackground)
         if (mapped.isEmpty()) return null
 
         return OutputTransformation {
@@ -53,10 +54,14 @@ internal object SpanMapper {
      * Unlike [toOutputTransformation], this is suitable for a stable OutputTransformation
      * instance that reads the latest span list on each invocation.
      */
-    fun TextFieldBuffer.applyStyles(spans: List<TextSpan>) {
+    fun TextFieldBuffer.applyStyles(
+        spans: List<TextSpan>,
+        linkColor: Color,
+        inlineCodeBackground: Color,
+    ) {
         if (spans.isEmpty()) return
 
-        val mapped = mapRenderableSpans(spans)
+        val mapped = mapRenderableSpans(spans, linkColor, inlineCodeBackground)
         if (mapped.isEmpty()) return
 
         applyMappedStyles(mapped)
@@ -83,11 +88,15 @@ internal object SpanMapper {
      * Includes decoration overlays for underline+strikethrough intersections so both
      * decorations render cumulatively in overlapping regions.
      */
-    internal fun mapRenderableSpans(spans: List<TextSpan>): List<RenderSpan> {
+    internal fun mapRenderableSpans(
+        spans: List<TextSpan>,
+        linkColor: Color,
+        inlineCodeBackground: Color,
+    ): List<RenderSpan> {
         if (spans.isEmpty()) return emptyList()
 
         val base = spans.mapNotNull { span ->
-            val composeStyle = toComposeSpanStyle(span.style) ?: return@mapNotNull null
+            val composeStyle = toComposeSpanStyle(span.style, linkColor, inlineCodeBackground) ?: return@mapNotNull null
             RenderSpan(start = span.start, end = span.end, style = composeStyle)
         }
         if (base.isEmpty()) return emptyList()
@@ -144,7 +153,11 @@ internal object SpanMapper {
     /**
      * Pure domain-to-Compose style mapping.
      */
-    fun toComposeSpanStyle(style: SpanStyle): ComposeSpanStyle? {
+    fun toComposeSpanStyle(
+        style: SpanStyle,
+        linkColor: Color,
+        inlineCodeBackground: Color,
+    ): ComposeSpanStyle? {
         return when (style) {
             SpanStyle.Bold -> ComposeSpanStyle(fontWeight = FontWeight.Bold)
             SpanStyle.Italic -> ComposeSpanStyle(fontStyle = FontStyle.Italic)
@@ -154,13 +167,11 @@ internal object SpanMapper {
                 fontFamily = FontFamily.Monospace,
                 background = inlineCodeBackground,
             )
-
             is SpanStyle.Highlight -> ComposeSpanStyle(background = Color(style.colorArgb))
             is SpanStyle.Link -> ComposeSpanStyle(
                 color = linkColor,
                 textDecoration = TextDecoration.Underline,
             )
-
             is SpanStyle.Custom -> null
         }
     }

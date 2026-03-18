@@ -15,6 +15,7 @@ import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderer
+import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 
 /**
  * Renderer for Divider blocks — a horizontal line separator.
@@ -35,7 +36,7 @@ public class DividerBlockRenderer : BlockRenderer<BlockType.Divider> {
                 .padding(vertical = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
-            HorizontalDivider()
+            HorizontalDivider(color = LocalCascadeTheme.current.colors.contentDivider)
         }
     }
 }

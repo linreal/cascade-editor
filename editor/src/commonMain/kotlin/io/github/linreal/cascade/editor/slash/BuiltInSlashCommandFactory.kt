@@ -1,6 +1,7 @@
 package io.github.linreal.cascade.editor.slash
 
 import io.github.linreal.cascade.editor.registry.BlockDescriptor
+import io.github.linreal.cascade.editor.theme.CascadeEditorBlockStrings
 
 /**
  * Generates [SlashCommandAction] instances from [BlockDescriptor]s that carry
@@ -28,19 +29,32 @@ internal class BuiltInSlashCommandFactory(
      * The output order matches the input order (filtered), making the result deterministic
      * when the input is deterministic.
      *
+     * When [blockStrings] is provided, localized display names, descriptions, and keywords
+     * are resolved per descriptor. Localized keywords are merged with English keywords
+     * (additive, not replacing) so English search always works regardless of locale.
+     * Missing entries fall back to the descriptor's English values.
+     *
      * Generated IDs follow the format `builtin.block.<typeId>`.
      */
-    public fun generate(descriptors: List<BlockDescriptor>): List<SlashCommandAction> {
+    public fun generate(
+        descriptors: List<BlockDescriptor>,
+        blockStrings: CascadeEditorBlockStrings? = null,
+    ): List<SlashCommandAction> {
         return descriptors.mapNotNull { descriptor ->
             val spec = descriptor.slash ?: return@mapNotNull null
             val typeId = descriptor.typeId
             val behavior = spec.behavior
+            val localized = blockStrings?.forType(typeId)
 
             SlashCommandAction(
                 id = SlashCommandId("$ID_PREFIX$typeId"),
-                title = descriptor.displayName,
-                description = descriptor.description,
-                keywords = descriptor.keywords,
+                title = localized?.displayName ?: descriptor.displayName,
+                description = localized?.description ?: descriptor.description,
+                keywords = if (localized != null) {
+                    (descriptor.keywords + localized.keywords).distinct()
+                } else {
+                    descriptor.keywords
+                },
                 icon = spec.icon ?: descriptor.icon?.let(::SlashCommandIconKey),
                 queryTextPolicy = SlashQueryTextPolicy.RemoveBeforeExecute,
                 onExecute = { builtInExecutor(typeId, behavior) },

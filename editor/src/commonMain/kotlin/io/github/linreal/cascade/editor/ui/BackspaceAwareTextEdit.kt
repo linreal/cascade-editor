@@ -12,6 +12,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -36,6 +38,7 @@ private const val ZWSP = "\u200B"
  * @param state The TextFieldState to use (managed externally via BlockTextStates)
  * @param modifier Modifier for the text field
  * @param textStyle Style for the text
+ * @param cursorBrush Brush for the text cursor. Defaults to the text style color.
  * @param focusRequester Optional FocusRequester for programmatic focus control
  * @param onBackspaceAtStart Called when backspace is pressed at the start of text
  * @param onEnterPressed Called when Enter is pressed, with cursor position (relative to visible text)
@@ -45,6 +48,7 @@ public fun BackspaceAwareTextField(
     state: TextFieldState,
     modifier: Modifier = Modifier,
     textStyle: TextStyle = TextStyle(fontSize = 16.sp),
+    cursorBrush: Brush = SolidColor(textStyle.color),
     outputTransformation: OutputTransformation? = null,
     focusRequester: FocusRequester? = null,
     onBackspaceAtStart: () -> Unit,
@@ -81,6 +85,7 @@ public fun BackspaceAwareTextField(
         inputTransformation = sentinelGuard,
         outputTransformation = outputTransformation,
         textStyle = textStyle,
+        cursorBrush = cursorBrush,
         modifier = baseModifier,
         onTextLayout = onTextLayout,
         keyboardOptions = KeyboardOptions(

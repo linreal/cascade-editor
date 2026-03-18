@@ -15,6 +15,8 @@ import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.UnknownBlockType
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderer
+import io.github.linreal.cascade.editor.theme.LocalCascadeStrings
+import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 
 /**
  * Placeholder renderer for [UnknownBlockType] blocks.
@@ -33,18 +35,20 @@ internal object UnknownBlockRenderer : BlockRenderer<UnknownBlockType> {
         modifier: Modifier,
         callbacks: BlockCallbacks,
     ) {
+        val colors = LocalCascadeTheme.current.colors
+        val strings = LocalCascadeStrings.current
         Box(
             modifier = modifier
                 .fillMaxWidth()
                 .background(
-                    color = Color(0xFFF0F0F0),
+                    color = colors.unknownBlockBackground,
                     shape = RoundedCornerShape(4.dp),
                 )
                 .padding(12.dp),
         ) {
             Text(
-                text = "Unsupported block type: ${block.type.typeId}",
-                color = Color(0xFF888888),
+                text = strings.unsupportedBlock(block.type.typeId),
+                color = colors.unknownBlockText,
                 fontSize = 14.sp,
             )
         }

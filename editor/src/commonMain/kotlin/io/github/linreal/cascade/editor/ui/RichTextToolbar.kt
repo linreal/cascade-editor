@@ -28,11 +28,15 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.richtext.FormattingActions
 import io.github.linreal.cascade.editor.richtext.FormattingState
 import io.github.linreal.cascade.editor.richtext.StyleStatus
+import io.github.linreal.cascade.editor.theme.CascadeEditorColors
+import io.github.linreal.cascade.editor.theme.CascadeEditorStrings
+import io.github.linreal.cascade.editor.theme.CascadeEditorTypography
+import io.github.linreal.cascade.editor.theme.LocalCascadeStrings
+import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 
 /**
  * Default config-driven rich text toolbar.
@@ -51,13 +55,16 @@ internal fun RichTextToolbar(
     modifier: Modifier = Modifier,
 ) {
     val state = formattingState.value
+    val colors = LocalCascadeTheme.current.colors
+    val typography = LocalCascadeTheme.current.typography
+    val strings = LocalCascadeStrings.current
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .focusProperties { canFocus = false },
     ) {
-        HorizontalDivider(color = Color(0xFFE0E0E0))
+        HorizontalDivider(color = colors.uiDivider)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -70,6 +77,9 @@ internal fun RichTextToolbar(
                     spec = spec,
                     status = state.styleStatusOf(spec.style),
                     enabled = state.canFormat,
+                    colors = colors,
+                    typography = typography,
+                    strings = strings,
                     onClick = { actions.toggleStyle(spec.style) },
                 )
             }
@@ -82,6 +92,9 @@ private fun ToolbarToggleButton(
     spec: ToolbarButtonSpec,
     status: StyleStatus,
     enabled: Boolean,
+    colors: CascadeEditorColors,
+    typography: CascadeEditorTypography,
+    strings: CascadeEditorStrings,
     onClick: () -> Unit,
 ) {
     val active = status == StyleStatus.FullyActive
@@ -89,15 +102,15 @@ private fun ToolbarToggleButton(
 
     val backgroundColor = when {
         !enabled -> Color.Transparent
-        active -> Color(0xFF1A73E8)
-        partial -> Color(0xFF1A73E8).copy(alpha = 0.15f)
+        active -> colors.primary
+        partial -> colors.primary.copy(alpha = 0.15f)
         else -> Color.Transparent
     }
 
     val contentColor = when {
-        !enabled -> Color(0xFF999999)
-        active -> Color.White
-        else -> Color(0xFF333333)
+        !enabled -> colors.toolbarIconDisabled
+        active -> colors.onPrimary
+        else -> colors.toolbarIcon
     }
 
     val shape = RoundedCornerShape(6.dp)
@@ -115,12 +128,12 @@ private fun ToolbarToggleButton(
                 }
             )
             .focusProperties { canFocus = false }
-            .semantics { contentDescription = spec.label },
+            .semantics { contentDescription = localizedLabel(spec, strings) },
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = buttonDisplayText(spec.style),
-            style = buttonTextStyle(spec.style, contentColor),
+            style = buttonTextStyle(spec.style, contentColor, typography),
         )
     }
 }
@@ -140,14 +153,25 @@ private fun buttonDisplayText(style: SpanStyle): String = when (style) {
 }
 
 /**
+ * Resolves the localized accessibility label for a toolbar button.
+ * Falls back to [ToolbarButtonSpec.label] for custom span styles.
+ */
+private fun localizedLabel(spec: ToolbarButtonSpec, strings: CascadeEditorStrings): String =
+    when (spec.style) {
+        SpanStyle.Bold -> strings.bold
+        SpanStyle.Italic -> strings.italic
+        SpanStyle.Underline -> strings.underline
+        SpanStyle.StrikeThrough -> strings.strikethrough
+        SpanStyle.InlineCode -> strings.inlineCode
+        is SpanStyle.Highlight -> strings.highlight
+        else -> spec.label
+    }
+
+/**
  * Text style that self-describes the formatting (bold B, italic I, etc.).
  */
-private fun buttonTextStyle(style: SpanStyle, color: Color): TextStyle {
-    val base = TextStyle(
-        fontSize = 16.sp,
-        fontWeight = FontWeight.Medium,
-        color = color,
-    )
+private fun buttonTextStyle(style: SpanStyle, color: Color, typography: CascadeEditorTypography): TextStyle {
+    val base = typography.toolbarButton.copy(color = color)
     return when (style) {
         SpanStyle.Bold -> base.copy(fontWeight = FontWeight.Bold)
         SpanStyle.Italic -> base.copy(fontStyle = FontStyle.Italic)
@@ -155,7 +179,6 @@ private fun buttonTextStyle(style: SpanStyle, color: Color): TextStyle {
         SpanStyle.StrikeThrough -> base.copy(textDecoration = TextDecoration.LineThrough)
         SpanStyle.InlineCode -> base.copy(
             fontFamily = FontFamily.Monospace,
-            fontSize = 14.sp,
         )
         else -> base
     }

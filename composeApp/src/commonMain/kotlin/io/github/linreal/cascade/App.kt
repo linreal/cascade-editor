@@ -1,6 +1,7 @@
 package io.github.linreal.cascade
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,6 +34,7 @@ import io.github.linreal.cascade.editor.serialization.toJson
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.rememberEditorState
+import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
 import io.github.linreal.cascade.editor.ui.CascadeEditor
 import io.github.linreal.cascade.editor.ui.utils.Spacers
 import io.github.linreal.cascade.storage.rememberDocumentStorage
@@ -43,7 +47,21 @@ import kotlinx.coroutines.launch
 @Composable
 @Preview
 fun App() {
-    MaterialTheme {
+    val isDark = isSystemInDarkTheme()
+    val colorScheme = if (isDark) {
+        darkColorScheme(
+            background = Color(0xFF16161E),
+            surface = Color(0xFF1E1E28),
+            primary = Color(0xFF8AB4F8),
+            onBackground = Color(0xFFE8E8ED),
+            onSurface = Color(0xFFE8E8ED),
+        )
+    } else {
+        lightColorScheme()
+    }
+    val editorTheme = if (isDark) CascadeEditorTheme.dark() else CascadeEditorTheme.light()
+
+    MaterialTheme(colorScheme = colorScheme) {
         val storage = rememberDocumentStorage()
         val scope = rememberCoroutineScope()
 
@@ -58,7 +76,7 @@ fun App() {
             try {
                 editorState.loadFromJson(json, textStates, spanStates)
             } catch (_: Exception) {
-                // Corrupted saved document — reset to default
+                // Corrupted saved document, reset to default
                 storage.delete()
                 editorState.loadFromJson(loadDefaultDocument(), textStates, spanStates)
             }
@@ -79,7 +97,7 @@ fun App() {
         }
 
         Column(
-            modifier = Modifier.background(Color.White).safeContentPadding().fillMaxSize(),
+            modifier = Modifier.background(MaterialTheme.colorScheme.background).safeContentPadding().fillMaxSize(),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -88,7 +106,7 @@ fun App() {
             ) {
                 Text(
                     text = "Cascade Editor",
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 40.sp,
                     textAlign = TextAlign.Center,
                 )
@@ -110,6 +128,7 @@ fun App() {
                     stateHolder = editorState,
                     textStates = textStates,
                     spanStates = spanStates,
+                    theme = editorTheme,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
