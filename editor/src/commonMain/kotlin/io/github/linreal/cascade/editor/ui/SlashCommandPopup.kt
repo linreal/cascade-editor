@@ -28,16 +28,16 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.action.HighlightSlashCommand
 import io.github.linreal.cascade.editor.action.NavigateSlashBack
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
+import io.github.linreal.cascade.editor.theme.LocalCascadeStrings
+import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 import io.github.linreal.cascade.editor.slash.SlashCommandItem
 import io.github.linreal.cascade.editor.state.EditorStateHolder
 import io.github.linreal.cascade.editor.state.SlashCommandState
@@ -60,6 +60,9 @@ internal fun SlashCommandPopup(
 ) {
     val caretHolder = LocalSlashCaretRect.current
     val caretRect = caretHolder.rect ?: return
+    val colors = LocalCascadeTheme.current.colors
+    val typography = LocalCascadeTheme.current.typography
+    val strings = LocalCascadeStrings.current
 
     // Clear caret rect when popup leaves the tree.
     DisposableEffect(Unit) {
@@ -129,7 +132,7 @@ internal fun SlashCommandPopup(
                 .width(widthDp)
                 .heightIn(max = SlashPopupDefaults.MAX_HEIGHT_DP.dp)
                 .shadow(8.dp, RoundedCornerShape(8.dp))
-                .background(Color.White, RoundedCornerShape(8.dp))
+                .background(colors.popupBackground, RoundedCornerShape(8.dp))
                 .focusProperties { canFocus = false },
         ) {
             // Back header for submenu navigation
@@ -144,12 +147,12 @@ internal fun SlashCommandPopup(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "\u2039 Back",
-                        fontSize = 14.sp,
-                        color = Color(0xFF1A73E8),
+                        text = strings.back,
+                        style = typography.slashBackButton,
+                        color = colors.primary,
                     )
                 }
-                HorizontalDivider(color = Color(0xFFE0E0E0))
+                HorizontalDivider(color = colors.uiDivider)
             }
 
             // Scrollable item list

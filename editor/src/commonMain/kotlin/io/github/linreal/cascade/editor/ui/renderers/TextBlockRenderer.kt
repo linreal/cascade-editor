@@ -4,14 +4,12 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -19,6 +17,8 @@ import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderer
+import io.github.linreal.cascade.editor.theme.CascadeEditorTypography
+import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 import io.github.linreal.cascade.editor.ui.utils.Spacers
 
 /** Padding between the list prefix gutter and the text field. */
@@ -44,14 +44,15 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
         modifier: Modifier,
         callbacks: BlockCallbacks
     ) {
-        val targetStyle = remember(block.type.typeId) {
-            getTextStyleForType(block.type)
+        val theme = LocalCascadeTheme.current
+        val targetStyle = remember(block.type.typeId, theme.typography) {
+            getTextStyleForType(block.type, theme.typography)
         }
         val animatedFontSize by animateFloatAsState(
             targetValue = targetStyle.fontSize.value,
             animationSpec = tween(durationMillis = 300),
         )
-        val textStyle = targetStyle.copy(fontSize = animatedFontSize.sp)
+        val textStyle = targetStyle.copy(fontSize = animatedFontSize.sp, color = theme.colors.text)
 
         when (block.type) {
             is BlockType.BulletList, is BlockType.NumberedList -> {
@@ -75,25 +76,20 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
         }
     }
 
-    private fun getTextStyleForType(type: BlockType): TextStyle {
+    private fun getTextStyleForType(type: BlockType, typography: CascadeEditorTypography): TextStyle {
         return when (type) {
-            is BlockType.Heading -> TextStyle(
-                fontSize = when (type.level) {
-                    1 -> 32.sp
-                    2 -> 28.sp
-                    3 -> 24.sp
-                    4 -> 20.sp
-                    5 -> 18.sp
-                    else -> 16.sp
-                }
-            )
+            is BlockType.Heading -> when (type.level) {
+                1 -> typography.heading1
+                2 -> typography.heading2
+                3 -> typography.heading3
+                4 -> typography.heading4
+                5 -> typography.heading5
+                else -> typography.heading6
+            }
 
-            is BlockType.Code -> TextStyle(
-                fontSize = 14.sp,
-                fontFamily = FontFamily.Monospace
-            )
+            is BlockType.Code -> typography.code
 
-            else -> TextStyle(fontSize = 16.sp)
+            else -> typography.body
         }
     }
 }
@@ -117,11 +113,7 @@ private fun ListPrefixRow(
     ) {
         Text(
             text = prefixText,
-            style = textStyle.copy(
-                color = textStyle.color.takeUnless { it == androidx.compose.ui.graphics.Color.Unspecified }
-                    ?: LocalContentColor.current,
-                textAlign = TextAlign.End,
-            ),
+            style = textStyle.copy(textAlign = TextAlign.End),
             modifier = Modifier
                 .widthIn(min = ListPrefixMinWidth)
                 .alignByBaseline(),

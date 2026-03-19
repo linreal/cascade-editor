@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.slash.SlashCommandItem
 import io.github.linreal.cascade.editor.slash.SlashCommandMenu
+import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 
 /**
  * A single row in the slash command popup list.
@@ -34,7 +35,9 @@ internal fun SlashCommandRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val backgroundColor = if (isHighlighted) Color(0xFFE3F2FD) else Color.Transparent
+    val colors = LocalCascadeTheme.current.colors
+    val typography = LocalCascadeTheme.current.typography
+    val backgroundColor = if (isHighlighted) colors.slashSelectedItem else Color.Transparent
 
     Row(
         modifier = modifier
@@ -51,8 +54,8 @@ internal fun SlashCommandRow(
         ) {
             Text(
                 text = item.title,
-                fontSize = 12.sp,
-                color = Color(0xFF212121),
+                style = typography.slashItemTitle,
+                color = colors.slashItemTitle,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -61,7 +64,7 @@ internal fun SlashCommandRow(
             Text(
                 text = "\u203A", // single right-pointing angle quotation mark
                 fontSize = 16.sp,
-                color = Color(0xFF9E9E9E),
+                color = colors.slashChevron,
                 modifier = Modifier.padding(start = 8.dp),
             )
         }

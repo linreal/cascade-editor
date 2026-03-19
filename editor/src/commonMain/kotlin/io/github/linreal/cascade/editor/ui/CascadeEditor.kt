@@ -17,7 +17,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import io.github.linreal.cascade.editor.action.CloseSlashCommand
@@ -25,6 +28,7 @@ import io.github.linreal.cascade.editor.action.UpdateDragTarget
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
+import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
 import io.github.linreal.cascade.editor.richtext.DefaultFormattingActions
@@ -39,6 +43,12 @@ import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.EditorStateHolder
+import io.github.linreal.cascade.editor.theme.CascadeEditorBlockStrings
+import io.github.linreal.cascade.editor.theme.CascadeEditorStrings
+import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
+import io.github.linreal.cascade.editor.theme.LocalCascadeBlockStrings
+import io.github.linreal.cascade.editor.theme.LocalCascadeStrings
+import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 
 /**
  * Main editor composable for CascadeEditor.
@@ -75,6 +85,11 @@ import io.github.linreal.cascade.editor.state.EditorStateHolder
  * @param slashRegistry Slash command registry. Register custom [SlashCommandItem]s here to
  *        make them appear alongside built-in block commands. Custom items override built-ins
  *        on ID collisions. Defaults to an empty registry.
+ * @param theme Visual theme (colors + typography). Defaults to [CascadeEditorTheme.light].
+ * @param strings Localized UI strings (toolbar labels, popup chrome). Defaults to
+ *        [CascadeEditorStrings.default].
+ * @param blockStrings Localized block names, descriptions, and keywords used in the slash
+ *        command popup. Defaults to [CascadeEditorBlockStrings.default].
  * @param modifier Modifier for the editor container
  * @param toolbar Toolbar slot controlling what formatting toolbar is shown.
  *        [ToolbarSlot.Default] renders the built-in config-driven toolbar.
@@ -91,6 +106,9 @@ public fun CascadeEditor(
     spanStates: BlockSpanStates = remember { BlockSpanStates() },
     registry: BlockRegistry = remember { createEditorRegistry() },
     slashRegistry: SlashCommandRegistry = remember { SlashCommandRegistry() },
+    theme: CascadeEditorTheme = CascadeEditorTheme.light(),
+    strings: CascadeEditorStrings = CascadeEditorStrings.default(),
+    blockStrings: CascadeEditorBlockStrings = CascadeEditorBlockStrings.default(),
     modifier: Modifier = Modifier,
     toolbar: ToolbarSlot = ToolbarSlot.Default(),
     onFormattingStateChanged: ((FormattingState) -> Unit)? = null,
@@ -116,9 +134,9 @@ public fun CascadeEditor(
         )
     }
 
-    val builtInSlashItems = remember(registry, slashExecutor) {
+    val builtInSlashItems = remember(registry, slashExecutor, blockStrings) {
         val builtInFactory = BuiltInSlashCommandFactory(slashExecutor.builtInExecutor)
-        builtInFactory.generate(registry.getAllDescriptors())
+        builtInFactory.generate(registry.getAllDescriptors(), blockStrings)
     }
 
     // Cleanup stale states when blocks change
@@ -154,15 +172,33 @@ public fun CascadeEditor(
         )
     }
 
- // Formatting state observer + actions
+    // Inject theme highlight color into the default toolbar config so that the
+    // toolbar button's SpanStyle.Highlight matches CascadeEditorColors.highlight.
+    // Only applies when the caller uses the exact RichTextToolbarConfig.Default sentinel;
+    // custom configs are left untouched.
+    val resolvedToolbar = remember(toolbar, theme.colors.highlight) {
+        if (toolbar is ToolbarSlot.Default && toolbar.config === RichTextToolbarConfig.Default) {
+            val highlightArgb = theme.colors.highlight.toArgb().toUInt().toLong()
+            toolbar.copy(
+                config = toolbar.config.copy(
+                    buttons = toolbar.config.buttons.map { spec ->
+                        if (spec.style is SpanStyle.Highlight) spec.copy(style = SpanStyle.Highlight(highlightArgb))
+                        else spec
+                    }
+                )
+            )
+        } else toolbar
+    }
+
+    // Formatting state observer + actions
     // Only created when a toolbar is visible or an external callback is set.
 
-    val needsFormattingState = toolbar !is ToolbarSlot.None || onFormattingStateChanged != null
+    val needsFormattingState = resolvedToolbar !is ToolbarSlot.None || onFormattingStateChanged != null
 
-    val trackedStyles = remember(toolbar) {
-        when (toolbar) {
-            is ToolbarSlot.Default -> toolbar.config.buttons.map { it.style }
-            is ToolbarSlot.Custom -> toolbar.trackedStyles
+    val trackedStyles = remember(resolvedToolbar) {
+        when (resolvedToolbar) {
+            is ToolbarSlot.Default -> resolvedToolbar.config.buttons.map { it.style }
+            is ToolbarSlot.Custom -> resolvedToolbar.trackedStyles
             ToolbarSlot.None -> RichTextToolbarConfig.Default.buttons.map { it.style }
         }
     }
@@ -228,7 +264,18 @@ public fun CascadeEditor(
         }
     }
 
+    val textSelectionColors = remember(theme.colors.cursor, theme.colors.textSelectionBackground) {
+        TextSelectionColors(
+            handleColor = theme.colors.cursor,
+            backgroundColor = theme.colors.textSelectionBackground,
+        )
+    }
+
     CompositionLocalProvider(
+        LocalCascadeTheme provides theme,
+        LocalCascadeStrings provides strings,
+        LocalCascadeBlockStrings provides blockStrings,
+        LocalTextSelectionColors provides textSelectionColors,
         LocalBlockTextStates provides textStates,
         LocalBlockSpanStates provides spanStates,
         LocalSpanActionDispatcher provides spanActionDispatcher,
@@ -353,16 +400,16 @@ public fun CascadeEditor(
          // Toolbar
             // formattingState/formattingActions are non-null when toolbar is
             // Default or Custom (guarded by needsFormattingState).
-            when (toolbar) {
+            when (resolvedToolbar) {
                 is ToolbarSlot.Default -> if (formattingState != null && formattingActions != null) {
                     RichTextToolbar(
                         formattingState = formattingState,
                         actions = formattingActions,
-                        config = toolbar.config,
+                        config = resolvedToolbar.config,
                     )
                 }
                 is ToolbarSlot.Custom -> if (formattingState != null && formattingActions != null) {
-                    toolbar.content(formattingState, formattingActions)
+                    resolvedToolbar.content(formattingState, formattingActions)
                 }
                 ToolbarSlot.None -> { /* no toolbar */ }
             }

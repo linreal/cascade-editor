@@ -16,13 +16,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 import io.github.linreal.cascade.editor.ui.utils.calculateDropIndicatorY
 
 /**
  * Default values for [DropIndicator] styling.
  */
 internal object DropIndicatorDefaults {
-    val Color: Color = Color(0xFF2196F3)
     val StrokeWidth: Dp = 2.dp
     val HorizontalPadding: Dp = 16.dp
     const val AnimationDurationMs: Int = 150
@@ -57,11 +57,12 @@ internal fun DropIndicator(
     targetIndex: Int?,
     lazyListState: LazyListState,
     modifier: Modifier = Modifier,
-    color: Color = DropIndicatorDefaults.Color,
+    color: Color = Color.Unspecified,
     strokeWidth: Dp = DropIndicatorDefaults.StrokeWidth,
     horizontalPadding: Dp = DropIndicatorDefaults.HorizontalPadding
 ) {
     if (targetIndex == null) return
+    val resolvedColor = if (color == Color.Unspecified) LocalCascadeTheme.current.colors.primary else color
 
     // derivedStateOf ensures we only recompose when the computed Y actually changes,
     // filtering out layoutInfo updates that don't affect the indicator position.
@@ -94,7 +95,7 @@ internal fun DropIndicator(
         val paddingPx = horizontalPadding.toPx()
 
         drawLine(
-            color = color,
+            color = resolvedColor,
             start = Offset(paddingPx, animatedY),
             end = Offset(size.width - paddingPx, animatedY),
             strokeWidth = strokePx,

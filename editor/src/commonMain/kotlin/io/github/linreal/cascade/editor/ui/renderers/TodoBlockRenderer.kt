@@ -1,6 +1,5 @@
 package io.github.linreal.cascade.editor.ui.renderers
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Checkbox
@@ -9,16 +8,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.action.ToggleTodo
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderer
+import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 import io.github.linreal.cascade.editor.ui.utils.Spacers
 
 /**
@@ -38,6 +35,7 @@ public class TodoBlockRenderer : BlockRenderer<BlockType.Todo> {
         callbacks: BlockCallbacks
     ) {
         val todoType = block.type as? BlockType.Todo ?: return
+        val theme = LocalCascadeTheme.current
 
         Row(
             modifier = modifier,
@@ -53,7 +51,7 @@ public class TodoBlockRenderer : BlockRenderer<BlockType.Todo> {
             TextBlockField(
                 block = block,
                 isFocused = isFocused,
-                textStyle = TextStyle(fontSize = 16.sp),
+                textStyle = theme.typography.body.copy(color = theme.colors.text),
                 modifier = Modifier.weight(1f).padding(top = 3.dp),
                 callbacks = callbacks,
             )
