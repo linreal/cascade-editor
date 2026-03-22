@@ -16,11 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -29,7 +25,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import io.github.linreal.cascade.editor.action.CloseSlashCommand
-import io.github.linreal.cascade.editor.action.HighlightSlashCommand
 import io.github.linreal.cascade.editor.action.UpdateSlashCommandSession
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
@@ -45,12 +40,12 @@ import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
 import androidx.compose.ui.graphics.SolidColor
 import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
+import io.github.linreal.cascade.editor.ui.LocalFormattingActions
 import io.github.linreal.cascade.editor.ui.LocalSlashCaretRect
 import io.github.linreal.cascade.editor.ui.LocalSlashCommandExecutor
 import io.github.linreal.cascade.editor.ui.LocalSlashHighlightedCommandId
 import io.github.linreal.cascade.editor.ui.LocalSlashPopupItems
 import io.github.linreal.cascade.editor.ui.LocalSlashSessionAnchorBlockId
-import io.github.linreal.cascade.editor.ui.SlashPopupDefaults
 import io.github.linreal.cascade.editor.ui.visibleSelection
 import io.github.linreal.cascade.editor.ui.visibleText
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
@@ -88,6 +83,7 @@ internal fun TextBlockField(
     val textFieldState = remember(block.id, textStates.generation) {
         textStates.getOrCreate(block.id, textContent.text)
     }
+    val formattingActions = LocalFormattingActions.current
     val slashCommandExecutor = LocalSlashCommandExecutor.current
     val slashSessionAnchorBlockId = LocalSlashSessionAnchorBlockId.current
     val slashHighlightedCommandId = LocalSlashHighlightedCommandId.current
@@ -241,52 +237,23 @@ internal fun TextBlockField(
 
     val cursorBrush = remember(colors.cursor) { SolidColor(colors.cursor) }
 
+    val keyHandler = remember(formattingActions, callbacks) {
+        TextBlockKeyHandler(
+            formattingActions = formattingActions,
+            callbacks = callbacks,
+            isSlashAnchor = { isSlashAnchor },
+            slashHighlightedCommandId = { slashHighlightedCommandId },
+            slashPopupItems = { slashPopupItems },
+            slashCommandExecutor = { slashCommandExecutor },
+        )
+    }
+
     Box(modifier = modifier) {
         BackspaceAwareTextField(
             state = textFieldState,
             modifier = Modifier.fillMaxWidth()
                 .onGloballyPositioned { coords -> layoutCoordinates = coords }
-                .onPreviewKeyEvent { keyEvent ->
-                    if (!isSlashAnchor) return@onPreviewKeyEvent false
-                    if (keyEvent.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-
-                    when (keyEvent.key) {
-                        Key.DirectionUp -> {
-                            val nextId = SlashPopupDefaults.resolveNextHighlight(
-                                slashHighlightedCommandId, slashPopupItems, direction = -1
-                            )
-                            callbacks.dispatch(HighlightSlashCommand(nextId))
-                            true
-                        }
-                        Key.DirectionDown -> {
-                            val nextId = SlashPopupDefaults.resolveNextHighlight(
-                                slashHighlightedCommandId, slashPopupItems, direction = 1
-                            )
-                            callbacks.dispatch(HighlightSlashCommand(nextId))
-                            true
-                        }
-                        Key.Enter, Key.NumPadEnter -> {
-                            val highlightedItemId = slashHighlightedCommandId
-                            val highlightedItem = if (highlightedItemId != null) {
-                                slashPopupItems.firstOrNull { it.id == highlightedItemId }
-                            } else {
-                                null
-                            }
-                            val executor = slashCommandExecutor
-                            if (highlightedItem != null && executor != null) {
-                                executor.execute(highlightedItem)
-                                true
-                            } else {
-                                false
-                            }
-                        }
-                        Key.Escape -> {
-                            callbacks.dispatch(CloseSlashCommand)
-                            true
-                        }
-                        else -> false
-                    }
-                }
+                .onPreviewKeyEvent { keyHandler.onPreviewKeyEvent(it) }
                 .onFocusChanged { focusState ->
                     val wasFocused = hasComposeFocus
                     hasComposeFocus = focusState.isFocused

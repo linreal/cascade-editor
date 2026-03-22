@@ -214,16 +214,13 @@ public fun CascadeEditor(
         null
     }
 
-    val formattingActions = if (needsFormattingState) {
-        remember(stateHolder, textStates, spanActionDispatcher) {
-            DefaultFormattingActions(
-                stateHolder = stateHolder,
-                textStates = textStates,
-                spanActionDispatcher = spanActionDispatcher,
-            )
-        }
-    } else {
-        null
+    // Always created — used by keyboard shortcuts (Cmd+B/I/U) even without a toolbar.
+    val formattingActions = remember(stateHolder, textStates, spanActionDispatcher) {
+        DefaultFormattingActions(
+            stateHolder = stateHolder,
+            textStates = textStates,
+            spanActionDispatcher = spanActionDispatcher,
+        )
     }
 
     // Fire external callback on formatting state changes (structural equality dedup)
@@ -279,6 +276,7 @@ public fun CascadeEditor(
         LocalBlockTextStates provides textStates,
         LocalBlockSpanStates provides spanStates,
         LocalSpanActionDispatcher provides spanActionDispatcher,
+        LocalFormattingActions provides formattingActions,
         LocalSlashCommandExecutor provides slashExecutor,
         LocalSlashSessionAnchorBlockId provides slashState?.anchorBlockId,
         LocalSlashHighlightedCommandId provides slashState?.highlightedCommandId,
@@ -398,17 +396,15 @@ public fun CascadeEditor(
             }
 
          // Toolbar
-            // formattingState/formattingActions are non-null when toolbar is
-            // Default or Custom (guarded by needsFormattingState).
             when (resolvedToolbar) {
-                is ToolbarSlot.Default -> if (formattingState != null && formattingActions != null) {
+                is ToolbarSlot.Default -> if (formattingState != null) {
                     RichTextToolbar(
                         formattingState = formattingState,
                         actions = formattingActions,
                         config = resolvedToolbar.config,
                     )
                 }
-                is ToolbarSlot.Custom -> if (formattingState != null && formattingActions != null) {
+                is ToolbarSlot.Custom -> if (formattingState != null) {
                     resolvedToolbar.content(formattingState, formattingActions)
                 }
                 ToolbarSlot.None -> { /* no toolbar */ }

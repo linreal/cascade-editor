@@ -63,6 +63,8 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Span edit observer | `richtext/SpanMaintenanceTextObserver.kt` | `SpanMaintenanceTextObserver` |
 | Span action dispatcher | `richtext/SpanActionDispatcher.kt` | `SpanActionDispatcher` |
 | Span dispatcher local | `ui/LocalSpanActionDispatcher.kt` | `LocalSpanActionDispatcher` |
+| Formatting actions local | `ui/LocalFormattingActions.kt` | `LocalFormattingActions` |
+| Keyboard handler | `ui/renderers/TextBlockKeyHandler.kt` | `TextBlockKeyHandler` |
 | Formatting state | `richtext/FormattingState.kt` | `FormattingState` |
 | Formatting actions | `richtext/FormattingActions.kt` | `FormattingActions` |
 | Toolbar slot | `ui/ToolbarSlot.kt` | `ToolbarSlot` |
@@ -233,7 +235,8 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Localization — slash command system | Done | `BuiltInSlashCommandFactory.generate()` accepts `CascadeEditorBlockStrings?` for localized titles/descriptions/keywords |
 | Block nesting / indentation | Not done | Flat list only |
 | Multi-block drag | Not done | `DragState` supports it, UI doesn't |
-| Keyboard shortcuts | Not done | Enter/Backspace + slash popup keys (Up/Down/Enter/Escape) handled; general shortcuts not done |
+| Keyboard shortcuts — formatting | Done | Cmd+B/I/U (macOS) / Ctrl+B/I/U (other) via `onPreviewKeyEvent` in `TextBlockField` + `LocalFormattingActions` |
+| Keyboard shortcuts — other | Not done | General shortcuts beyond formatting not done |
 
 ## Known Gaps
 
