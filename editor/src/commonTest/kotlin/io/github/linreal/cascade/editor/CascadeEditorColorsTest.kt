@@ -61,6 +61,11 @@ class CascadeEditorColorsTest {
     }
 
     @Test
+    fun `light and dark differ on quoteBorder`() {
+        assertNotEquals(CascadeEditorColors.light().quoteBorder, CascadeEditorColors.dark().quoteBorder)
+    }
+
+    @Test
     fun `light and dark differ on onPrimary`() {
         assertNotEquals(CascadeEditorColors.light().onPrimary, CascadeEditorColors.dark().onPrimary)
     }
@@ -112,5 +117,7 @@ class CascadeEditorColorsTest {
         "highlight" to c.highlight,
         "cursor" to c.cursor,
         "textSelectionBackground" to c.textSelectionBackground,
+        "quoteBorder" to c.quoteBorder,
+        "quoteBackground" to c.quoteBackground,
     )
 }

@@ -51,6 +51,10 @@ public data class CascadeEditorColors(
     val cursor: Color,
     /** Text selection background color. */
     val textSelectionBackground: Color,
+    /** Quote block left border stripe color. */
+    val quoteBorder: Color,
+    /** Quote block background tint. */
+    val quoteBackground: Color,
 ) {
     public companion object {
         /**
@@ -78,6 +82,8 @@ public data class CascadeEditorColors(
             highlight = Color(0xFFFFEB3B),
             cursor = Color(0xFF1A73E8),
             textSelectionBackground = Color(0x661A73E8),
+            quoteBorder = Color(0xFFBDBDBD),
+            quoteBackground = Color(0x0A000000),
         )
 
         /**
@@ -105,6 +111,8 @@ public data class CascadeEditorColors(
             highlight = Color(0xFFFFEB3B),
             cursor = Color(0xFF8AB4F8),
             textSelectionBackground = Color(0x668AB4F8),
+            quoteBorder = Color(0xFF757575),
+            quoteBackground = Color(0x14FFFFFF),
         )
     }
 }

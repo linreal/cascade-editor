@@ -208,7 +208,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Bullet/numbered list prefixes | Done | `TextBlockRenderer` wraps list types in `Row` with non-editable prefix gutter (`•` / `N.`) |
 | List auto-detection | Done | `ListAutoDetectObserver` detects `- ` and `N. ` triggers, converts block type, removes prefix text |
 | List enter/backspace behavior | Done | Empty-enter exits to Paragraph, backspace at start un-lists, enter in list continues list type |
-| Quote visual styling | Not done | No left border / background |
+| Quote visual styling | Done | Left border (3dp) + background tint; `quoteBorder`/`quoteBackground` color slots |
 | Divider renderer | Done | `DividerBlockRenderer` — horizontal line, 1dp, vertical padding |
 | Image renderer | Not done | Type exists, no UI |
 | Rich text spans — domain model | Done | `TextSpan`, `SpanStyle`, `BlockContent.Text.spans` |

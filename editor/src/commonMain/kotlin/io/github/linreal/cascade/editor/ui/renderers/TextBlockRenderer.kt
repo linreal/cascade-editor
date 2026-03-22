@@ -2,14 +2,20 @@ package io.github.linreal.cascade.editor.ui.renderers
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,6 +32,15 @@ private val ListPrefixGap = 8.dp
 
 /** Minimum width for the prefix gutter — accommodates at least 2-digit numbers like `12.` */
 private val ListPrefixMinWidth = 24.dp
+
+/** Width of the vertical left border for quote blocks. */
+private val QuoteBorderWidth = 3.dp
+
+/** Horizontal padding between the quote border and the text content. */
+private val QuoteContentPaddingStart = 12.dp
+
+/** Vertical padding inside the quote block. */
+private val QuoteContentPaddingVertical = 4.dp
 
 /**
  * Renderer for text-supporting block types (paragraph, headings, lists, etc.).
@@ -64,6 +79,15 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
                     callbacks = callbacks,
                 )
             }
+            is BlockType.Quote -> {
+                QuoteBlock(
+                    block = block,
+                    isFocused = isFocused,
+                    textStyle = textStyle,
+                    modifier = modifier,
+                    callbacks = callbacks,
+                )
+            }
             else -> {
                 TextBlockField(
                     block = block,
@@ -89,8 +113,48 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
 
             is BlockType.Code -> typography.code
 
+            is BlockType.Quote -> typography.body.copy(fontStyle = FontStyle.Italic)
+
             else -> typography.body
         }
+    }
+}
+
+@Composable
+private fun QuoteBlock(
+    block: Block,
+    isFocused: Boolean,
+    textStyle: TextStyle,
+    modifier: Modifier,
+    callbacks: BlockCallbacks,
+) {
+    val colors = LocalCascadeTheme.current.colors
+    val borderColor = colors.quoteBorder
+    val backgroundColor = colors.quoteBackground
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .drawBehind {
+                drawRect(color = backgroundColor)
+                drawRect(
+                    color = borderColor,
+                    size = Size(QuoteBorderWidth.toPx(), size.height),
+                )
+            }
+            .padding(
+                start = QuoteBorderWidth + QuoteContentPaddingStart,
+                top = QuoteContentPaddingVertical,
+                bottom = QuoteContentPaddingVertical,
+            ),
+    ) {
+        TextBlockField(
+            block = block,
+            isFocused = isFocused,
+            textStyle = textStyle,
+            modifier = Modifier.fillMaxWidth(),
+            callbacks = callbacks,
+        )
     }
 }
 
