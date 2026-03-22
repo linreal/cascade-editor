@@ -2,6 +2,7 @@ package io.github.linreal.cascade.storage
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
@@ -36,6 +37,7 @@ private class IosDocumentStorage : DocumentStorage {
         data.writeToFile(filePath, true)
     }
 
+    @OptIn(ExperimentalForeignApi::class)
     override suspend fun delete(): Unit = withContext(Dispatchers.IO) {
         NSFileManager.defaultManager.removeItemAtPath(filePath, null)
     }
