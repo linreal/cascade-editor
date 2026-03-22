@@ -42,4 +42,44 @@ public sealed interface SpanStyle {
      */
     @Immutable
     public data class Custom(val typeId: String, val payload: String? = null) : SpanStyle
+
+    public companion object {
+        /**
+         * Returns a grouping key for [style].
+         *
+         * Styles that should be treated as equivalent regardless of parameter
+         * values (e.g. [Highlight] with any `colorArgb`) return a shared key.
+         * All other styles return themselves (data-class equality).
+         *
+         * Uses an exhaustive `when` on the sealed interface — the compiler will
+         * error here when a new [SpanStyle] subclass is added, forcing the
+         * developer to decide whether it needs kind-based grouping.
+         *
+         * Also used by [SpanAlgorithms.mergeOverlapping] for span grouping.
+         */
+        public fun kindKey(style: SpanStyle): Any = when (style) {
+            is Bold -> Bold
+            is Italic -> Italic
+            is Underline -> Underline
+            is StrikeThrough -> StrikeThrough
+            is InlineCode -> InlineCode
+            is Highlight -> Highlight::class // all Highlights share one key
+            is Link -> style                 // different URLs = different keys
+            is Custom -> style               // different typeId/payload = different keys
+        }
+
+        /**
+         * Type-based style matching.
+         *
+         * For parameterized styles like [Highlight], returns `true` when both are
+         * the same kind regardless of parameter values (`colorArgb`). This lets the
+         * toolbar detect and toggle highlights even when the theme color differs
+         * from the color stored in the span data.
+         *
+         * For all other styles (data objects, [Link], [Custom]) falls back to
+         * normal equality.
+         */
+        public fun kindMatches(a: SpanStyle, b: SpanStyle): Boolean =
+            kindKey(a) == kindKey(b)
+    }
 }

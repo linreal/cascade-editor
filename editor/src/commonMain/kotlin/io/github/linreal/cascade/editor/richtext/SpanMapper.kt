@@ -37,10 +37,11 @@ internal object SpanMapper {
         spans: List<TextSpan>,
         linkColor: Color,
         inlineCodeBackground: Color,
+        highlightBackground: Color,
     ): OutputTransformation? {
         if (spans.isEmpty()) return null
 
-        val mapped = mapRenderableSpans(spans, linkColor, inlineCodeBackground)
+        val mapped = mapRenderableSpans(spans, linkColor, inlineCodeBackground, highlightBackground)
         if (mapped.isEmpty()) return null
 
         return OutputTransformation {
@@ -58,10 +59,11 @@ internal object SpanMapper {
         spans: List<TextSpan>,
         linkColor: Color,
         inlineCodeBackground: Color,
+        highlightBackground: Color,
     ) {
         if (spans.isEmpty()) return
 
-        val mapped = mapRenderableSpans(spans, linkColor, inlineCodeBackground)
+        val mapped = mapRenderableSpans(spans, linkColor, inlineCodeBackground, highlightBackground)
         if (mapped.isEmpty()) return
 
         applyMappedStyles(mapped)
@@ -92,11 +94,12 @@ internal object SpanMapper {
         spans: List<TextSpan>,
         linkColor: Color,
         inlineCodeBackground: Color,
+        highlightBackground: Color,
     ): List<RenderSpan> {
         if (spans.isEmpty()) return emptyList()
 
         val base = spans.mapNotNull { span ->
-            val composeStyle = toComposeSpanStyle(span.style, linkColor, inlineCodeBackground) ?: return@mapNotNull null
+            val composeStyle = toComposeSpanStyle(span.style, linkColor, inlineCodeBackground, highlightBackground) ?: return@mapNotNull null
             RenderSpan(start = span.start, end = span.end, style = composeStyle)
         }
         if (base.isEmpty()) return emptyList()
@@ -157,6 +160,7 @@ internal object SpanMapper {
         style: SpanStyle,
         linkColor: Color,
         inlineCodeBackground: Color,
+        highlightBackground: Color,
     ): ComposeSpanStyle? {
         return when (style) {
             SpanStyle.Bold -> ComposeSpanStyle(fontWeight = FontWeight.Bold)
@@ -167,7 +171,7 @@ internal object SpanMapper {
                 fontFamily = FontFamily.Monospace,
                 background = inlineCodeBackground,
             )
-            is SpanStyle.Highlight -> ComposeSpanStyle(background = Color(style.colorArgb))
+            is SpanStyle.Highlight -> ComposeSpanStyle(background = highlightBackground)
             is SpanStyle.Link -> ComposeSpanStyle(
                 color = linkColor,
                 textDecoration = TextDecoration.Underline,

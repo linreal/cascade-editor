@@ -6,6 +6,7 @@ import io.github.linreal.cascade.editor.action.UpdateBlockContent
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.SpanStyle
+import io.github.linreal.cascade.editor.core.SpanStyle.Companion.kindMatches
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 
@@ -93,8 +94,9 @@ public class SpanActionDispatcher(
                     spanStates.activeStylesAt(blockId, rangeStart - 1)
                 }
             }
-            if (style in pending) {
-                spanStates.setPendingStyles(blockId, pending - style)
+            val existing = pending.firstOrNull { kindMatches(it, style) }
+            if (existing != null) {
+                spanStates.setPendingStyles(blockId, pending - existing)
             } else {
                 spanStates.setPendingStyles(blockId, pending + style)
             }

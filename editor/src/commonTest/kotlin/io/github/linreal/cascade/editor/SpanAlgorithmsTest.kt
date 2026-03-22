@@ -640,15 +640,16 @@ class SpanAlgorithmsTest {
     }
 
     @Test
-    fun `removeStyle - parameterized style matches exactly`() {
+    fun `removeStyle - highlight uses kind-based matching`() {
         val yellow = SpanStyle.Highlight(0xFFFFFF00)
         val red = SpanStyle.Highlight(0xFFFF0000)
         val spans = listOf(
             TextSpan(0, 5, yellow),
             TextSpan(0, 5, red),
         )
+        // Removing any Highlight removes all Highlights (kind-based matching)
         val result = SpanAlgorithms.removeStyle(spans, 0, 5, yellow)
-        assertEquals(listOf(TextSpan(0, 5, red)), result)
+        assertTrue(result.isEmpty(), "Both highlight spans should be removed via kind-matching")
     }
 
     // ╔══════════════════════════════════════════════════════════════════╗

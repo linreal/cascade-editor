@@ -216,7 +216,7 @@ internal object SpanAlgorithms {
         if (normalizedStart >= normalizedEnd) return spans
 
         return spans.flatMap { span ->
-            if (span.style != style) {
+            if (!SpanStyle.kindMatches(span.style, style)) {
                 listOf(span)
             } else {
                 buildList {
@@ -285,14 +285,14 @@ internal object SpanAlgorithms {
         if (normalizedStart == normalizedEnd) {
             // Collapsed cursor: check containment
             val inside = spans.any {
-                it.style == style && it.start <= normalizedStart && it.end > normalizedStart
+                SpanStyle.kindMatches(it.style, style) && it.start <= normalizedStart && it.end > normalizedStart
             }
             return if (inside) StyleStatus.FullyActive else StyleStatus.Absent
         }
 
         // Ranged selection: compute coverage
         val clipped = spans
-            .filter { it.style == style }
+            .filter { SpanStyle.kindMatches(it.style, style) }
             .map { maxOf(it.start, normalizedStart) to minOf(it.end, normalizedEnd) }
             .filter { it.first < it.second }
             .sortedBy { it.first }
@@ -350,16 +350,21 @@ internal object SpanAlgorithms {
 
         val result = mutableListOf<TextSpan>()
 
-        // Group by style, merge within each group
-        val grouped = spans.groupBy { it.style }
-        for ((style, group) in grouped) {
+        // Group by style kind, merge within each group
+        val grouped = mutableMapOf<Any, MutableList<TextSpan>>()
+        for (span in spans) {
+            grouped.getOrPut(SpanStyle.kindKey(span.style)) { mutableListOf() }.add(span)
+        }
+        for ((_, group) in grouped) {
             val sorted = group.sortedBy { it.start }
             var current = sorted[0]
             for (i in 1 until sorted.size) {
                 val next = sorted[i]
                 if (next.start <= current.end) {
-                    // Overlapping or adjacent — merge
-                    current = TextSpan(current.start, maxOf(current.end, next.end), style)
+                    // Overlapping or adjacent — merge (keep the later span's style
+                    // so that newly-applied highlight color wins)
+                    val mergedStyle = if (next.end >= current.end) next.style else current.style
+                    current = TextSpan(current.start, maxOf(current.end, next.end), mergedStyle)
                 } else {
                     result.add(current)
                     current = next

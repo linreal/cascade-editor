@@ -93,7 +93,8 @@ sealed interface SpanStyle {
 ```
 
 - `Custom.payload` is an opaque JSON string. The core layer never parses it — serialization layer handles conversion.
-- Style equality is exact (Kotlin data class equality). `Highlight(0xFFFF0000)` and `Highlight(0xFF00FF00)` are different styles.
+- **Kind-based matching for Highlight:** `SpanStyle.kindMatches(a, b)` treats all `Highlight` instances as equivalent regardless of `colorArgb`. This is used throughout algorithms, formatting state, and toggle logic. Other styles use exact data-class equality.
+- `Highlight.colorArgb` is retained for serialization backward compatibility but ignored at render time — the theme's `CascadeEditorColors.highlight` controls the visual color.
 
 ### BlockContent.Text (`core/BlockContent.kt`)
 
@@ -230,7 +231,7 @@ Visual rendering (bold, italic, underline, etc.)
    - `Underline` → `TextDecoration.Underline`
    - `StrikeThrough` → `TextDecoration.LineThrough`
    - `InlineCode` → `FontFamily.Monospace` + semi-transparent background
-   - `Highlight(color)` → background color
+   - `Highlight` → theme `highlightBackground` color (span's `colorArgb` ignored at render time)
    - `Link(url)` → blue color + underline
    - `Custom` → `null` (not rendered, but retained in state)
 
@@ -408,7 +409,7 @@ Composable bridge (`rememberFormattingState()`) that reads snapshot state and pr
 
 ### Toolbar UI (`ui/RichTextToolbar.kt`)
 
-Config-driven (`RichTextToolbarConfig`) horizontal scrollable row of toggle buttons. V1 default buttons: Bold, Italic, Underline, StrikeThrough, InlineCode, Highlight (yellow).
+Config-driven (`RichTextToolbarConfig`) horizontal scrollable row of toggle buttons. V1 default buttons: Bold, Italic, Underline, StrikeThrough, InlineCode, Highlight. The Highlight button's color is injected from `CascadeEditorColors.highlight` at the `CascadeEditor` composable level.
 
 All toolbar buttons use `focusProperties { canFocus = false }` to prevent stealing focus from the text field.
 

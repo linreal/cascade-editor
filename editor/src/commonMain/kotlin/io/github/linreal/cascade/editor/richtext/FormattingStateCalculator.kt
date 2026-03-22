@@ -3,6 +3,7 @@ package io.github.linreal.cascade.editor.richtext
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.SpanStyle
+import io.github.linreal.cascade.editor.core.SpanStyle.Companion.kindMatches
 import io.github.linreal.cascade.editor.core.TextSpan
 import kotlin.math.max
 import kotlin.math.min
@@ -65,7 +66,7 @@ internal object FormattingStateCalculator {
         if (pendingStyles != null) {
             // Pending styles are canonical — present = FullyActive, absent = Absent
             return trackedStyles.associateWith { style ->
-                if (style in pendingStyles) StyleStatus.FullyActive else StyleStatus.Absent
+                if (pendingStyles.any { kindMatches(it, style) }) StyleStatus.FullyActive else StyleStatus.Absent
             }
         }
 
@@ -76,7 +77,7 @@ internal object FormattingStateCalculator {
             emptySet()
         }
         return trackedStyles.associateWith { style ->
-            if (style in activeStyles) StyleStatus.FullyActive else StyleStatus.Absent
+            if (activeStyles.any { kindMatches(it, style) }) StyleStatus.FullyActive else StyleStatus.Absent
         }
     }
 
