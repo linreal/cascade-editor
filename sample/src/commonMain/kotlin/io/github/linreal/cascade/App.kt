@@ -28,7 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import cascadeeditor.composeapp.generated.resources.Res
+import cascadeeditor.sample.generated.resources.Res
 import io.github.linreal.cascade.editor.serialization.loadFromJson
 import io.github.linreal.cascade.editor.serialization.toJson
 import io.github.linreal.cascade.editor.state.BlockSpanStates
