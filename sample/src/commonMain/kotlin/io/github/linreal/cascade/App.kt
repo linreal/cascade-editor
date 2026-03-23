@@ -24,7 +24,10 @@ import io.github.linreal.cascade.screens.PlaceholderScreen
 @Composable
 @Preview
 fun App() {
-    val isDark = isSystemInDarkTheme()
+    val systemIsDark = isSystemInDarkTheme()
+    var themeOverride by remember { mutableStateOf<Boolean?>(null) }
+    val isDark = themeOverride ?: systemIsDark
+
     val colorScheme = if (isDark) {
         darkColorScheme(
             background = Color(0xFF16161E),
@@ -52,6 +55,7 @@ fun App() {
                 )
                 AppScreen.EditorDemo -> EditorDemoScreen(
                     isDark = isDark,
+                    onToggleTheme = { themeOverride = !isDark },
                     onBack = { currentScreen = AppScreen.Landing },
                 )
                 AppScreen.CustomBlocks -> PlaceholderScreen(

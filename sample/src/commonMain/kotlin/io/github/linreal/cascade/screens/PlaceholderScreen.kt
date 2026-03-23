@@ -35,7 +35,7 @@ fun PlaceholderScreen(
         ) {
             IconButton(
                 onClick = onBack,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(40.dp),
             ) {
                 Image(
                     painter = painterResource(Res.drawable.ic_arrow_back),
