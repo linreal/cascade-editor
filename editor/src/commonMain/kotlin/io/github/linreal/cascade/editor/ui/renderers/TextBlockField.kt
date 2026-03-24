@@ -20,7 +20,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -57,6 +56,11 @@ import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
  * [OutputTransformation], focus management, [BackspaceAwareTextField], and the
  * unfocused tap overlay for cursor placement.
  *
+ * **Focus contract:** this composable does NOT call `clearFocus()` when [isFocused]
+ * becomes false. The hosting composable (currently [CascadeEditor][io.github.linreal.cascade.editor.ui.CascadeEditor])
+ * is responsible for clearing Compose focus when `focusedBlockId` becomes null.
+ * This avoids keyboard blink during block-to-block focus transitions.
+ *
  * @param block The block being rendered
  * @param isFocused Whether this block currently has editor focus
  * @param textStyle The text style to apply
@@ -74,7 +78,6 @@ internal fun TextBlockField(
     val textContent = block.content as? BlockContent.Text ?: return
     val colors = LocalCascadeTheme.current.colors
     val focusRequester = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
     var hasComposeFocus by remember { mutableStateOf(false) }
 
     // Get TextFieldState from the shared holder.
@@ -153,9 +156,11 @@ internal fun TextBlockField(
     LaunchedEffect(isFocused) {
         if (isFocused) {
             focusRequester.requestFocus()
-        } else if (hasComposeFocus) {
-            focusManager.clearFocus()
         }
+        // Don't call clearFocus() here when isFocused becomes false.
+        // When focus moves to another block, that block's requestFocus()
+        // moves Compose focus automatically, keeping the keyboard open.
+        // CascadeEditor handles clearFocus() when focusedBlockId becomes null.
     }
 
     // Keep observer tracking in sync when slash session closes or moves externally.

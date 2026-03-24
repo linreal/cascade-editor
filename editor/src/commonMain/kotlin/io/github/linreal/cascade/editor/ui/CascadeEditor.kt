@@ -2,6 +2,7 @@ package io.github.linreal.cascade.editor.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,9 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.collectLatest
 import io.github.linreal.cascade.editor.action.CloseSlashCommand
 import io.github.linreal.cascade.editor.action.UpdateDragTarget
 import io.github.linreal.cascade.editor.core.Block
@@ -295,6 +298,31 @@ public fun CascadeEditor(
         LocalSlashPopupItems provides slashPopupItems,
     ) {
         val lazyListState = rememberLazyListState()
+        val focusManager = LocalFocusManager.current
+
+        // Scroll-to-focus: ensure the focused block is visible before its
+        // TextBlockField requests Compose focus. Also clears Compose focus
+        // when no block has editor-level focus. This prevents keyboard blink
+        // when pressing Enter near the bottom of the viewport; the old block
+        // keeps keyboard open while we scroll the new block into view.
+        LaunchedEffect(stateHolder, lazyListState) {
+            snapshotFlow { stateHolder.state.focusedBlockId }
+                .collectLatest { focusedId ->
+                    if (focusedId == null) {
+                        focusManager.clearFocus()
+                        return@collectLatest
+                    }
+                    val currentState = stateHolder.state
+                    val index = currentState.blocks.indexOfFirst { it.id == focusedId }
+                    if (index < 0) return@collectLatest
+
+                    val visibleItems = lazyListState.layoutInfo.visibleItemsInfo
+                    val isVisible = visibleItems.any { it.index == index }
+                    if (!isVisible) {
+                        lazyListState.animateScrollToItem(index)
+                    }
+                }
+        }
 
         // Current drag Y position — local state, NOT in EditorState.
         // Updated at ~60-120fps during drag; keeping it local avoids full-tree
@@ -324,6 +352,8 @@ public fun CascadeEditor(
                     // belong to our drag handler. Auto-scroll uses dispatchRawDelta
                     // which bypasses gesture handling entirely.
                     userScrollEnabled = state.dragState == null && state.slashCommandState == null,
+                    // Extra space so the last block isn't flush against the viewport edge.
+                    contentPadding = PaddingValues(bottom = 40.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(
