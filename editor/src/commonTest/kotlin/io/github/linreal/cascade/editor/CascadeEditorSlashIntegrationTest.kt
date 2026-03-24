@@ -12,6 +12,7 @@ import io.github.linreal.cascade.editor.slash.SlashCommandId
 import io.github.linreal.cascade.editor.slash.SlashCommandRegistry
 import io.github.linreal.cascade.editor.slash.SlashCommandResult
 import io.github.linreal.cascade.editor.slash.SlashQueryTextPolicy
+import io.github.linreal.cascade.editor.slash.createBuiltInSlashExecutor
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.DragState
@@ -97,22 +98,11 @@ class CascadeEditorSlashIntegrationTest {
         val blockRegistry = BlockRegistry.createDefault()
 
         // Register built-in items
-        val textStates = BlockTextStates()
-        val spanStates = BlockSpanStates()
         val anchorId = BlockId.generate()
         val stateHolder = createStateHolder(anchorId)
-        textStates.getOrCreate(anchorId, "/")
 
-        val executor = SlashCommandExecutor(
-            registry = registry,
-            stateHolder = stateHolder,
-            textStates = textStates,
-            spanStates = spanStates,
-            blockRegistry = blockRegistry,
-            executionScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined),
-        )
-
-        val factory = BuiltInSlashCommandFactory(executor.builtInExecutor)
+        val builtInExecutor = createBuiltInSlashExecutor(stateHolder, blockRegistry)
+        val factory = BuiltInSlashCommandFactory(builtInExecutor)
         factory.generate(blockRegistry.getAllDescriptors()).forEach(registry::register)
 
         // Register a custom item
@@ -139,22 +129,11 @@ class CascadeEditorSlashIntegrationTest {
         val registry = SlashCommandRegistry()
         val blockRegistry = BlockRegistry.createDefault()
 
-        val textStates = BlockTextStates()
-        val spanStates = BlockSpanStates()
         val anchorId = BlockId.generate()
         val stateHolder = createStateHolder(anchorId)
-        textStates.getOrCreate(anchorId, "/")
 
-        val executor = SlashCommandExecutor(
-            registry = registry,
-            stateHolder = stateHolder,
-            textStates = textStates,
-            spanStates = spanStates,
-            blockRegistry = blockRegistry,
-            executionScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined),
-        )
-
-        val factory = BuiltInSlashCommandFactory(executor.builtInExecutor)
+        val builtInExecutor = createBuiltInSlashExecutor(stateHolder, blockRegistry)
+        val factory = BuiltInSlashCommandFactory(builtInExecutor)
         factory.generate(blockRegistry.getAllDescriptors()).forEach(registry::register)
 
         // Register a custom item with the same ID as a built-in
@@ -197,17 +176,10 @@ class CascadeEditorSlashIntegrationTest {
         val spanStates = BlockSpanStates()
         spanStates.getOrCreate(anchorId, emptyList(), 10)
 
-        val executor = SlashCommandExecutor(
-            registry = registry,
-            stateHolder = stateHolder,
-            textStates = textStates,
-            spanStates = spanStates,
-            blockRegistry = blockRegistry,
-            executionScope = this,
-        )
+        val builtInExecutor = createBuiltInSlashExecutor(stateHolder, blockRegistry)
 
         // Register built-ins
-        val factory = BuiltInSlashCommandFactory(executor.builtInExecutor)
+        val factory = BuiltInSlashCommandFactory(builtInExecutor)
         factory.generate(blockRegistry.getAllDescriptors()).forEach(registry::register)
 
         // Register custom action
@@ -224,11 +196,211 @@ class CascadeEditorSlashIntegrationTest {
         )
         registry.register(customAction)
 
+        val executor = SlashCommandExecutor(
+            registry = registry,
+            stateHolder = stateHolder,
+            textStates = textStates,
+            spanStates = spanStates,
+            executionScope = this,
+            builtInExecutor = builtInExecutor,
+        )
+
         // Execute the custom command
         executor.executeNow(SlashCommandId("custom.callout"))
 
         assertEquals(listOf("callout"), executed)
         assertNull(stateHolder.state.slashCommandState, "Menu should be closed after Done")
+    }
+
+    // -- CustomBlocksScreen mirror tests --
+    // These verify that standalone SlashCommandAction items (not from BlockDescriptor)
+    // coexist with descriptor-based items in the merged registry.
+
+    @Test
+    fun `merged registry contains standalone slash actions alongside descriptor-based items`() {
+        val blockRegistry = BlockRegistry.createDefault()
+        val anchorId = BlockId.generate()
+        val stateHolder = createStateHolder(anchorId)
+
+        // Generate built-in items from descriptors (same path as CascadeEditor)
+        val builtInExecutor = createBuiltInSlashExecutor(stateHolder, blockRegistry)
+        val builtInItems = BuiltInSlashCommandFactory(builtInExecutor)
+            .generate(blockRegistry.getAllDescriptors())
+
+        // Create a custom slash registry with standalone actions (same as CustomBlocksScreen)
+        val customRegistry = SlashCommandRegistry().apply {
+            register(
+                SlashCommandAction(
+                    id = SlashCommandId("custom.timestamp"),
+                    title = "Timestamp",
+                    description = "Insert current date and time",
+                    keywords = listOf("date", "time", "now", "timestamp"),
+                    onExecute = { SlashCommandResult.Done },
+                )
+            )
+            register(
+                SlashCommandAction(
+                    id = SlashCommandId("custom.lorem"),
+                    title = "Lorem Ipsum",
+                    description = "Insert placeholder text",
+                    keywords = listOf("lorem", "ipsum", "placeholder", "dummy", "text"),
+                    onExecute = { SlashCommandResult.Done },
+                )
+            )
+        }
+
+        // Merge (same as CascadeEditor.createMergedSlashRegistry)
+        val merged = createMergedSlashRegistry(
+            builtInItems = builtInItems,
+            customItems = customRegistry.getRootItems(),
+        )
+
+        val allItems = merged.search("")
+        val allIds = allItems.map { it.id.value }.toSet()
+
+        // Built-in block items present
+        assertTrue("builtin.block.paragraph" in allIds, "Paragraph missing")
+        assertTrue("builtin.block.heading_1" in allIds, "Heading 1 missing")
+
+        // Custom standalone items present
+        assertTrue("custom.timestamp" in allIds, "Timestamp missing")
+        assertTrue("custom.lorem" in allIds, "Lorem Ipsum missing")
+    }
+
+    @Test
+    fun `search for lorem finds standalone Lorem Ipsum action`() {
+        val blockRegistry = BlockRegistry.createDefault()
+        val anchorId = BlockId.generate()
+        val stateHolder = createStateHolder(anchorId)
+
+        val builtInExecutor = createBuiltInSlashExecutor(stateHolder, blockRegistry)
+        val builtInItems = BuiltInSlashCommandFactory(builtInExecutor)
+            .generate(blockRegistry.getAllDescriptors())
+
+        val customRegistry = SlashCommandRegistry().apply {
+            register(
+                SlashCommandAction(
+                    id = SlashCommandId("custom.lorem"),
+                    title = "Lorem Ipsum",
+                    description = "Insert placeholder text",
+                    keywords = listOf("lorem", "ipsum", "placeholder"),
+                    onExecute = { SlashCommandResult.Done },
+                )
+            )
+        }
+
+        val merged = createMergedSlashRegistry(
+            builtInItems = builtInItems,
+            customItems = customRegistry.getRootItems(),
+        )
+
+        val results = merged.search("lorem")
+        val loremItem = results.find { it.id == SlashCommandId("custom.lorem") }
+        assertNotNull(loremItem, "Lorem Ipsum should appear for query 'lorem'")
+        assertEquals("Lorem Ipsum", loremItem.title)
+    }
+
+    @Test
+    fun `search for date finds standalone Timestamp action via keyword`() {
+        val blockRegistry = BlockRegistry.createDefault()
+        val anchorId = BlockId.generate()
+        val stateHolder = createStateHolder(anchorId)
+
+        val builtInExecutor = createBuiltInSlashExecutor(stateHolder, blockRegistry)
+        val builtInItems = BuiltInSlashCommandFactory(builtInExecutor)
+            .generate(blockRegistry.getAllDescriptors())
+
+        val customRegistry = SlashCommandRegistry().apply {
+            register(
+                SlashCommandAction(
+                    id = SlashCommandId("custom.timestamp"),
+                    title = "Timestamp",
+                    description = "Insert current date and time",
+                    keywords = listOf("date", "time", "now", "timestamp"),
+                    onExecute = { SlashCommandResult.Done },
+                )
+            )
+        }
+
+        val merged = createMergedSlashRegistry(
+            builtInItems = builtInItems,
+            customItems = customRegistry.getRootItems(),
+        )
+
+        val results = merged.search("date")
+        val timestampItem = results.find { it.id == SlashCommandId("custom.timestamp") }
+        assertNotNull(timestampItem, "Timestamp should appear for query 'date'")
+        assertEquals("Timestamp", timestampItem.title)
+    }
+
+    @Test
+    fun `executor resolves items from merged registry`() = runTest {
+        val blockRegistry = BlockRegistry.createDefault()
+        val anchorId = BlockId.generate()
+
+        val stateHolder = EditorStateHolder(
+            EditorState(
+                blocks = listOf(Block(anchorId, BlockType.Paragraph, BlockContent.Text("/"))),
+                focusedBlockId = anchorId,
+                selectedBlockIds = emptySet(),
+                dragState = null,
+                slashCommandState = SlashCommandState(
+                    anchorBlockId = anchorId,
+                    query = "",
+                    queryRange = SlashQueryRange(0, 1),
+                ),
+            )
+        )
+
+        val textStates = BlockTextStates()
+        textStates.getOrCreate(anchorId, "/")
+        val spanStates = BlockSpanStates()
+        spanStates.getOrCreate(anchorId, emptyList(), 1)
+
+        val builtInExecutor = createBuiltInSlashExecutor(stateHolder, blockRegistry)
+        val builtInItems = BuiltInSlashCommandFactory(builtInExecutor)
+            .generate(blockRegistry.getAllDescriptors())
+
+        val executed = mutableListOf<String>()
+        val customRegistry = SlashCommandRegistry().apply {
+            register(
+                SlashCommandAction(
+                    id = SlashCommandId("custom.lorem"),
+                    title = "Lorem Ipsum",
+                    description = "Insert placeholder text",
+                    keywords = listOf("lorem"),
+                    queryTextPolicy = SlashQueryTextPolicy.KeepText,
+                    onExecute = {
+                        executed.add("lorem")
+                        SlashCommandResult.Done
+                    },
+                )
+            )
+        }
+
+        // Merged registry — same as CascadeEditor now produces
+        val merged = createMergedSlashRegistry(
+            builtInItems = builtInItems,
+            customItems = customRegistry.getRootItems(),
+        )
+
+        val executor = SlashCommandExecutor(
+            registry = merged,
+            stateHolder = stateHolder,
+            textStates = textStates,
+            spanStates = spanStates,
+            executionScope = this,
+            builtInExecutor = builtInExecutor,
+        )
+
+        // Execute custom command by ID (uses resolveItem which searches the registry)
+        executor.executeNow(SlashCommandId("custom.lorem"))
+        assertEquals(listOf("lorem"), executed)
+
+        // Verify built-in item is also resolvable
+        val allItems = merged.search("")
+        val paragraphItem = allItems.find { it.id.value == "builtin.block.paragraph" }
+        assertNotNull(paragraphItem, "Built-in paragraph should be in merged registry")
     }
 
     // -- Session invalidation (pure function tests) --

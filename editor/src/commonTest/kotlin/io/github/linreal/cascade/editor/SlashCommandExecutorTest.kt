@@ -10,6 +10,7 @@ import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandFactory
 import io.github.linreal.cascade.editor.slash.SlashCommandAction
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
+import io.github.linreal.cascade.editor.slash.createBuiltInSlashExecutor
 import io.github.linreal.cascade.editor.slash.SlashCommandId
 import io.github.linreal.cascade.editor.slash.SlashCommandMenu
 import io.github.linreal.cascade.editor.slash.SlashCommandRegistry
@@ -310,8 +311,8 @@ class SlashCommandExecutorTest {
             stateHolder = stateHolder,
             textStates = textStates,
             spanStates = spanStates,
-            blockRegistry = blockRegistry,
             executionScope = this,
+            builtInExecutor = createBuiltInSlashExecutor(stateHolder, blockRegistry),
         )
 
         val executionRecorder = mutableListOf<String>()
@@ -440,13 +441,14 @@ class SlashCommandExecutorTest {
             )
         )
 
+        val blockRegistry = BlockRegistry.createDefault()
         val executor = SlashCommandExecutor(
             registry = SlashCommandRegistry(),
             stateHolder = stateHolder,
             textStates = BlockTextStates(),
             spanStates = BlockSpanStates(),
-            blockRegistry = BlockRegistry.createDefault(),
             executionScope = this,
+            builtInExecutor = createBuiltInSlashExecutor(stateHolder, blockRegistry),
         )
 
         // Should complete without error
@@ -555,8 +557,8 @@ class SlashCommandExecutorTest {
             stateHolder = stateHolder,
             textStates = textStates,
             spanStates = spanStates,
-            blockRegistry = blockRegistry,
             executionScope = executionScope,
+            builtInExecutor = createBuiltInSlashExecutor(stateHolder, blockRegistry),
         )
 
         return ExecutorEnv(

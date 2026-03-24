@@ -39,6 +39,7 @@ import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandFactory
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
 import io.github.linreal.cascade.editor.slash.SlashCommandItem
 import io.github.linreal.cascade.editor.slash.SlashCommandRegistry
+import io.github.linreal.cascade.editor.slash.createBuiltInSlashExecutor
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorState
@@ -115,28 +116,45 @@ public fun CascadeEditor(
 ) {
     val state = stateHolder.state
 
-    val slashExecutionScope = rememberCoroutineScope()
-    val slashExecutor = remember(
-        slashRegistry,
-        stateHolder,
-        textStates,
-        spanStates,
-        registry,
-        slashExecutionScope,
-    ) {
-        SlashCommandExecutor(
-            registry = slashRegistry,
-            stateHolder = stateHolder,
-            textStates = textStates,
-            spanStates = spanStates,
-            blockRegistry = registry,
-            executionScope = slashExecutionScope,
+    // Slash wiring: built-in executor → built-in items → merged registry → executor.
+    // The builtInExecutor lambda only needs stateHolder + blockRegistry, not the
+    // SlashCommandRegistry, which breaks the circular dependency and lets us pass
+    // the merged registry (built-in + custom) to the executor.
+    val builtInExecutor = remember(stateHolder, registry) {
+        createBuiltInSlashExecutor(stateHolder, registry)
+    }
+
+    val builtInSlashItems = remember(registry, builtInExecutor, blockStrings) {
+        val builtInFactory = BuiltInSlashCommandFactory(builtInExecutor)
+        builtInFactory.generate(registry.getAllDescriptors(), blockStrings)
+    }
+
+    // Use slashRegistry reference (stable) as the remember key — not getRootItems()
+    // which creates a new List on every recomposition with fragile data-class equality.
+    val effectiveSlashRegistry = remember(builtInSlashItems, slashRegistry) {
+        createMergedSlashRegistry(
+            builtInItems = builtInSlashItems,
+            customItems = slashRegistry.getRootItems(),
         )
     }
 
-    val builtInSlashItems = remember(registry, slashExecutor, blockStrings) {
-        val builtInFactory = BuiltInSlashCommandFactory(slashExecutor.builtInExecutor)
-        builtInFactory.generate(registry.getAllDescriptors(), blockStrings)
+    val slashExecutionScope = rememberCoroutineScope()
+    val slashExecutor = remember(
+        effectiveSlashRegistry,
+        stateHolder,
+        textStates,
+        spanStates,
+        slashExecutionScope,
+        builtInExecutor,
+    ) {
+        SlashCommandExecutor(
+            registry = effectiveSlashRegistry,
+            stateHolder = stateHolder,
+            textStates = textStates,
+            spanStates = spanStates,
+            executionScope = slashExecutionScope,
+            builtInExecutor = builtInExecutor,
+        )
     }
 
     // Cleanup stale states when blocks change
@@ -235,13 +253,6 @@ public fun CascadeEditor(
     // Slash popup support: caret rect holder and search results for keyboard nav.
     val slashCaretRectHolder = remember { SlashCaretRectHolder() }
     val slashState = state.slashCommandState
-    val customSlashRootItems = slashRegistry.getRootItems()
-    val effectiveSlashRegistry = remember(builtInSlashItems, customSlashRootItems) {
-        createMergedSlashRegistry(
-            builtInItems = builtInSlashItems,
-            customItems = customSlashRootItems,
-        )
-    }
     val slashPopupItems = remember(
         slashState?.query,
         slashState?.navigationPath,

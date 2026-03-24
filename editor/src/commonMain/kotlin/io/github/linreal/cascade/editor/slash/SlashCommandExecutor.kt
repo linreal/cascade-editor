@@ -13,6 +13,46 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
+ * Creates the built-in block command executor lambda.
+ *
+ * This lambda is used by [BuiltInSlashCommandFactory] to generate slash command actions
+ * for built-in block types. It only depends on [EditorStateHolder] and [BlockRegistry],
+ * not on [SlashCommandRegistry], so it can be created before the merged registry is available.
+ *
+ * When behavior is [ConvertInPlace][BuiltInBlockSlashBehavior.ConvertInPlace]:
+ * the anchor block's type is changed in-place via [ConvertBlockType]. Query text
+ * is already removed (all built-in actions use [SlashQueryTextPolicy.RemoveBeforeExecute]),
+ * so remaining text and spans are preserved as-is.
+ *
+ * When behavior is [AlwaysInsert][BuiltInBlockSlashBehavior.AlwaysInsert]:
+ * a new block is created from the descriptor factory and inserted below the anchor
+ * via [SlashCommandEditor.insertBlockAfterAnchor].
+ */
+internal fun createBuiltInSlashExecutor(
+    stateHolder: EditorStateHolder,
+    blockRegistry: BlockRegistry,
+): suspend SlashCommandContext.(String, BuiltInBlockSlashBehavior) -> SlashCommandResult =
+    { typeId, behavior ->
+        val descriptor = blockRegistry.getDescriptor(typeId)
+        if (descriptor == null) {
+            SlashCommandResult.Failure("Unknown block type: $typeId")
+        } else {
+            when (behavior) {
+                is BuiltInBlockSlashBehavior.ConvertInPlace -> {
+                    val targetType = descriptor.createBlock(anchorBlockId).type
+                    stateHolder.dispatch(ConvertBlockType(anchorBlockId, targetType))
+                    SlashCommandResult.Done
+                }
+                is BuiltInBlockSlashBehavior.AlwaysInsert -> {
+                    val newBlock = descriptor.createBlock()
+                    editor.insertBlockAfterAnchor(newBlock)
+                    SlashCommandResult.Done
+                }
+            }
+        }
+    }
+
+/**
  * Internal coordinator that executes slash command items.
  *
  * Responsibilities:
@@ -26,42 +66,27 @@ import kotlinx.coroutines.launch
  *
  * Built-in block commands are executed via [builtInExecutor], which encapsulates
  * convert-in-place vs. always-insert semantics. Pass this lambda to
- * [BuiltInSlashCommandFactory] during wiring (Task 8).
+ * [BuiltInSlashCommandFactory] during wiring.
  *
- * @property registry The slash command registry for item resolution.
+ * @property registry The merged slash command registry (built-in + custom) for item resolution.
  * @property stateHolder Snapshot state holder for dispatch and state reads.
  * @property textStates Runtime text state manager.
  * @property spanStates Runtime span state manager.
- * @property blockRegistry Block descriptor registry for built-in command resolution.
  * @property executionScope Editor-owned coroutine scope used for async command launches.
+ * @property builtInExecutor Lambda for executing built-in block commands, created via
+ *           [createBuiltInSlashExecutor].
  */
 internal class SlashCommandExecutor(
     private val registry: SlashCommandRegistry,
     private val stateHolder: EditorStateHolder,
     private val textStates: BlockTextStates,
     private val spanStates: BlockSpanStates,
-    private val blockRegistry: BlockRegistry,
     private val executionScope: CoroutineScope,
-) {
-
-    /**
-     * Built-in executor lambda for [BuiltInSlashCommandFactory].
-     *
-     * When behavior is [ConvertInPlace][BuiltInBlockSlashBehavior.ConvertInPlace]:
-     * the anchor block's type is changed in-place via [ConvertBlockType]. Query text
-     * is already removed (all built-in actions use [SlashQueryTextPolicy.RemoveBeforeExecute]),
-     * so remaining text and spans are preserved as-is.
-     *
-     * When behavior is [AlwaysInsert][BuiltInBlockSlashBehavior.AlwaysInsert]:
-     * a new block is created from the descriptor factory and inserted below the anchor
-     * via [SlashCommandEditor.insertBlockAfterAnchor].
-     */
     internal val builtInExecutor: suspend SlashCommandContext.(
         typeId: String,
         behavior: BuiltInBlockSlashBehavior,
-    ) -> SlashCommandResult = { typeId, behavior ->
-        executeBuiltInCommand(typeId, behavior)
-    }
+    ) -> SlashCommandResult,
+) {
 
     /**
      * Executes the slash command item identified by [itemId].
@@ -179,32 +204,4 @@ internal class SlashCommandExecutor(
         }
     }
 
-    /**
-     * Built-in block command handler.
-     *
-     * Called inside [SlashCommandContext] receiver — has access to [SlashCommandContext.anchorBlockId],
-     * [SlashCommandContext.editor], etc.
-     */
-    private fun SlashCommandContext.executeBuiltInCommand(
-        typeId: String,
-        behavior: BuiltInBlockSlashBehavior,
-    ): SlashCommandResult {
-        val descriptor = blockRegistry.getDescriptor(typeId)
-            ?: return SlashCommandResult.Failure("Unknown block type: $typeId")
-
-        return when (behavior) {
-            is BuiltInBlockSlashBehavior.ConvertInPlace -> {
-                // Query text was already removed (RemoveBeforeExecute).
-                // Change block type only — runtime text and spans stay intact.
-                val targetType = descriptor.createBlock(anchorBlockId).type
-                stateHolder.dispatch(ConvertBlockType(anchorBlockId, targetType))
-                SlashCommandResult.Done
-            }
-            is BuiltInBlockSlashBehavior.AlwaysInsert -> {
-                val newBlock = descriptor.createBlock()
-                editor.insertBlockAfterAnchor(newBlock)
-                SlashCommandResult.Done
-            }
-        }
-    }
 }
