@@ -97,32 +97,15 @@ fun LandingScreen(
                 modifier = Modifier.weight(1f),
             )
             SectionCard(
-                icon = Res.drawable.ic_palette,
-                title = "Theme Playground",
-                description = "Customize colors and typography live",
-                onClick = { onNavigate(AppScreen.ThemePlayground) },
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Section cards — row 2
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            SectionCard(
                 icon = Res.drawable.ic_code,
                 title = "Custom Toolbar",
                 description = "Build your own formatting toolbar",
                 onClick = { onNavigate(AppScreen.CustomToolbar) },
                 modifier = Modifier.weight(1f),
             )
-            Spacer(modifier = Modifier.weight(1f))
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(12.dp))
     }
 }
 

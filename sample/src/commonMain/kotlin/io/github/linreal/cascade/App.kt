@@ -65,11 +65,6 @@ fun App() {
                     onToggleTheme = { themeOverride = !isDark },
                     onBack = { currentScreen = AppScreen.Landing },
                 )
-                AppScreen.ThemePlayground -> PlaceholderScreen(
-                    title = "Theme Playground",
-                    description = "Customize colors and typography live",
-                    onBack = { currentScreen = AppScreen.Landing },
-                )
                 AppScreen.CustomToolbar -> CustomToolbarScreen(
                     isDark = isDark,
                     onToggleTheme = { themeOverride = !isDark },
