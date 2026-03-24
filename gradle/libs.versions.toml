@@ -13,6 +13,7 @@ composeMultiplatform = "1.10.0"
 junit = "4.13.2"
 kotlin = "2.3.0"
 kotlinxCoroutinesTest = "1.10.2"
+kotlinxDatetime = "0.7.1"
 kotlinxSerializationJson = "1.8.1"
 material3 = "1.10.0-alpha05"
 
@@ -35,6 +36,7 @@ compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMul
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 
 [plugins]

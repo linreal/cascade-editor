@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import io.github.linreal.cascade.navigation.AppScreen
+import io.github.linreal.cascade.screens.CustomBlocksScreen
 import io.github.linreal.cascade.screens.EditorDemoScreen
 import io.github.linreal.cascade.screens.LandingScreen
 import io.github.linreal.cascade.screens.PlaceholderScreen
@@ -58,9 +59,9 @@ fun App() {
                     onToggleTheme = { themeOverride = !isDark },
                     onBack = { currentScreen = AppScreen.Landing },
                 )
-                AppScreen.CustomBlocks -> PlaceholderScreen(
-                    title = "Custom Blocks & Commands",
-                    description = "Extend the editor with custom block types and slash commands",
+                AppScreen.CustomBlocks -> CustomBlocksScreen(
+                    isDark = isDark,
+                    onToggleTheme = { themeOverride = !isDark },
                     onBack = { currentScreen = AppScreen.Landing },
                 )
                 AppScreen.ThemePlayground -> PlaceholderScreen(
