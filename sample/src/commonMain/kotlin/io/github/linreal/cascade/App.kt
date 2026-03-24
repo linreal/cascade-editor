@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import io.github.linreal.cascade.navigation.AppScreen
 import io.github.linreal.cascade.screens.CustomBlocksScreen
+import io.github.linreal.cascade.screens.CustomToolbarScreen
 import io.github.linreal.cascade.screens.EditorDemoScreen
 import io.github.linreal.cascade.screens.LandingScreen
 import io.github.linreal.cascade.screens.PlaceholderScreen
@@ -69,9 +70,9 @@ fun App() {
                     description = "Customize colors and typography live",
                     onBack = { currentScreen = AppScreen.Landing },
                 )
-                AppScreen.CustomToolbar -> PlaceholderScreen(
-                    title = "Custom Toolbar",
-                    description = "Build your own formatting toolbar",
+                AppScreen.CustomToolbar -> CustomToolbarScreen(
+                    isDark = isDark,
+                    onToggleTheme = { themeOverride = !isDark },
                     onBack = { currentScreen = AppScreen.Landing },
                 )
             }
