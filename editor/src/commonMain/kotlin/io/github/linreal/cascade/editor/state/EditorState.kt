@@ -105,6 +105,18 @@ public data class EditorState(
      */
     public fun getBlock(blockId: BlockId): Block? = blocks.find { it.id == blockId }
 
+    /**
+     * Ensures the block list ends with a text-supporting block.
+     * If empty or the last block doesn't support text, appends an empty paragraph.
+     */
+    internal fun ensureTrailingTextBlock(): EditorState {
+        val lastBlock = blocks.lastOrNull()
+        if (lastBlock == null || !lastBlock.type.supportsText) {
+            return copy(blocks = blocks + Block.paragraph())
+        }
+        return this
+    }
+
     public companion object {
         /**
          * Empty editor state with no blocks.

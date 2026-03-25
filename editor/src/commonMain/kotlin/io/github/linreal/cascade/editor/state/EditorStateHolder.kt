@@ -19,7 +19,7 @@ import io.github.linreal.cascade.editor.core.Block
  */
 @Stable
 public class EditorStateHolder(initialState: EditorState = EditorState.Empty) {
-    private var _state by mutableStateOf(initialState)
+    private var _state by mutableStateOf(initialState.ensureTrailingTextBlock())
 
     /**
      * The current immutable state snapshot.
@@ -31,7 +31,7 @@ public class EditorStateHolder(initialState: EditorState = EditorState.Empty) {
      * This is the only way to modify state, ensuring unidirectional data flow.
      */
     public fun dispatch(action: EditorAction) {
-        _state = action.reduce(_state)
+        _state = action.reduce(_state).ensureTrailingTextBlock()
     }
 
     /**
@@ -39,7 +39,7 @@ public class EditorStateHolder(initialState: EditorState = EditorState.Empty) {
      * Prefer dispatching actions for state changes.
      */
     public fun setState(newState: EditorState) {
-        _state = newState
+        _state = newState.ensureTrailingTextBlock()
     }
 }
 
