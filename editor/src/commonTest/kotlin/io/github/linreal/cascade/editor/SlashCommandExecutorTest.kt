@@ -189,7 +189,7 @@ class SlashCommandExecutorTest {
     // -- Built-in AlwaysInsert --
 
     @Test
-    fun `AlwaysInsert inserts below and never converts anchor type`() = runTest {
+    fun `AlwaysInsert inserts before anchor and never converts anchor type`() = runTest {
         val env = createExecutorEnvWithBuiltIns(
             text = "Some text /div",
             queryRange = SlashQueryRange(10, 14), // "/div"
@@ -208,11 +208,11 @@ class SlashCommandExecutorTest {
         // Anchor text has query removed
         assertEquals("Some text ", env.textStates.getVisibleText(env.anchorId))
 
-        // New block inserted after anchor
+        // New block inserted before anchor
         val blocks = env.stateHolder.state.blocks
         val anchorIndex = blocks.indexOfFirst { it.id == env.anchorId }
-        assertTrue(blocks.size >= anchorIndex + 2, "Expected block after anchor")
-        val insertedBlock = blocks[anchorIndex + 1]
+        assertTrue(anchorIndex >= 1, "Expected block before anchor")
+        val insertedBlock = blocks[anchorIndex - 1]
         assertEquals(BlockType.Divider, insertedBlock.type)
     }
 

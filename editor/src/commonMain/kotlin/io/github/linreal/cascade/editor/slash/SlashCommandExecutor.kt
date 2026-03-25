@@ -25,8 +25,9 @@ import kotlinx.coroutines.launch
  * so remaining text and spans are preserved as-is.
  *
  * When behavior is [AlwaysInsert][BuiltInBlockSlashBehavior.AlwaysInsert]:
- * a new block is created from the descriptor factory and inserted below the anchor
- * via [SlashCommandEditor.insertBlockAfterAnchor].
+ * a new block is created from the descriptor factory and inserted above the anchor
+ * via [SlashCommandEditor.insertBlockBeforeAnchor]. This keeps focus on the anchor
+ * block, which is desirable for non-text insertions like dividers.
  */
 internal fun createBuiltInSlashExecutor(
     stateHolder: EditorStateHolder,
@@ -45,7 +46,7 @@ internal fun createBuiltInSlashExecutor(
                 }
                 is BuiltInBlockSlashBehavior.AlwaysInsert -> {
                     val newBlock = descriptor.createBlock()
-                    editor.insertBlockAfterAnchor(newBlock)
+                    editor.insertBlockBeforeAnchor(newBlock)
                     SlashCommandResult.Done
                 }
             }

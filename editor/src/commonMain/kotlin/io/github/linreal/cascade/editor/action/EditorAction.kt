@@ -70,6 +70,28 @@ public data class InsertBlockAfter(
 }
 
 /**
+ * Inserts a block before the specified block ID.
+ * If [beforeBlockId] is null or not found, appends to the end.
+ */
+public data class InsertBlockBefore(
+    val block: Block,
+    val beforeBlockId: BlockId?
+) : EditorAction {
+    override fun reduce(state: EditorState): EditorState {
+        val index = if (beforeBlockId == null) {
+            state.blocks.size
+        } else {
+            val beforeIndex = state.indexOfBlock(beforeBlockId)
+            if (beforeIndex == -1) state.blocks.size else beforeIndex
+        }
+        val newBlocks = state.blocks.toMutableList().apply {
+            add(index, block)
+        }
+        return state.copy(blocks = renumberNumberedLists(newBlocks))
+    }
+}
+
+/**
  * Deletes blocks with the specified IDs.
  */
 public data class DeleteBlocks(

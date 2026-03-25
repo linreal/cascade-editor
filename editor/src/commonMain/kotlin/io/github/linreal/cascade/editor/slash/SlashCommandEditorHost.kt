@@ -3,6 +3,7 @@ package io.github.linreal.cascade.editor.slash
 import io.github.linreal.cascade.editor.action.CloseSlashCommand
 import io.github.linreal.cascade.editor.action.FocusBlock
 import io.github.linreal.cascade.editor.action.InsertBlockAfter
+import io.github.linreal.cascade.editor.action.InsertBlockBefore
 import io.github.linreal.cascade.editor.action.ReplaceBlock
 import io.github.linreal.cascade.editor.action.UpdateBlockContent
 import io.github.linreal.cascade.editor.core.Block
@@ -125,6 +126,11 @@ internal class SlashCommandEditorHost(
                 textStates.setCursorPosition(effectiveBlock.id, targetCursor)
             }
         }
+    }
+
+    override fun insertBlockBeforeAnchor(block: Block) {
+        getAnchorTextBlockOrNull() ?: return
+        stateHolder.dispatch(InsertBlockBefore(block, anchorBlockId))
     }
 
     override fun insertBlockAfterAnchor(

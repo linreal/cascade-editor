@@ -79,6 +79,16 @@ public interface SlashCommandEditor {
     )
 
     /**
+     * Inserts [block] immediately before the anchor block.
+     *
+     * Focus remains on the anchor block, so this is ideal for inserting non-text
+     * blocks (e.g. dividers) without disrupting the user's editing position.
+     *
+     * @param block The block to insert.
+     */
+    public fun insertBlockBeforeAnchor(block: Block)
+
+    /**
      * Moves editor focus to the given block.
      *
      * @param blockId Target block.
