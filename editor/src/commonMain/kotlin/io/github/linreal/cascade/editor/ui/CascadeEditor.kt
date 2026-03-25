@@ -12,7 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
@@ -20,11 +22,13 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import io.github.linreal.cascade.editor.action.CloseSlashCommand
 import io.github.linreal.cascade.editor.action.UpdateDragTarget
@@ -324,6 +328,20 @@ public fun CascadeEditor(
                 }
         }
 
+        // Enable placement animation only during and briefly after drag,
+        // so reorder looks smooth but keyboard resize doesn't cause overlap.
+        var animatePlacement by remember { mutableStateOf(false) }
+        LaunchedEffect(state.dragState) {
+            if (state.dragState != null) {
+                animatePlacement = true
+            } else if (animatePlacement) {
+                // Keep animation active after drag ends so the reorder
+                // animation from CompleteDrag has time to play.
+                delay(500)
+                animatePlacement = false
+            }
+        }
+
         // Current drag Y position — local state, NOT in EditorState.
         // Updated at ~60-120fps during drag; keeping it local avoids full-tree
         // recomposition on every pointer move.
@@ -374,7 +392,8 @@ public fun CascadeEditor(
                             modifier = Modifier
                                 .animateItem(
                                     fadeInSpec = null,
-                                    fadeOutSpec = null
+                                    placementSpec = if (animatePlacement) spring() else null,
+                                    fadeOutSpec = null,
                                 )
                                 .padding(horizontal = 16.dp, vertical = 4.dp)
                                 .graphicsLayer {
