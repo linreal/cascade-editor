@@ -627,6 +627,7 @@ public data class SplitBlock(
         val newBlockType = when (val srcType = block.type) {
             is BlockType.NumberedList -> BlockType.NumberedList(number = srcType.number + 1)
             is BlockType.BulletList -> BlockType.BulletList
+            is BlockType.Todo -> BlockType.Todo(checked = false)
             else -> BlockType.Paragraph
         }
 

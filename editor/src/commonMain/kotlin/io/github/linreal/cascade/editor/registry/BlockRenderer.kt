@@ -194,7 +194,7 @@ public open class DefaultBlockCallbacks(
 
         // List item un-list: convert to Paragraph instead of merging with previous block.
         val blockType = state?.getBlock(blockId)?.type
-        if (blockType is BlockType.BulletList || blockType is BlockType.NumberedList) {
+        if (blockType is BlockType.BulletList || blockType is BlockType.NumberedList || blockType is BlockType.Todo) {
             dispatch(ConvertBlockType(blockId, BlockType.Paragraph))
             return
         }
