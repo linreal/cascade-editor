@@ -128,6 +128,7 @@ public class BlockTextStates {
      */
     public fun setText(blockId: BlockId, text: String, cursorPosition: Int? = null) {
         val state = states[blockId] ?: return
+        val currentVisible = state.text.toString().removePrefix(ZWSP)
         state.edit {
             // Clear and replace all content
             delete(0, length)
@@ -135,7 +136,13 @@ public class BlockTextStates {
             // +1 for ZWSP offset
             selection = TextRange((cursorPosition ?: text.length) + 1)
         }
-        pendingProgrammaticCommits[blockId] = text
+        // Only register a programmatic commit when the text actually changed.
+        // When text is identical (e.g. split at end of block), Compose won't fire
+        // a snapshot notification, so the commit would never be consumed, causing
+        // subsequent user edits to be misidentified as programmatic.
+        if (text != currentVisible) {
+            pendingProgrammaticCommits[blockId] = text
+        }
     }
 
     /**

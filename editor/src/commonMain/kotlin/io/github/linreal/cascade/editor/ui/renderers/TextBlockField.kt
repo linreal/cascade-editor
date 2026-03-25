@@ -114,7 +114,7 @@ internal fun TextBlockField(
             initialVisibleText = textFieldState.visibleText(),
         )
     }
-    val slashTextObserver = remember(block.id, callbacks) {
+    val slashTextObserver = remember(block.id, callbacks, textStates.generation) {
         SlashCommandTextObserver(
             blockId = block.id,
             onOpen = { id, range, query -> callbacks.onSlashCommand(id, range, query) },
@@ -194,7 +194,13 @@ internal fun TextBlockField(
                     listAutoDetectObserver.onTextChanged(currentVisibleText, isProgrammatic)
                     lastObservedVisibleText = currentVisibleText
                 } else {
-                    // Snapshot identity can change without visible text mutation.
+                    // Snapshot identity can change without visible text mutation
+                    // (e.g. setText with identical content during split).
+                    // Consume any stale programmatic commit so it doesn't cause
+                    // the next real user edit to be misidentified as programmatic.
+                    if (isProgrammatic) {
+                        textStates.consumeProgrammaticCommit(block.id)
+                    }
                     slashTextObserver.onSelectionChanged(selection.start, selection.end)
                 }
                 lastObservedTextSnapshot = currentTextSnapshot
