@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -462,6 +463,15 @@ public fun CascadeEditor(
                         formattingState = formattingState,
                         actions = formattingActions,
                         config = resolvedToolbar.config,
+                        onSlashInsert = {
+                            val blockId = formattingState.value.focusedBlockId ?: return@RichTextToolbar
+                            val tfs = textStates.get(blockId) ?: return@RichTextToolbar
+                            val sel = tfs.visibleSelection()
+                            tfs.edit {
+                                replace(sel.min + 1, sel.max + 1, "/")
+                                selection = TextRange(sel.min + 2)
+                            }
+                        },
                     )
                 }
                 is ToolbarSlot.Custom -> if (formattingState != null) {

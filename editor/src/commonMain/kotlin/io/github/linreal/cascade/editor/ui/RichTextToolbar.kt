@@ -52,6 +52,7 @@ internal fun RichTextToolbar(
     formattingState: State<FormattingState>,
     actions: FormattingActions,
     config: RichTextToolbarConfig,
+    onSlashInsert: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state = formattingState.value
@@ -72,6 +73,13 @@ internal fun RichTextToolbar(
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
+            SlashActionButton(
+                enabled = state.canFormat,
+                colors = colors,
+                typography = typography,
+                strings = strings,
+                onClick = onSlashInsert,
+            )
             config.buttons.forEach { spec ->
                 ToolbarToggleButton(
                     spec = spec,
@@ -84,6 +92,39 @@ internal fun RichTextToolbar(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SlashActionButton(
+    enabled: Boolean,
+    colors: CascadeEditorColors,
+    typography: CascadeEditorTypography,
+    strings: CascadeEditorStrings,
+    onClick: () -> Unit,
+) {
+    val contentColor = if (enabled) colors.toolbarIcon else colors.toolbarIconDisabled
+    val shape = RoundedCornerShape(6.dp)
+
+    Box(
+        modifier = Modifier
+            .sizeIn(minWidth = 44.dp, minHeight = 44.dp)
+            .clip(shape)
+            .then(
+                if (enabled) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                }
+            )
+            .focusProperties { canFocus = false }
+            .semantics { contentDescription = strings.slashCommand },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "/",
+            style = typography.toolbarButton.copy(color = contentColor),
+        )
     }
 }
 
@@ -174,7 +215,6 @@ private fun buttonTextStyle(style: SpanStyle, color: Color, typography: CascadeE
     val base = typography.toolbarButton.copy(color = color)
     return when (style) {
         SpanStyle.Bold -> base.copy(fontWeight = FontWeight.Bold)
-        SpanStyle.Italic -> base.copy(fontStyle = FontStyle.Italic)
         SpanStyle.Underline -> base.copy(textDecoration = TextDecoration.Underline)
         SpanStyle.StrikeThrough -> base.copy(textDecoration = TextDecoration.LineThrough)
         SpanStyle.InlineCode -> base.copy(

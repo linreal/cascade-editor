@@ -47,6 +47,11 @@ class CascadeEditorStringsTest {
         assertTrue(strings.highlight.isNotEmpty())
     }
 
+    @Test
+    fun `slashCommand is non-empty`() {
+        assertTrue(strings.slashCommand.isNotEmpty())
+    }
+
     // -- unsupportedBlock lambda --
 
     @Test
@@ -103,5 +108,6 @@ class CascadeEditorStringsTest {
         assertEquals("Strikethrough", strings.strikethrough)
         assertEquals("Inline Code", strings.inlineCode)
         assertEquals("Highlight", strings.highlight)
+        assertEquals("Slash Command", strings.slashCommand)
     }
 }
