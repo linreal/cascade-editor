@@ -467,7 +467,7 @@ class CascadeEditorSlashIntegrationTest {
                 Block(anchorId, BlockType.Paragraph, BlockContent.Text("Hello /")),
                 Block(otherId, BlockType.Paragraph, BlockContent.Text("World")),
             ),
-            focusedBlockId = anchorId,
+            focusedBlockId = null,
             selectedBlockIds = setOf(otherId),
             dragState = null,
             slashCommandState = SlashCommandState(

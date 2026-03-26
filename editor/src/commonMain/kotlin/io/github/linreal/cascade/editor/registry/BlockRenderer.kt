@@ -108,6 +108,10 @@ public open class DefaultBlockCallbacks(
     }
 
     override fun onFocus(blockId: BlockId) {
+        // In selection mode, focus must not be granted - it would clear the selection
+        // via the focus/selection mutual exclusivity invariant.
+        val state = stateProvider?.invoke()
+        if (state != null && state.hasSelection) return
         dispatch(FocusBlock(blockId))
     }
 
@@ -341,6 +345,18 @@ public open class DefaultBlockCallbacks(
  * @param T The specific [BlockType] this renderer handles
  */
 public interface BlockRenderer<T : BlockType> {
+    /**
+     * Whether this renderer provides its own selection visual.
+     *
+     * When `true`, the wrapper-level default selection overlay is suppressed
+     * and the renderer is fully responsible for indicating selection state
+     * (using the `isSelected` parameter in [Render]).
+     *
+     * When `false` (default), a semi-transparent background overlay is applied
+     * at the wrapper level automatically.
+     */
+    public val handlesSelectionVisual: Boolean get() = false
+
     /**
      * Renders the block content.
      *

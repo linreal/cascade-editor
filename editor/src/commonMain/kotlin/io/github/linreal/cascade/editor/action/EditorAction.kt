@@ -255,33 +255,53 @@ public data class ReplaceBlock(
 
 /**
  * Selects a single block, clearing any previous selection.
+ * No-op if [blockId] does not exist in the current block list.
+ *
+ * Invariant: clears [EditorState.focusedBlockId] — focus and selection are mutually exclusive.
  */
 public data class SelectBlock(
     val blockId: BlockId
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
-        return state.copy(selectedBlockIds = setOf(blockId))
+        if (state.blocks.none { it.id == blockId }) return state
+        return state.copy(
+            selectedBlockIds = setOf(blockId),
+            focusedBlockId = null,
+        )
     }
 }
 
 /**
  * Toggles selection of a block (for multi-select with Ctrl/Cmd).
+ * No-op if [blockId] does not exist in the current block list and would be added.
+ * Removing a non-existent ID from the set is harmless (set subtraction).
+ *
+ * Invariant: clears [EditorState.focusedBlockId] when the resulting selection is non-empty —
+ * focus and selection are mutually exclusive.
  */
 public data class ToggleBlockSelection(
     val blockId: BlockId
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
-        val newSelected = if (blockId in state.selectedBlockIds) {
+        val isRemoving = blockId in state.selectedBlockIds
+        if (!isRemoving && state.blocks.none { it.id == blockId }) return state
+        val newSelected = if (isRemoving) {
             state.selectedBlockIds - blockId
         } else {
             state.selectedBlockIds + blockId
         }
-        return state.copy(selectedBlockIds = newSelected)
+        return state.copy(
+            selectedBlockIds = newSelected,
+            focusedBlockId = if (newSelected.isNotEmpty()) null else state.focusedBlockId,
+        )
     }
 }
 
 /**
  * Selects a range of blocks (for Shift+click).
+ * No-op if either endpoint does not exist (implicit via [EditorState.indexOfBlock] returning -1).
+ *
+ * Invariant: clears [EditorState.focusedBlockId] — focus and selection are mutually exclusive.
  */
 public data class SelectBlockRange(
     val fromId: BlockId,
@@ -290,6 +310,7 @@ public data class SelectBlockRange(
     override fun reduce(state: EditorState): EditorState {
         val fromIndex = state.indexOfBlock(fromId)
         val toIndex = state.indexOfBlock(toId)
+        // Implicit block existence validation: indexOfBlock returns -1 for missing IDs
         if (fromIndex == -1 || toIndex == -1) return state
 
         val startIndex = min(fromIndex, toIndex)
@@ -299,12 +320,18 @@ public data class SelectBlockRange(
             .map { it.id }
             .toSet()
 
-        return state.copy(selectedBlockIds = rangeIds)
+        return state.copy(
+            selectedBlockIds = rangeIds,
+            focusedBlockId = null,
+        )
     }
 }
 
 /**
  * Adds a range of blocks to the current selection.
+ * No-op if either endpoint does not exist (implicit via [EditorState.indexOfBlock] returning -1).
+ *
+ * Invariant: clears [EditorState.focusedBlockId] — focus and selection are mutually exclusive.
  */
 public data class AddBlockRangeToSelection(
     val fromId: BlockId,
@@ -313,6 +340,7 @@ public data class AddBlockRangeToSelection(
     override fun reduce(state: EditorState): EditorState {
         val fromIndex = state.indexOfBlock(fromId)
         val toIndex = state.indexOfBlock(toId)
+        // Implicit block existence validation: indexOfBlock returns -1 for missing IDs
         if (fromIndex == -1 || toIndex == -1) return state
 
         val startIndex = min(fromIndex, toIndex)
@@ -322,7 +350,10 @@ public data class AddBlockRangeToSelection(
             .map { it.id }
             .toSet()
 
-        return state.copy(selectedBlockIds = state.selectedBlockIds + rangeIds)
+        return state.copy(
+            selectedBlockIds = state.selectedBlockIds + rangeIds,
+            focusedBlockId = null,
+        )
     }
 }
 
@@ -337,10 +368,15 @@ public data object ClearSelection : EditorAction {
 
 /**
  * Selects all blocks.
+ *
+ * Invariant: clears [EditorState.focusedBlockId] — focus and selection are mutually exclusive.
  */
 public data object SelectAll : EditorAction {
     override fun reduce(state: EditorState): EditorState {
-        return state.copy(selectedBlockIds = state.blocks.map { it.id }.toSet())
+        return state.copy(
+            selectedBlockIds = state.blocks.map { it.id }.toSet(),
+            focusedBlockId = null,
+        )
     }
 }
 
@@ -349,6 +385,10 @@ public data object SelectAll : EditorAction {
 /**
  * Focuses a block.
  *
+ * Invariant: clears [EditorState.selectedBlockIds] when [blockId] is non-null —
+ * focus and selection are mutually exclusive. When [blockId] is null (clearing focus),
+ * selection is left unchanged.
+ *
  * Note: Cursor position is managed by BlockTextStates, not EditorState.
  * Use BlockTextStates.setCursorPosition() for programmatic cursor control.
  */
@@ -356,31 +396,45 @@ public data class FocusBlock(
     val blockId: BlockId?
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
-        return state.copy(focusedBlockId = blockId)
+        return if (blockId != null) {
+            state.copy(focusedBlockId = blockId, selectedBlockIds = emptySet())
+        } else {
+            state.copy(focusedBlockId = null)
+        }
     }
 }
 
 /**
  * Moves focus to the next block.
+ *
+ * Invariant: clears [EditorState.selectedBlockIds] — focus and selection are mutually exclusive.
  */
 public data object FocusNextBlock : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val currentIndex = state.focusedBlockId?.let { state.indexOfBlock(it) } ?: -1
         val nextIndex = (currentIndex + 1).coerceAtMost(state.blocks.size - 1)
         if (nextIndex < 0 || state.blocks.isEmpty()) return state
-        return state.copy(focusedBlockId = state.blocks[nextIndex].id)
+        return state.copy(
+            focusedBlockId = state.blocks[nextIndex].id,
+            selectedBlockIds = emptySet(),
+        )
     }
 }
 
 /**
  * Moves focus to the previous block.
+ *
+ * Invariant: clears [EditorState.selectedBlockIds] — focus and selection are mutually exclusive.
  */
 public data object FocusPreviousBlock : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val currentIndex = state.focusedBlockId?.let { state.indexOfBlock(it) } ?: state.blocks.size
         val prevIndex = (currentIndex - 1).coerceAtLeast(0)
         if (prevIndex < 0 || state.blocks.isEmpty()) return state
-        return state.copy(focusedBlockId = state.blocks[prevIndex].id)
+        return state.copy(
+            focusedBlockId = state.blocks[prevIndex].id,
+            selectedBlockIds = emptySet(),
+        )
     }
 }
 

@@ -1,8 +1,10 @@
 package io.github.linreal.cascade.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,7 +35,10 @@ import androidx.compose.ui.unit.dp
 import cascadeeditor.sample.generated.resources.Res
 import cascadeeditor.sample.generated.resources.ic_arrow_back
 import cascadeeditor.sample.generated.resources.ic_dark_mode
+import cascadeeditor.sample.generated.resources.ic_delete
 import cascadeeditor.sample.generated.resources.ic_light_mode
+import io.github.linreal.cascade.editor.action.ClearSelection
+import io.github.linreal.cascade.editor.action.DeleteSelectedOrFocused
 import io.github.linreal.cascade.editor.serialization.loadFromJson
 import io.github.linreal.cascade.editor.serialization.toJson
 import io.github.linreal.cascade.editor.state.BlockSpanStates
@@ -96,77 +101,107 @@ fun EditorDemoScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = {
-                        scope.launch {
-                            if (isLoaded) {
-                                val json = editorState.toJson(textStates, spanStates)
-                                storage.write(json)
-                            }
-                            onBack()
+        // Header — swaps between normal and selection mode
+        val hasSelection = editorState.state.hasSelection
+        AnimatedContent(
+            targetState = hasSelection,
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            label = "header",
+        ) { selectionMode ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (selectionMode) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { editorState.dispatch(ClearSelection) }) {
+                            Text("Clear")
                         }
-                    },
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Image(
-                        painter = painterResource(Res.drawable.ic_arrow_back),
-                        contentDescription = "Back",
-                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground),
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-                Text(
-                    text = "Editor Demo",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                // Save status
-                AnimatedVisibility(
-                    visible = saveStatus.isNotEmpty(),
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                ) {
-                    Text(
-                        text = saveStatus,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 12.dp),
-                    )
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Theme toggle
-                IconButton(
-                    onClick = onToggleTheme,
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Image(
-                        painter = painterResource(
-                            if (isDark) Res.drawable.ic_light_mode else Res.drawable.ic_dark_mode
-                        ),
-                        contentDescription = if (isDark) "Switch to light" else "Switch to dark",
-                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            storage.delete()
-                            val json = loadDefaultDocument()
-                            editorState.loadFromJson(json, textStates, spanStates)
+                        Text(
+                            text = "${editorState.state.selectedBlockIds.size} selected",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(start = 4.dp),
+                        )
+                    }
+                    IconButton(
+                        onClick = { editorState.dispatch(DeleteSelectedOrFocused) },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Image(
+                            painter = painterResource(Res.drawable.ic_delete),
+                            contentDescription = "Delete selected blocks",
+                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.error),
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    if (isLoaded) {
+                                        val json = editorState.toJson(textStates, spanStates)
+                                        storage.write(json)
+                                    }
+                                    onBack()
+                                }
+                            },
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Image(
+                                painter = painterResource(Res.drawable.ic_arrow_back),
+                                contentDescription = "Back",
+                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground),
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                        Text(
+                            text = "Editor Demo",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        AnimatedVisibility(
+                            visible = saveStatus.isNotEmpty(),
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                        ) {
+                            Text(
+                                text = saveStatus,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 12.dp),
+                            )
                         }
                     }
-                ) {
-                    Text("Reset")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = onToggleTheme,
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Image(
+                                painter = painterResource(
+                                    if (isDark) Res.drawable.ic_light_mode else Res.drawable.ic_dark_mode
+                                ),
+                                contentDescription = if (isDark) "Switch to light" else "Switch to dark",
+                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    storage.delete()
+                                    val json = loadDefaultDocument()
+                                    editorState.loadFromJson(json, textStates, spanStates)
+                                }
+                            }
+                        ) {
+                            Text("Reset")
+                        }
+                    }
                 }
             }
         }

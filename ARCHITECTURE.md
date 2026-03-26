@@ -45,7 +45,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Slash editor host | `slash/SlashCommandEditorHost.kt` | `SlashCommandEditorHost` (internal) |
 | List auto-detect observer | `ui/observers/ListAutoDetectObserver.kt` | `ListAutoDetectObserver` (internal) |
 | Slash text observer | `slash/SlashCommandTextObserver.kt` | `SlashCommandTextObserver` (internal) |
-| Renderer interface | `registry/BlockRenderer.kt` | `BlockRenderer<T>`, `BlockCallbacks`, `DefaultBlockCallbacks` |
+| Renderer interface | `registry/BlockRenderer.kt` | `BlockRenderer<T>` (+ `handlesSelectionVisual`), `BlockCallbacks`, `DefaultBlockCallbacks` |
 | Unknown block type | `core/UnknownBlockType.kt` | `UnknownBlockType` (implements `CustomBlockType`) |
 | Document serialization | `serialization/DocumentSchema.kt` | `DocumentSchema` (encode/decode full document) |
 | Rich text serialization | `serialization/RichTextSchema.kt` | `RichTextSchema` |
@@ -136,7 +136,7 @@ Custom blocks: implement `CustomBlockType` interface.
 
 ## State Management
 
-**EditorState** — immutable snapshot: `blocks`, `focusedBlockId`, `selectedBlockIds`, `dragState`, `slashCommandState`. Cursor position is NOT in EditorState — it lives in `TextFieldState` managed by `BlockTextStates`.
+**EditorState** — immutable snapshot: `blocks`, `focusedBlockId`, `selectedBlockIds`, `dragState`, `slashCommandState`. Cursor position is NOT in EditorState — it lives in `TextFieldState` managed by `BlockTextStates`. **Invariant:** `focusedBlockId` and `selectedBlockIds` are mutually exclusive — enforced by reducers, not UI code. Selection reducers clear focus; focus reducers (with non-null target) clear selection. `ClearFocus` and `ClearSelection` are orthogonal and do not enforce this on each other.
 
 **EditorStateHolder** — Compose-friendly mutable wrapper. Use `rememberEditorState(initialBlocks)` to create. Call `stateHolder.dispatch(action)` to modify state.
 
@@ -174,6 +174,8 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 
 **BlockRegistry** — maps `typeId` string to `BlockDescriptor` (metadata + factory) and `BlockRenderer` (UI). Use `registry.search(query)` for slash command filtering. Use `registry.getRenderer(blockType)` for rendering (includes unknown-block fallback) or `registry.getRenderer(typeId)` for direct lookup. `setUnknownBlockRenderer()` registers a fallback renderer for `UnknownBlockType` blocks. `createEditorRegistry()` pre-registers all built-in types: `TodoBlockRenderer` for "todo", `TextBlockRenderer` for all other text-supporting types, and `UnknownBlockRenderer` as the unknown-block fallback. All text-editing renderers share the `TextBlockField` composable for text input, spans, and focus.
 
+**BlockRenderer** — `Render(block, isSelected, isFocused, modifier, callbacks)`. Property `handlesSelectionVisual` (default `false`) opts out of the wrapper-level selection overlay; when `true` the renderer is fully responsible for its own selection chrome using `isSelected`.
+
 **BlockCallbacks** — interface passed to renderers for interaction handling. `DefaultBlockCallbacks` wires `onEnter` → split, `onBackspaceAtStart` → merge, `onDeleteAtEnd` → forward-merge, `onDragStart` → drag initiation, `onSlashCommand` → open menu. Stubs: `onClick`, `onLongClick`.
 
 ## Conventions
@@ -196,7 +198,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Core architecture (Block, State, Actions) | Done | |
 | Text editing (split, merge, cursor) | Done | |
 | Focus management | Done | |
-| Selection (single, multi, range) | Done | Actions done; UI triggers partial (`onClick` is a stub) |
+| Selection (single, multi, range) | Done | Actions done with focus/selection mutual exclusivity invariant; UI triggers partial (`onClick` is a stub); wrapper-level selection overlay with `handlesSelectionVisual` opt-out |
 | Drag & drop (gesture, preview, indicator, auto-scroll) | Done | Single-block drag only |
 | Block registry & search | Done | |
 | TextBlockRenderer | Done | All text-supporting types except todo |
@@ -253,6 +255,8 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `SlashCommandStateTest.kt` | Slash session reducers: open/update/navigate/highlight/close, submenu path, no-op guards |
 | `SlashCommandRegistryTest.kt` | Registry: registration order, dedup, ranking tiers, path-based submenu search, menu discoverability, tie-breaking |
 | `DragActionsTest.kt` | Drag state transitions |
+| `DragSelectionTest.kt` | `isDropAtOriginalPosition` boundary cases for long-press-to-select detection |
+| `BlockSelectionIntegrationTest.kt` | Block selection workflows: enter/exit selection, multi-select, delete selected, insertion preserves selection, slash invalidation, full lifecycle (11 scenarios) |
 | `AutoScrollTest.kt` | Hot zones, speed calculation |
 | `DragUtilsTest.kt` | Drop target coordinate math |
 | `BuiltInSlashCommandFactoryTest.kt` | Factory filtering, ID stability, metadata copying, icon resolution, behavior preservation via recording executor, deterministic ordering, registry integration |

@@ -166,7 +166,6 @@ class DefaultFormattingActionsTest {
         val block = Block(blockId, BlockType.Paragraph, BlockContent.Text("Hello"))
         stateHolder.setState(
             EditorState.withBlocks(listOf(block)).copy(
-                focusedBlockId = blockId,
                 selectedBlockIds = setOf(blockId),
             )
         )

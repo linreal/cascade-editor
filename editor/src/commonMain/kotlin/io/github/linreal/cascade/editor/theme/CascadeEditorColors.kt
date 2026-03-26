@@ -55,6 +55,8 @@ public data class CascadeEditorColors(
     val quoteBorder: Color,
     /** Quote block background tint. */
     val quoteBackground: Color,
+    /** Semi-transparent overlay drawn behind selected blocks. */
+    val selectionOverlay: Color,
 ) {
     public companion object {
         /**
@@ -84,6 +86,7 @@ public data class CascadeEditorColors(
             textSelectionBackground = Color(0x661A73E8),
             quoteBorder = Color(0xFFBDBDBD),
             quoteBackground = Color(0x0A000000),
+            selectionOverlay = Color(0x221A73E8),
         )
 
         /**
@@ -113,6 +116,7 @@ public data class CascadeEditorColors(
             textSelectionBackground = Color(0x668AB4F8),
             quoteBorder = Color(0xFF757575),
             quoteBackground = Color(0x14FFFFFF),
+            selectionOverlay = Color(0x228AB4F8),
         )
     }
 }

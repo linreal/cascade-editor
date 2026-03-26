@@ -66,6 +66,14 @@ class CascadeEditorColorsTest {
     }
 
     @Test
+    fun `light and dark differ on selectionOverlay`() {
+        assertNotEquals(
+            CascadeEditorColors.light().selectionOverlay,
+            CascadeEditorColors.dark().selectionOverlay,
+        )
+    }
+
+    @Test
     fun `light and dark differ on onPrimary`() {
         assertNotEquals(CascadeEditorColors.light().onPrimary, CascadeEditorColors.dark().onPrimary)
     }
@@ -119,5 +127,6 @@ class CascadeEditorColorsTest {
         "textSelectionBackground" to c.textSelectionBackground,
         "quoteBorder" to c.quoteBorder,
         "quoteBackground" to c.quoteBackground,
+        "selectionOverlay" to c.selectionOverlay,
     )
 }
