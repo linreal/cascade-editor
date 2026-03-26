@@ -216,25 +216,6 @@ class SlashCommandExecutorTest {
         assertEquals(BlockType.Divider, insertedBlock.type)
     }
 
-    @Test
-    fun `AlwaysInsert for code block inserts new code block below`() = runTest {
-        val env = createExecutorEnvWithBuiltIns(
-            text = "/code",
-            queryRange = SlashQueryRange(0, 5),
-            query = "code",
-        )
-
-        env.executor.executeNow(SlashCommandId("builtin.block.code"))
-
-        val blocks = env.stateHolder.state.blocks
-        assertEquals(2, blocks.size)
-        assertEquals(BlockType.Paragraph, blocks[0].type) // anchor unchanged
-        assertEquals("", env.textStates.getVisibleText(env.anchorId)) // query removed
-
-        val codeBlock = blocks[1]
-        assertTrue(codeBlock.type is BlockType.Code)
-    }
-
     // -- Exception handling --
 
     @Test

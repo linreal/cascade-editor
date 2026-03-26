@@ -2,6 +2,7 @@ package io.github.linreal.cascade.editor
 
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
+import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.BlockDescriptor
 import io.github.linreal.cascade.editor.registry.BlockRegistry
@@ -259,7 +260,7 @@ class BuiltInSlashCommandFactoryTest {
     )
 
     private fun fakeContext() = io.github.linreal.cascade.editor.slash.SlashCommandContext(
-        anchorBlockId = io.github.linreal.cascade.editor.core.BlockId.generate(),
+        anchorBlockId = BlockId.generate(),
         query = "",
         queryRange = io.github.linreal.cascade.editor.state.SlashQueryRange(0, 1),
         editor = object : io.github.linreal.cascade.editor.slash.SlashCommandEditor {
@@ -268,18 +269,21 @@ class BuiltInSlashCommandFactoryTest {
             override fun replaceQueryText(replacement: String) {}
             override fun updateAnchorText(text: String, cursorPosition: Int?) {}
             override fun replaceAnchorBlock(
-                block: io.github.linreal.cascade.editor.core.Block,
+                block: Block,
                 preserveAnchorId: Boolean,
                 requestFocus: Boolean,
                 cursorPosition: Int?,
             ) {}
             override fun insertBlockAfterAnchor(
-                block: io.github.linreal.cascade.editor.core.Block,
+                block: Block,
                 requestFocus: Boolean,
                 cursorPosition: Int?,
             ) {}
+
+            override fun insertBlockBeforeAnchor(block: Block) {}
+
             override fun focusBlock(
-                blockId: io.github.linreal.cascade.editor.core.BlockId,
+                blockId: BlockId,
                 cursorPosition: Int?,
             ) {}
             override fun closeMenu() {}

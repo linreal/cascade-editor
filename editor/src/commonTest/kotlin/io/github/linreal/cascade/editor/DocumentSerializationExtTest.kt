@@ -145,7 +145,8 @@ class DocumentSerializationExtTest {
         val json = holder.toJson(textStates, spanStates)
         val decoded = DocumentSchema.decodeFromString(json)
 
-        assertEquals(2, decoded.size)
+        // 3 blocks: divider, image, auto-appended trailing paragraph
+        assertEquals(3, decoded.size)
         assertIs<BlockContent.Empty>(decoded[0].content)
         val img = assertIs<BlockContent.Image>(decoded[1].content)
         assertEquals("https://example.com/img.png", img.uri)

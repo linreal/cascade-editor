@@ -265,6 +265,7 @@ class SlashCommandEditorHostTest {
     fun `replaceAnchorBlock no-op when anchor missing`() {
         val anchorId = BlockId.generate()
         val stateHolder = EditorStateHolder(EditorState.Empty)
+        val blocksBefore = stateHolder.state.blocks
         val host = SlashCommandEditorHost(
             anchorBlockId = anchorId,
             queryRange = SlashQueryRange(0, 1),
@@ -274,7 +275,7 @@ class SlashCommandEditorHostTest {
         )
 
         host.replaceAnchorBlock(Block(BlockId.generate(), BlockType.Paragraph, BlockContent.Text("x")))
-        assertTrue(stateHolder.state.blocks.isEmpty())
+        assertEquals(blocksBefore, stateHolder.state.blocks)
     }
 
     @Test
@@ -314,7 +315,8 @@ class SlashCommandEditorHostTest {
         env.host.insertBlockAfterAnchor(insertedBlock, requestFocus = false)
 
         val blocks = env.stateHolder.state.blocks
-        assertEquals(2, blocks.size)
+        // 3 blocks: anchor paragraph, inserted divider, auto-appended trailing paragraph
+        assertEquals(3, blocks.size)
         assertEquals(env.anchorId, blocks[0].id)
         assertEquals(insertedBlock.id, blocks[1].id)
     }
@@ -350,6 +352,7 @@ class SlashCommandEditorHostTest {
     fun `insertBlockAfterAnchor no-op when anchor missing`() {
         val anchorId = BlockId.generate()
         val stateHolder = EditorStateHolder(EditorState.Empty)
+        val blocksBefore = stateHolder.state.blocks
         val host = SlashCommandEditorHost(
             anchorBlockId = anchorId,
             queryRange = SlashQueryRange(0, 1),
@@ -359,7 +362,7 @@ class SlashCommandEditorHostTest {
         )
 
         host.insertBlockAfterAnchor(Block.divider())
-        assertTrue(stateHolder.state.blocks.isEmpty())
+        assertEquals(blocksBefore, stateHolder.state.blocks)
     }
 
     @Test
@@ -370,6 +373,7 @@ class SlashCommandEditorHostTest {
                 listOf(Block(anchorId, BlockType.Divider, BlockContent.Empty))
             )
         )
+        val blocksBefore = stateHolder.state.blocks
         val host = SlashCommandEditorHost(
             anchorBlockId = anchorId,
             queryRange = SlashQueryRange(0, 1),
@@ -380,7 +384,7 @@ class SlashCommandEditorHostTest {
 
         host.insertBlockAfterAnchor(Block.paragraph("new"))
 
-        assertEquals(1, stateHolder.state.blocks.size)
+        assertEquals(blocksBefore, stateHolder.state.blocks)
         assertEquals(anchorId, stateHolder.state.blocks.first().id)
     }
 
