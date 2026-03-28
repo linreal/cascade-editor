@@ -382,7 +382,6 @@ class FormattingIntegrationTest {
         val block2 = Block(b2, BlockType.Paragraph, BlockContent.Text("World"))
         val harness = Harness(
             blocks = listOf(block1, block2),
-            focusedBlockId = b1,
             selectedBlockIds = setOf(b1, b2),
         )
         harness.initBlock(b1, "Hello", selectionStart = 0, selectionEnd = 5)

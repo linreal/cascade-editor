@@ -316,7 +316,9 @@ internal fun TextBlockField(
                                 textFieldState.edit {
                                     selection = TextRange(cursorIndex)
                                 }
-                                focusRequester.requestFocus()
+                                // Route focus through editor callbacks so selection mode
+                                // can veto focus (focus/selection are mutually exclusive).
+                                callbacks.onFocus(block.id)
                             }
                         )
                     }

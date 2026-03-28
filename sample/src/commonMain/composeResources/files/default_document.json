@@ -14,8 +14,8 @@
         "version": 1,
         "text": "A block-based document editor for Compose Multiplatform. Everything you see here is editable \u2014 try it out!",
         "spans": [
-          { "start": 2, "end": 27, "style": { "type": "bold" } },
-          { "start": 32, "end": 55, "style": { "type": "italic" } }
+          { "start": 2, "end": 29, "style": { "type": "bold" } },
+          { "start": 34, "end": 55, "style": { "type": "italic" } }
         ]
       }
     },
@@ -58,6 +58,11 @@
     },
     {
       "id": "try-6",
+      "type": { "typeId": "todo", "checked": false },
+      "content": { "kind": "text", "version": 1, "text": "Long-press a block to select it, then tap others to multi-select and delete", "spans": [] }
+    },
+    {
+      "id": "try-7",
       "type": { "typeId": "todo", "checked": false },
       "content": { "kind": "text", "version": 1, "text": "Press Enter at the end of this line to create a new block", "spans": [] }
     },

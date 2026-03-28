@@ -1,5 +1,6 @@
 package io.github.linreal.cascade.editor.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.toArgb
@@ -108,6 +111,12 @@ import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
  * @param onFormattingStateChanged Optional callback fired when the formatting
  *        state changes. Uses structural equality to avoid redundant calls.
  */
+
+// Shorter than platform default (~400ms) to feel responsive for block selection
+private const val BLOCK_LONG_PRESS_MS = 190L
+
+private val SelectionOverlayShape = RoundedCornerShape(8.dp)
+
 @Composable
 public fun CascadeEditor(
     stateHolder: EditorStateHolder,
@@ -208,7 +217,11 @@ public fun CascadeEditor(
             toolbar.copy(
                 config = toolbar.config.copy(
                     buttons = toolbar.config.buttons.map { spec ->
-                        if (spec.style is SpanStyle.Highlight) spec.copy(style = SpanStyle.Highlight(highlightArgb))
+                        if (spec.style is SpanStyle.Highlight) spec.copy(
+                            style = SpanStyle.Highlight(
+                                highlightArgb
+                            )
+                        )
                         else spec
                     }
                 )
@@ -219,7 +232,8 @@ public fun CascadeEditor(
     // Formatting state observer + actions
     // Only created when a toolbar is visible or an external callback is set.
 
-    val needsFormattingState = resolvedToolbar !is ToolbarSlot.None || onFormattingStateChanged != null
+    val needsFormattingState =
+        resolvedToolbar !is ToolbarSlot.None || onFormattingStateChanged != null
 
     val trackedStyles = remember(resolvedToolbar) {
         when (resolvedToolbar) {
@@ -274,7 +288,12 @@ public fun CascadeEditor(
     }
 
     // Empty search results invalidate slash mode per feature spec.
-    LaunchedEffect(slashState?.anchorBlockId, slashState?.query, slashState?.navigationPath, slashPopupItems) {
+    LaunchedEffect(
+        slashState?.anchorBlockId,
+        slashState?.query,
+        slashState?.navigationPath,
+        slashPopupItems
+    ) {
         if (slashState != null && slashPopupItems.isEmpty()) {
             stateHolder.dispatch(CloseSlashCommand)
         }
@@ -307,41 +326,47 @@ public fun CascadeEditor(
 
         // Scroll-to-focus: ensure the focused block is visible before its
         // TextBlockField requests Compose focus. Also clears Compose focus
-        // when no block has editor-level focus. This prevents keyboard blink
-        // when pressing Enter near the bottom of the viewport; the old block
-        // keeps keyboard open while we scroll the new block into view.
+        // when editor focus is absent OR block selection mode is active.
+        // This prevents keyboard blink when pressing Enter near the bottom
+        // of the viewport; the old block keeps keyboard open while we scroll
+        // the new block into view.
         LaunchedEffect(stateHolder, lazyListState) {
-            snapshotFlow { stateHolder.state.focusedBlockId }
-                .collectLatest { focusedId ->
-                    if (focusedId == null) {
-                        focusManager.clearFocus()
-                        return@collectLatest
-                    }
-                    val currentState = stateHolder.state
-                    val index = currentState.blocks.indexOfFirst { it.id == focusedId }
-                    if (index < 0) return@collectLatest
-
-                    val visibleItems = lazyListState.layoutInfo.visibleItemsInfo
-                    val isVisible = visibleItems.any { it.index == index }
-                    if (!isVisible) {
-                        lazyListState.animateScrollToItem(index)
-                    }
+            snapshotFlow {
+                val currentState = stateHolder.state
+                currentState.hasSelection to currentState.focusedBlockId
+            }.collectLatest { (hasSelection, focusedId) ->
+                if (hasSelection || focusedId == null) {
+                    focusManager.clearFocus()
+                    return@collectLatest
                 }
+                val currentState = stateHolder.state
+                val index = currentState.blocks.indexOfFirst { it.id == focusedId }
+                if (index < 0) return@collectLatest
+
+                val visibleItems = lazyListState.layoutInfo.visibleItemsInfo
+                val isVisible = visibleItems.any { it.index == index }
+                if (!isVisible) {
+                    lazyListState.animateScrollToItem(index)
+                }
+            }
         }
 
-        // Enable placement animation only during and briefly after drag,
-        // so reorder looks smooth but keyboard resize doesn't cause overlap.
+        // Enable placement animation during drag, selection, and briefly after
+        // either ends, so reorder and deletion both animate smoothly but
+        // keyboard resize doesn't cause overlap.
         var animatePlacement by remember { mutableStateOf(false) }
-        LaunchedEffect(state.dragState) {
-            if (state.dragState != null) {
+        LaunchedEffect(state.dragState, state.hasSelection) {
+            if (state.dragState != null || state.hasSelection) {
                 animatePlacement = true
             } else if (animatePlacement) {
-                // Keep animation active after drag ends so the reorder
-                // animation from CompleteDrag has time to play.
+                // Keep animation active briefly so the reorder/deletion
+                // animation has time to play.
                 delay(500)
                 animatePlacement = false
             }
         }
+        val selectionOverlayColor =
+            LocalCascadeTheme.current.colors.selectionOverlay
 
         // Current drag Y position — local state, NOT in EditorState.
         // Updated at ~60-120fps during drag; keeping it local avoids full-tree
@@ -362,6 +387,7 @@ public fun CascadeEditor(
                         dragOffsetY = dragOffsetY,
                         stateProvider = { stateHolder.state },
                         callbacks = callbacks,
+                        longPressTimeoutMillis = BLOCK_LONG_PRESS_MS
                     )
             ) {
                 LazyColumn(
@@ -375,34 +401,61 @@ public fun CascadeEditor(
                     contentPadding = PaddingValues(bottom = 40.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
+
+
                     items(
                         items = state.blocks,
                         key = { block -> block.id.value }
                     ) { block ->
                         val isFocused = state.focusedBlockId == block.id
                         val isSelected = block.id in state.selectedBlockIds
-                        val isDragging = state.dragState?.draggingBlockIds?.contains(block.id) == true
+                        val isDragging =
+                            state.dragState?.draggingBlockIds?.contains(block.id) == true
+                        val hasSelection = state.hasSelection
 
                         // Look up renderer for this block type (includes unknown-block fallback)
                         val renderer = registry.getRenderer(block.type)
 
-                        renderer?.Render(
-                            block = block,
-                            isSelected = isSelected,
-                            isFocused = isFocused,
+                        Box(
                             modifier = Modifier
                                 .animateItem(
                                     fadeInSpec = null,
                                     placementSpec = if (animatePlacement) spring() else null,
                                     fadeOutSpec = null,
                                 )
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                                .graphicsLayer {
-                                    // Apply 50% transparency to blocks being dragged
-                                    alpha = if (isDragging) 0.5f else 1f
-                                },
-                            callbacks = callbacks
-                        )
+                        ) {
+                            renderer?.Render(
+                                block = block,
+                                isSelected = isSelected,
+                                isFocused = isFocused,
+                                modifier = Modifier
+                                    .then(
+                                        if (isSelected && renderer.handlesSelectionVisual.not()) {
+                                            Modifier
+                                                .padding(vertical = 2.dp)
+                                                .background(
+                                                    color = selectionOverlayColor,
+                                                    shape = SelectionOverlayShape,
+                                                )
+                                        } else {
+                                            Modifier.padding(vertical = 2.dp)
+                                        }
+                                    )
+                                    .padding(horizontal = 16.dp, vertical = 2.dp)
+                                    .graphicsLayer {
+                                        // Apply 50% transparency to blocks being dragged
+                                        alpha = if (isDragging) 0.5f else 1f
+                                    },
+                                callbacks = callbacks
+                            )
+                            if (hasSelection) {
+                                // overlay to consume all clicks on elements inside blocks
+                                Box(
+                                    modifier = Modifier.matchParentSize()
+                                        .clickable(enabled = false) {}
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -456,7 +509,7 @@ public fun CascadeEditor(
                 }
             }
 
-         // Toolbar
+            // Toolbar
             when (resolvedToolbar) {
                 is ToolbarSlot.Default -> if (formattingState != null) {
                     RichTextToolbar(
@@ -464,7 +517,8 @@ public fun CascadeEditor(
                         actions = formattingActions,
                         config = resolvedToolbar.config,
                         onSlashInsert = {
-                            val blockId = formattingState.value.focusedBlockId ?: return@RichTextToolbar
+                            val blockId =
+                                formattingState.value.focusedBlockId ?: return@RichTextToolbar
                             val tfs = textStates.get(blockId) ?: return@RichTextToolbar
                             val sel = tfs.visibleSelection()
                             tfs.edit {
@@ -474,10 +528,13 @@ public fun CascadeEditor(
                         },
                     )
                 }
+
                 is ToolbarSlot.Custom -> if (formattingState != null) {
                     resolvedToolbar.content(formattingState, formattingActions)
                 }
-                ToolbarSlot.None -> { /* no toolbar */ }
+
+                ToolbarSlot.None -> { /* no toolbar */
+                }
             }
         }
     }

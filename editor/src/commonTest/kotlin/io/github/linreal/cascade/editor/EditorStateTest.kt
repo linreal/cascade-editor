@@ -57,7 +57,7 @@ class EditorStateTest {
         val block3 = createTestBlock("3")
         val state = EditorState(
             blocks = listOf(block1, block2, block3),
-            focusedBlockId = BlockId("2"),
+            focusedBlockId = null,
             selectedBlockIds = setOf(BlockId("1"), BlockId("2")),
             dragState = null,
             slashCommandState = null
@@ -825,5 +825,256 @@ class EditorStateTest {
         val content = second.blocks[0].content as BlockContent.Text
         assertEquals(1, content.spans.size)
         assertEquals(TextSpan(0, 5, SpanStyle.Bold), content.spans[0])
+    }
+
+    // Focus/selection mutual exclusivity invariant tests
+
+    @Test
+    fun `SelectBlock clears focusedBlockId`() {
+        val block1 = createTestBlock("1")
+        val block2 = createTestBlock("2")
+        val state = EditorState(
+            blocks = listOf(block1, block2),
+            focusedBlockId = BlockId("1"),
+            selectedBlockIds = emptySet(),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = SelectBlock(BlockId("2")).reduce(state)
+
+        assertEquals(setOf(BlockId("2")), newState.selectedBlockIds)
+        assertNull(newState.focusedBlockId)
+    }
+
+    @Test
+    fun `ToggleBlockSelection adding clears focusedBlockId`() {
+        val block1 = createTestBlock("1")
+        val block2 = createTestBlock("2")
+        val state = EditorState(
+            blocks = listOf(block1, block2),
+            focusedBlockId = BlockId("1"),
+            selectedBlockIds = emptySet(),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = ToggleBlockSelection(BlockId("2")).reduce(state)
+
+        assertEquals(setOf(BlockId("2")), newState.selectedBlockIds)
+        assertNull(newState.focusedBlockId)
+    }
+
+    @Test
+    fun `ToggleBlockSelection removing last block does not restore focus`() {
+        val block1 = createTestBlock("1")
+        val block2 = createTestBlock("2")
+        val state = EditorState(
+            blocks = listOf(block1, block2),
+            focusedBlockId = null,
+            selectedBlockIds = setOf(BlockId("2")),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = ToggleBlockSelection(BlockId("2")).reduce(state)
+
+        assertTrue(newState.selectedBlockIds.isEmpty())
+        assertNull(newState.focusedBlockId)
+    }
+
+    @Test
+    fun `FocusBlock with non-null id clears selectedBlockIds`() {
+        val block1 = createTestBlock("1")
+        val block2 = createTestBlock("2")
+        val state = EditorState(
+            blocks = listOf(block1, block2),
+            focusedBlockId = null,
+            selectedBlockIds = setOf(BlockId("1"), BlockId("2")),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = FocusBlock(BlockId("1")).reduce(state)
+
+        assertEquals(BlockId("1"), newState.focusedBlockId)
+        assertTrue(newState.selectedBlockIds.isEmpty())
+    }
+
+    @Test
+    fun `FocusBlock with null does not clear selectedBlockIds`() {
+        val block1 = createTestBlock("1")
+        val block2 = createTestBlock("2")
+        val state = EditorState(
+            blocks = listOf(block1, block2),
+            focusedBlockId = null,
+            selectedBlockIds = setOf(BlockId("1"), BlockId("2")),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = FocusBlock(null).reduce(state)
+
+        assertNull(newState.focusedBlockId)
+        assertEquals(setOf(BlockId("1"), BlockId("2")), newState.selectedBlockIds)
+    }
+
+    @Test
+    fun `SelectAll clears focusedBlockId`() {
+        val block1 = createTestBlock("1")
+        val block2 = createTestBlock("2")
+        val state = EditorState(
+            blocks = listOf(block1, block2),
+            focusedBlockId = BlockId("1"),
+            selectedBlockIds = emptySet(),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = SelectAll.reduce(state)
+
+        assertEquals(setOf(BlockId("1"), BlockId("2")), newState.selectedBlockIds)
+        assertNull(newState.focusedBlockId)
+    }
+
+    @Test
+    fun `SelectBlockRange clears focusedBlockId`() {
+        val block1 = createTestBlock("1")
+        val block2 = createTestBlock("2")
+        val block3 = createTestBlock("3")
+        val state = EditorState(
+            blocks = listOf(block1, block2, block3),
+            focusedBlockId = BlockId("1"),
+            selectedBlockIds = emptySet(),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = SelectBlockRange(BlockId("1"), BlockId("3")).reduce(state)
+
+        assertEquals(setOf(BlockId("1"), BlockId("2"), BlockId("3")), newState.selectedBlockIds)
+        assertNull(newState.focusedBlockId)
+    }
+
+    @Test
+    fun `AddBlockRangeToSelection clears focusedBlockId`() {
+        val block1 = createTestBlock("1")
+        val block2 = createTestBlock("2")
+        val block3 = createTestBlock("3")
+        val state = EditorState(
+            blocks = listOf(block1, block2, block3),
+            focusedBlockId = BlockId("1"),
+            selectedBlockIds = emptySet(),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = AddBlockRangeToSelection(BlockId("2"), BlockId("3")).reduce(state)
+
+        assertEquals(setOf(BlockId("2"), BlockId("3")), newState.selectedBlockIds)
+        assertNull(newState.focusedBlockId)
+    }
+
+    @Test
+    fun `FocusNextBlock clears selectedBlockIds`() {
+        val block1 = createTestBlock("1")
+        val block2 = createTestBlock("2")
+        val state = EditorState(
+            blocks = listOf(block1, block2),
+            focusedBlockId = BlockId("1"),
+            selectedBlockIds = emptySet(),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = FocusNextBlock.reduce(state)
+
+        assertEquals(BlockId("2"), newState.focusedBlockId)
+        assertTrue(newState.selectedBlockIds.isEmpty())
+    }
+
+    @Test
+    fun `FocusPreviousBlock clears selectedBlockIds`() {
+        val block1 = createTestBlock("1")
+        val block2 = createTestBlock("2")
+        val state = EditorState(
+            blocks = listOf(block1, block2),
+            focusedBlockId = BlockId("2"),
+            selectedBlockIds = emptySet(),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = FocusPreviousBlock.reduce(state)
+
+        assertEquals(BlockId("1"), newState.focusedBlockId)
+        assertTrue(newState.selectedBlockIds.isEmpty())
+    }
+
+    // Block existence validation tests
+
+    @Test
+    fun `SelectBlock with non-existent id is no-op`() {
+        val block1 = createTestBlock("1")
+        val state = EditorState(
+            blocks = listOf(block1),
+            focusedBlockId = BlockId("1"),
+            selectedBlockIds = emptySet(),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = SelectBlock(BlockId("nonexistent")).reduce(state)
+
+        assertEquals(state, newState)
+    }
+
+    @Test
+    fun `ToggleBlockSelection adding non-existent id is no-op`() {
+        val block1 = createTestBlock("1")
+        val state = EditorState(
+            blocks = listOf(block1),
+            focusedBlockId = null,
+            selectedBlockIds = emptySet(),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = ToggleBlockSelection(BlockId("nonexistent")).reduce(state)
+
+        assertEquals(state, newState)
+    }
+
+    @Test
+    fun `ToggleBlockSelection adding non-existent id with existing selection is no-op`() {
+        val block1 = createTestBlock("1")
+        val state = EditorState(
+            blocks = listOf(block1),
+            focusedBlockId = null,
+            selectedBlockIds = setOf(BlockId("1")),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        val newState = ToggleBlockSelection(BlockId("nonexistent")).reduce(state)
+
+        assertEquals(state, newState)
+    }
+
+    @Test
+    fun `ToggleBlockSelection removing non-existent id from selection is harmless`() {
+        val block1 = createTestBlock("1")
+        val state = EditorState(
+            blocks = listOf(block1),
+            focusedBlockId = null,
+            selectedBlockIds = setOf(BlockId("1")),
+            dragState = null,
+            slashCommandState = null,
+        )
+
+        // Removing an ID that's not in the set — set subtraction is a no-op
+        val newState = ToggleBlockSelection(BlockId("1")).reduce(state)
+
+        assertTrue(newState.selectedBlockIds.isEmpty())
     }
 }
