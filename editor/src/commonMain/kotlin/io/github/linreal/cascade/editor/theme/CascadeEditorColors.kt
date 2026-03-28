@@ -116,7 +116,7 @@ public data class CascadeEditorColors(
             textSelectionBackground = Color(0x668AB4F8),
             quoteBorder = Color(0xFF757575),
             quoteBackground = Color(0x14FFFFFF),
-            selectionOverlay = Color(0x228AB4F8),
+            selectionOverlay = Color(0x8000e2ff),
         )
     }
 }

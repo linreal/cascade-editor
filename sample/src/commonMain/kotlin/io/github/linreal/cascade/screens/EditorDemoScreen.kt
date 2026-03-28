@@ -116,7 +116,7 @@ fun EditorDemoScreen(
                 if (selectionMode) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { editorState.dispatch(ClearSelection) }) {
-                            Text("Clear")
+                            Text("Cancel")
                         }
                         Text(
                             text = "${editorState.state.selectedBlockIds.size} selected",
