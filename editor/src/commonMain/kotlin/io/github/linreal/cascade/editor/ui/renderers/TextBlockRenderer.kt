@@ -111,8 +111,6 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
                 else -> typography.heading6
             }
 
-            is BlockType.Code -> typography.code
-
             is BlockType.Quote -> typography.body.copy(fontStyle = FontStyle.Italic)
 
             else -> typography.body

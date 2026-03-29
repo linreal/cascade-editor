@@ -122,13 +122,11 @@ All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/ed
 | `BulletList` | Yes | |
 | `NumberedList(number)` | Yes | Has `number` int (>= 1, default 1) |
 | `Quote` | Yes | |
-| `Code(language)` | Yes | Has `language` string |
 | `Divider` | No | |
-| `Image` | No | |
 
 Custom blocks: implement `CustomBlockType` interface.
 
-**BlockContent** — `Text(text, spans)` | `Image(uri, altText?)` | `Empty` | `Custom(typeId, data)`.
+**BlockContent** — `Text(text, spans)` | `Empty` | `Custom(typeId, data)`.
 
 **TextSpan** — `TextSpan(start, end, style)` with half-open `[start, end)` visible coordinates. Validates `start >= 0` and `end >= start`.
 
@@ -204,7 +202,6 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | TextBlockRenderer | Done | All text-supporting types except todo |
 | TextBlockField (shared) | Done | Extracted text editing composable used by all text renderers |
 | Heading font sizes | Done | No bold weight yet |
-| Code monospace font | Done | No syntax highlighting |
 | Slash commands (backend) | Done | Session state with query range, submenu nav, highlight; enriched reducer API; `BuiltInSlashCommandSpec` on descriptors with `ConvertInPlace`/`AlwaysInsert` behavior policies; `BuiltInSlashCommandFactory` generates `SlashCommandAction`s from descriptor metadata; `SlashCommandEditorHost` provides safe runtime/snapshot editing; `BlockTextStates.replaceVisibleRange()` + `BlockSpanStates.adjustForRangeReplacement()` primitives; `CascadeEditor` exposes public `slashRegistry` parameter for consumer custom commands |
 | Slash commands (integration) | Done | `shouldInvalidateSlashSession()` closes session on drag, selection, or anchor deletion; reactive `LaunchedEffect` + `snapshotFlow` wiring in `CascadeEditor` |
 | Slash commands (text observer) | Done | `SlashCommandTextObserver` detects `/`, tracks `queryRange`, dismisses on invalid state; wired in `TextBlockField` via combined text+selection `snapshotFlow` |
@@ -215,7 +212,6 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | List enter/backspace behavior | Done | Empty-enter exits to Paragraph, backspace at start un-lists, enter in list continues list type |
 | Quote visual styling | Done | Left border (3dp) + background tint; `quoteBorder`/`quoteBackground` color slots |
 | Divider renderer | Done | `DividerBlockRenderer` — horizontal line, 1dp, vertical padding |
-| Image renderer | Not done | Type exists, no UI |
 | Rich text spans — domain model | Done | `TextSpan`, `SpanStyle`, `BlockContent.Text.spans` |
 | Rich text spans — algorithms | Done | `SpanAlgorithms`: normalize, adjust, split/merge, apply/remove/toggle, query |
 | Rich text spans — runtime holder | Done | `BlockSpanStates` + `LocalBlockSpanStates`, strict ingress normalization/clamping |
@@ -282,8 +278,8 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `VisibleSelectionTest.kt` | Sentinel offset adjustment for visibleSelection(): collapsed, ranged, reversed, edge cases |
 | `EnterContinuationTest.kt` | New-block style continuation on Enter: pending transfer, end-of-block inheritance, mid-block no-transfer, empty block edge cases |
 | `FormattingStateCalculatorTest.kt` | Pure calculator: canFormat conditions, collapsed caret pending/continuation, ranged selection query, reversed bounds, metadata |
-| `DefaultFormattingActionsTest.kt` | Action adapter: ranged/collapsed toggle, apply/remove pass-through, no-op guards (no focus, Code, block selection, drag, non-text), fresh selection resolution |
-| `FormattingIntegrationTest.kt` | Full integration: focus/unfocus cycles, focus switch between styled blocks, pending styles for empty blocks, drag disables formatting, same-style cursor move structural equality, Enter continuation + calculator, toggle + calculator consistency, multi-block selection disable, Code disable, config extensibility, backspace merge continuity, runtime/snapshot sync, collapsed-cursor pending toggle cycle |
+| `DefaultFormattingActionsTest.kt` | Action adapter: ranged/collapsed toggle, apply/remove pass-through, no-op guards (no focus, block selection, drag, non-text), fresh selection resolution |
+| `FormattingIntegrationTest.kt` | Full integration: focus/unfocus cycles, focus switch between styled blocks, pending styles for empty blocks, drag disables formatting, same-style cursor move structural equality, Enter continuation + calculator, toggle + calculator consistency, multi-block selection disable, config extensibility, backspace merge continuity, runtime/snapshot sync, collapsed-cursor pending toggle cycle |
 | `SlashPopupUtilsTest.kt` | Popup pure functions: estimatePopupHeightDp (compact/clamped), calculatePopupOffset (below/above/clamp), resolveNextHighlight (null/down/up/first/last/clamped/unknown) |
 | `CascadeEditorSlashIntegrationTest.kt` | Slash integration: registry coexistence (built-in + custom), custom override, custom execution alongside built-ins, session invalidation pure function (no session, healthy, drag, selection, anchor missing, different block deleted), full scenarios (drag start, anchor deletion) |
 | `CascadeEditorColorsTest.kt` | Light/dark presets: non-transparent slots, known values, light vs dark differ on key slots, copy/equality semantics |

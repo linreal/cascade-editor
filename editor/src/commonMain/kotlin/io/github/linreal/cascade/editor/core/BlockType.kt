@@ -90,31 +90,11 @@ public sealed interface BlockType {
     }
 
     /**
-     * Code block.
-     */
-    public data class Code(val language: String? = null) : BlockType {
-        override val typeId: String = "code"
-        override val displayName: String = "Code"
-        override val supportsText: Boolean = true
-        override val isConvertible: Boolean = false
-    }
-
-    /**
      * Horizontal divider/separator.
      */
     public data object Divider : BlockType {
         override val typeId: String = "divider"
         override val displayName: String = "Divider"
-        override val supportsText: Boolean = false
-        override val isConvertible: Boolean = false
-    }
-
-    /**
-     * Image block.
-     */
-    public data object Image : BlockType {
-        override val typeId: String = "image"
-        override val displayName: String = "Image"
         override val supportsText: Boolean = false
         override val isConvertible: Boolean = false
     }

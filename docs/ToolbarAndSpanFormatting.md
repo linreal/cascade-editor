@@ -234,7 +234,6 @@ The toolbar is intentionally outside the drag gesture `Box` to prevent drag even
 
 **`canFormat` disablement conditions.** Formatting is disabled (toolbar buttons grayed out, actions no-op) when:
 - No block is focused
-- Focused block is `BlockType.Code`
 - Focused block type does not support text
 - Block selection is active (multi-select mode)
 - Drag is in progress

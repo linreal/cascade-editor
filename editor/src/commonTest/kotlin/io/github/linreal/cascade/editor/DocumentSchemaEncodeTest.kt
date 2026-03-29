@@ -115,35 +115,10 @@ class DocumentSchemaEncodeTest {
     }
 
     @Test
-    fun `encode code with language`() {
-        val json = DocumentSchema.encode(listOf(block(type = BlockType.Code(language = "kotlin"))))
-        val typeObj = json["blocks"]!!.jsonArray[0].jsonObject["type"]!!.jsonObject
-        assertEquals("code", typeObj["typeId"]?.jsonPrimitive?.content)
-        assertEquals("kotlin", typeObj["language"]?.jsonPrimitive?.content)
-    }
-
-    @Test
-    fun `encode code without language - no language key`() {
-        val json = DocumentSchema.encode(listOf(block(type = BlockType.Code(language = null))))
-        val typeObj = json["blocks"]!!.jsonArray[0].jsonObject["type"]!!.jsonObject
-        assertEquals("code", typeObj["typeId"]?.jsonPrimitive?.content)
-        assertFalse(typeObj.containsKey("language"))
-    }
-
-    @Test
     fun `encode divider type`() {
         val json = DocumentSchema.encode(listOf(block(type = BlockType.Divider, content = BlockContent.Empty)))
         val typeObj = json["blocks"]!!.jsonArray[0].jsonObject["type"]!!.jsonObject
         assertEquals("divider", typeObj["typeId"]?.jsonPrimitive?.content)
-    }
-
-    @Test
-    fun `encode image block type`() {
-        val json = DocumentSchema.encode(
-            listOf(block(type = BlockType.Image, content = BlockContent.Image("https://example.com/img.png")))
-        )
-        val typeObj = json["blocks"]!!.jsonArray[0].jsonObject["type"]!!.jsonObject
-        assertEquals("image", typeObj["typeId"]?.jsonPrimitive?.content)
     }
 
     // Block content encoding
@@ -176,27 +151,6 @@ class DocumentSchemaEncodeTest {
         assertTrue(contentObj.containsKey("version"))
         assertTrue(contentObj.containsKey("text"))
         assertTrue(contentObj.containsKey("spans"))
-    }
-
-    @Test
-    fun `encode image content`() {
-        val imageContent = BlockContent.Image(uri = "https://example.com/photo.jpg", altText = "A photo")
-        val json = DocumentSchema.encode(listOf(block(type = BlockType.Image, content = imageContent)))
-        val contentObj = json["blocks"]!!.jsonArray[0].jsonObject["content"]!!.jsonObject
-
-        assertEquals("image", contentObj["kind"]?.jsonPrimitive?.content)
-        assertEquals("https://example.com/photo.jpg", contentObj["uri"]?.jsonPrimitive?.content)
-        assertEquals("A photo", contentObj["altText"]?.jsonPrimitive?.content)
-    }
-
-    @Test
-    fun `encode image content without altText - no altText key`() {
-        val imageContent = BlockContent.Image(uri = "https://example.com/photo.jpg", altText = null)
-        val json = DocumentSchema.encode(listOf(block(type = BlockType.Image, content = imageContent)))
-        val contentObj = json["blocks"]!!.jsonArray[0].jsonObject["content"]!!.jsonObject
-
-        assertEquals("image", contentObj["kind"]?.jsonPrimitive?.content)
-        assertFalse(contentObj.containsKey("altText"))
     }
 
     @Test

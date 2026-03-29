@@ -200,18 +200,10 @@ public object DocumentSchema {
         is BlockType.Quote -> buildJsonObject {
             put("typeId", JsonPrimitive("quote"))
         }
-        is BlockType.Code -> buildJsonObject {
-            put("typeId", JsonPrimitive("code"))
-            if (type.language != null) {
-                put("language", JsonPrimitive(type.language))
-            }
-        }
         is BlockType.Divider -> buildJsonObject {
             put("typeId", JsonPrimitive("divider"))
         }
-        is BlockType.Image -> buildJsonObject {
-            put("typeId", JsonPrimitive("image"))
-        }
+
         is CustomBlockType -> null // handled by codec / UnknownBlockType / fallback paths
     }
 
@@ -255,13 +247,7 @@ public object DocumentSchema {
                 }
             }
         }
-        is BlockContent.Image -> buildJsonObject {
-            put("kind", JsonPrimitive("image"))
-            put("uri", JsonPrimitive(content.uri))
-            if (content.altText != null) {
-                put("altText", JsonPrimitive(content.altText))
-            }
-        }
+
         is BlockContent.Empty -> buildJsonObject {
             put("kind", JsonPrimitive("empty"))
         }
@@ -459,12 +445,7 @@ public object DocumentSchema {
                 }
             }
             "quote" -> BlockType.Quote
-            "code" -> {
-                val language = typeJson.stringOrNull("language")
-                BlockType.Code(language)
-            }
             "divider" -> BlockType.Divider
-            "image" -> BlockType.Image
             else -> null
         }
     }
@@ -484,15 +465,6 @@ public object DocumentSchema {
         // Built-in kinds
         when (kind) {
             "text" -> return RichTextSchema.decode(json)
-            "image" -> {
-                val uri = json.stringOrNull("uri")
-                if (uri == null) {
-                    warnings.add(DocumentDecodeWarning.MalformedBlockSkipped(blockIndex, "Image content missing 'uri'"))
-                    return null
-                }
-                val altText = json.stringOrNull("altText")
-                return BlockContent.Image(uri, altText)
-            }
             "empty" -> return BlockContent.Empty
             "custom" -> {
                 // Legacy shape: kind=custom with separate typeId

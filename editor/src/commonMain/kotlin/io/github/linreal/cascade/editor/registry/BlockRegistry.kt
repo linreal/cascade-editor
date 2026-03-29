@@ -224,22 +224,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
         )
     )
 
-    // Code — text-capable but isConvertible=false → AlwaysInsert
-    registerDescriptor(
-        BlockDescriptor(
-            typeId = "code",
-            displayName = "Code",
-            description = "Code block with syntax highlighting",
-            keywords = listOf("code", "snippet", "programming"),
-            slash = BuiltInSlashCommandSpec(
-                behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
-            ),
-            factory = { id ->
-                Block(id, BlockType.Code(), BlockContent.Text(""))
-            }
-        )
-    )
-
     // Divider — non-text, AlwaysInsert
     registerDescriptor(
         BlockDescriptor(
@@ -252,22 +236,6 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             ),
             factory = { id ->
                 Block(id, BlockType.Divider, BlockContent.Empty)
-            }
-        )
-    )
-
-    // Image — non-text, AlwaysInsert
-    registerDescriptor(
-        BlockDescriptor(
-            typeId = "image",
-            displayName = "Image",
-            description = "Embedded image",
-            keywords = listOf("picture", "photo", "img"),
-            slash = BuiltInSlashCommandSpec(
-                behavior = BuiltInBlockSlashBehavior.AlwaysInsert,
-            ),
-            factory = { id ->
-                Block(id, BlockType.Image, BlockContent.Image("", null))
             }
         )
     )

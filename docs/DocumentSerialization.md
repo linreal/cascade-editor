@@ -239,8 +239,6 @@ public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>)   // NEW
 - Missing `content` object defaults to `BlockContent.Empty`.
 - Missing `kind` in content object defaults to `BlockContent.Empty`.
 - Non-string `kind` values (e.g., numeric `42`) are coerced to their string representation and treated as unknown content kinds.
-- Image content missing `uri` causes the entire block to be skipped (not just the content).
-
 ### Custom Data Map Encoding
 
 - Only primitive types (`String`, `Int`, `Long`, `Float`, `Double`, `Boolean`, `null`), `List`, and `Map<String, *>` are supported.
@@ -256,11 +254,6 @@ public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>)   // NEW
 
 - `UnknownBlockRenderer` displays hardcoded English text: `"Unsupported block type: {typeId}"`. Localization is deferred.
 - Unknown blocks participate in drag-and-drop (reorderable) but are non-editable and non-focusable.
-
-### Image Blocks
-
-- Image block type and content round-trip correctly at the data layer.
-- No built-in `ImageRenderer` exists yet — image blocks are data-safe but not user-visible until the renderer lands.
 
 ---
 

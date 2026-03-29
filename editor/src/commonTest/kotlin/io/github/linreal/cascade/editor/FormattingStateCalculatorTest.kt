@@ -58,12 +58,6 @@ class FormattingStateCalculatorTest {
     }
 
     @Test
-    fun `Code block returns canFormat false`() {
-        val result = compute(focusedBlockType = BlockType.Code())
-        assertFalse(result.canFormat)
-    }
-
-    @Test
     fun `block selection active returns canFormat false`() {
         val result = compute(hasBlockSelection = true)
         assertFalse(result.canFormat)

@@ -17,11 +17,6 @@ public sealed interface BlockContent {
     ) : BlockContent
 
     /**
-     * Image content with URI and optional alt text.
-     */
-    public data class Image(val uri: String, val altText: String? = null) : BlockContent
-
-    /**
      * Empty content for blocks like dividers.
      */
     public data object Empty : BlockContent

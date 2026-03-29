@@ -26,7 +26,6 @@ internal object FormattingStateCalculator {
     ): FormattingState {
         val canFormat = focusedBlockId != null
             && focusedBlockType?.supportsText == true
-            && focusedBlockType !is BlockType.Code
             && !hasBlockSelection
             && !isDragging
 

@@ -143,22 +143,6 @@ class DefaultFormattingActionsTest {
         assertTrue(spanStates.getSpans(blockId).isEmpty())
     }
 
- // No-op: Code block
-
-    @Test
-    fun `toggleStyle no-op when focused block is Code`() {
-        setupFocusedBlock(
-            "Hello World",
-            blockType = BlockType.Code(),
-            selectionStart = 0,
-            selectionEnd = 5,
-        )
-
-        actions.toggleStyle(SpanStyle.Bold)
-
-        assertTrue(dispatchedActions.isEmpty())
-    }
-
  // No-op: block selection active
 
     @Test

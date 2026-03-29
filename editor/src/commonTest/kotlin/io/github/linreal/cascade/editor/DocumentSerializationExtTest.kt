@@ -136,7 +136,6 @@ class DocumentSerializationExtTest {
     fun `toJson non-text blocks pass through unchanged`() {
         val blocks = listOf(
             Block(BlockId("b1"), BlockType.Divider, BlockContent.Empty),
-            Block(BlockId("b2"), BlockType.Image, BlockContent.Image("https://example.com/img.png", "alt")),
         )
         val holder = EditorStateHolder(EditorState.withBlocks(blocks))
         val textStates = BlockTextStates()
@@ -145,12 +144,9 @@ class DocumentSerializationExtTest {
         val json = holder.toJson(textStates, spanStates)
         val decoded = DocumentSchema.decodeFromString(json)
 
-        // 3 blocks: divider, image, auto-appended trailing paragraph
-        assertEquals(3, decoded.size)
+        // 2 blocks: divider, auto-appended trailing paragraph
+        assertEquals(2, decoded.size)
         assertIs<BlockContent.Empty>(decoded[0].content)
-        val img = assertIs<BlockContent.Image>(decoded[1].content)
-        assertEquals("https://example.com/img.png", img.uri)
-        assertEquals("alt", img.altText)
     }
 
     // loadFromJson

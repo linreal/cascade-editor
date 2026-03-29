@@ -395,22 +395,6 @@ class FormattingIntegrationTest {
         assertTrue(harness.dispatched.isEmpty())
     }
 
- // 8. Code block disables formatting
-
-    @Test
-    fun `Code block focused makes canFormat false and actions no-op`() {
-        val blockId = BlockId("b1")
-        val block = Block(blockId, BlockType.Code(), BlockContent.Text("val x = 1"))
-        val harness = Harness(blocks = listOf(block), focusedBlockId = blockId)
-        harness.initBlock(blockId, "val x = 1", selectionStart = 0, selectionEnd = 9)
-
-        val state = harness.computeFormattingState()
-        assertFalse(state.canFormat)
-
-        harness.formattingActions.applyStyle(SpanStyle.Bold)
-        assertTrue(harness.dispatched.isEmpty())
-    }
-
  // 9. Default toolbar config extensibility
 
     @Test

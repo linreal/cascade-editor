@@ -55,10 +55,7 @@ class DocumentSchemaDecodeTest {
             BlockType.BulletList to BlockContent.Text("bullet"),
             BlockType.NumberedList(1) to BlockContent.Text("num"),
             BlockType.Quote to BlockContent.Text("quote"),
-            BlockType.Code(language = null) to BlockContent.Text("code"),
-            BlockType.Code(language = "kotlin") to BlockContent.Text("kt"),
             BlockType.Divider to BlockContent.Empty,
-            BlockType.Image to BlockContent.Image("https://example.com/img.png", "alt"),
         )
 
         val blocks = allBuiltInTypes.mapIndexed { i, (type, content) ->
@@ -139,39 +136,11 @@ class DocumentSchemaDecodeTest {
     }
 
     @Test
-    fun `round-trip code with language`() {
-        val original = listOf(block(type = BlockType.Code("kotlin"), content = BlockContent.Text("val x = 1")))
-        val decoded = DocumentSchema.decode(DocumentSchema.encode(original))
-        val code = assertIs<BlockType.Code>(decoded[0].type)
-        assertEquals("kotlin", code.language)
-    }
-
-    @Test
-    fun `round-trip code without language`() {
-        val original = listOf(block(type = BlockType.Code(null), content = BlockContent.Text("code")))
-        val decoded = DocumentSchema.decode(DocumentSchema.encode(original))
-        val code = assertIs<BlockType.Code>(decoded[0].type)
-        assertNull(code.language)
-    }
-
-    @Test
     fun `round-trip divider`() {
         val original = listOf(block(type = BlockType.Divider, content = BlockContent.Empty))
         val decoded = DocumentSchema.decode(DocumentSchema.encode(original))
         assertIs<BlockType.Divider>(decoded[0].type)
         assertIs<BlockContent.Empty>(decoded[0].content)
-    }
-
-    @Test
-    fun `round-trip image block`() {
-        val original = listOf(
-            block(type = BlockType.Image, content = BlockContent.Image("https://example.com/img.png", "Alt"))
-        )
-        val decoded = DocumentSchema.decode(DocumentSchema.encode(original))
-        assertIs<BlockType.Image>(decoded[0].type)
-        val img = assertIs<BlockContent.Image>(decoded[0].content)
-        assertEquals("https://example.com/img.png", img.uri)
-        assertEquals("Alt", img.altText)
     }
 
     @Test
@@ -272,43 +241,6 @@ class DocumentSchemaDecodeTest {
         val nl = assertIs<BlockType.NumberedList>(result.blocks[0].type)
         assertEquals(1, nl.number)
         assertTrue(result.warnings.any { it is DocumentDecodeWarning.InvalidBlockTypeParam })
-    }
-
-    // Code language
-
-    @Test
-    fun `code language present`() {
-        val json = """{"version":1,"blocks":[{"id":"b1","type":{"typeId":"code","language":"rust"},"content":{"kind":"text","version":1,"text":"","spans":[]}}]}"""
-        val decoded = DocumentSchema.decodeFromString(json)
-        val code = assertIs<BlockType.Code>(decoded[0].type)
-        assertEquals("rust", code.language)
-    }
-
-    @Test
-    fun `code language missing is null`() {
-        val json = """{"version":1,"blocks":[{"id":"b1","type":{"typeId":"code"},"content":{"kind":"text","version":1,"text":"","spans":[]}}]}"""
-        val decoded = DocumentSchema.decodeFromString(json)
-        val code = assertIs<BlockType.Code>(decoded[0].type)
-        assertNull(code.language)
-    }
-
-    // Image content
-
-    @Test
-    fun `image content with uri and altText`() {
-        val json = """{"version":1,"blocks":[{"id":"b1","type":{"typeId":"image"},"content":{"kind":"image","uri":"https://x.com/img.png","altText":"A pic"}}]}"""
-        val decoded = DocumentSchema.decodeFromString(json)
-        val img = assertIs<BlockContent.Image>(decoded[0].content)
-        assertEquals("https://x.com/img.png", img.uri)
-        assertEquals("A pic", img.altText)
-    }
-
-    @Test
-    fun `image content missing uri - block skipped`() {
-        val json = """{"version":1,"blocks":[{"id":"b1","type":{"typeId":"image"},"content":{"kind":"image"}}]}"""
-        val result = DocumentSchema.decodeFromStringWithReport(json)
-        assertEquals(0, result.blocks.size)
-        assertTrue(result.warnings.any { it is DocumentDecodeWarning.MalformedBlockSkipped })
     }
 
     // Empty content

@@ -189,9 +189,9 @@ class BlockRegistryTest {
     }
 
     @Test
-    fun `code divider and image use AlwaysInsert`() {
+    fun `divider use AlwaysInsert`() {
         val registry = BlockRegistry.createDefault()
-        val insertTypes = listOf("code", "divider", "image")
+        val insertTypes = listOf("divider")
 
         for (typeId in insertTypes) {
             val descriptor = registry.getDescriptor(typeId)!!
