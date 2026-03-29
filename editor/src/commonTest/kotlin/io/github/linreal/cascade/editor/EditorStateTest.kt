@@ -752,15 +752,11 @@ class EditorStateTest {
         // Source run: a(1), c(2)
         assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
         assertEquals(2, (newState.blocks[1].type as BlockType.NumberedList).number)
-        // Destination run: b should be inserted and run renumbered
+        // Destination run: b should be inserted and run renumbered from 1
         // After move: a, c, sep, b, d, e
-        val destRunStart = 3 // b
-        assertIs<BlockType.NumberedList>(newState.blocks[destRunStart].type)
-        val bNum = (newState.blocks[destRunStart].type as BlockType.NumberedList).number
-        val dNum = (newState.blocks[destRunStart + 1].type as BlockType.NumberedList).number
-        val eNum = (newState.blocks[destRunStart + 2].type as BlockType.NumberedList).number
-        assertEquals(bNum + 1, dNum)
-        assertEquals(bNum + 2, eNum)
+        assertEquals(1, (newState.blocks[3].type as BlockType.NumberedList).number)
+        assertEquals(2, (newState.blocks[4].type as BlockType.NumberedList).number)
+        assertEquals(3, (newState.blocks[5].type as BlockType.NumberedList).number)
     }
 
     @Test
@@ -794,8 +790,8 @@ class EditorStateTest {
 
         assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
         assertEquals(BlockType.Paragraph, newState.blocks[1].type)
-        // Block c starts a new run with its original base
-        assertEquals(3, (newState.blocks[2].type as BlockType.NumberedList).number)
+        // Block c starts a new run from 1
+        assertEquals(1, (newState.blocks[2].type as BlockType.NumberedList).number)
     }
 
     @Test

@@ -127,8 +127,8 @@ class DocumentSchemaDecodeTest {
         val original = listOf(block(type = BlockType.NumberedList(3), content = BlockContent.Text("Item")))
         val decoded = DocumentSchema.decode(DocumentSchema.encode(original))
         val nl = assertIs<BlockType.NumberedList>(decoded[0].type)
-        // renumberNumberedLists preserves the first item's number as base
-        assertEquals(3, nl.number)
+        // renumberNumberedLists always starts runs from 1
+        assertEquals(1, nl.number)
     }
 
     @Test
@@ -534,9 +534,9 @@ class DocumentSchemaDecodeTest {
         assertEquals(2, decoded.size)
         val nl1 = assertIs<BlockType.NumberedList>(decoded[0].type)
         val nl2 = assertIs<BlockType.NumberedList>(decoded[1].type)
-        // renumberNumberedLists uses first item's number as base
-        assertEquals(5, nl1.number)
-        assertEquals(6, nl2.number)
+        // renumberNumberedLists always starts runs from 1
+        assertEquals(1, nl1.number)
+        assertEquals(2, nl2.number)
     }
 
     // Large document

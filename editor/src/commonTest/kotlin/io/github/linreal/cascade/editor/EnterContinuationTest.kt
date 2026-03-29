@@ -410,7 +410,7 @@ class EnterContinuationTest {
     @Test
     fun `empty list exit renumbers remaining items via ConvertBlockType reducer`() {
         // Verify at reducer level: converting middle NumberedList to Paragraph splits the run.
-        // renumberNumberedLists preserves the first block's number as the base of each run.
+        // renumberNumberedLists always starts each run from 1.
         val blocks = listOf(
             Block(BlockId("a"), BlockType.NumberedList(1), BlockContent.Text("First")),
             Block(BlockId("b"), BlockType.NumberedList(2), BlockContent.Text("")),
@@ -423,13 +423,13 @@ class EnterContinuationTest {
 
         // Block b is now Paragraph
         assertEquals(BlockType.Paragraph, newState.blocks[1].type)
-        // Block a stays 1 (single-item run, base preserved)
+        // Block a stays 1 (single-item run)
         assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
-        // Block c starts a new run with its original number (3) as base
+        // Block c starts a new run from 1
         assertIs<BlockType.NumberedList>(newState.blocks[2].type)
-        assertEquals(3, (newState.blocks[2].type as BlockType.NumberedList).number)
-        // Block d is renumbered sequentially from c's base: 3+1=4
-        assertEquals(4, (newState.blocks[3].type as BlockType.NumberedList).number)
+        assertEquals(1, (newState.blocks[2].type as BlockType.NumberedList).number)
+        // Block d is renumbered sequentially: 2
+        assertEquals(2, (newState.blocks[3].type as BlockType.NumberedList).number)
     }
 
     // --- Backspace at start of list item un-lists (Task 7) ---

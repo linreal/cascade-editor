@@ -129,9 +129,9 @@ class ListIntegrationTest {
         assertNumberedAt(state, 1, 2)
         // Block c is now Paragraph
         assertEquals(BlockType.Paragraph, state.blocks[2].type)
-        // Second run: d and e keep their base (d=4, e=5)
-        assertNumberedAt(state, 3, 4)
-        assertNumberedAt(state, 4, 5)
+        // Second run: always starts from 1
+        assertNumberedAt(state, 3, 1)
+        assertNumberedAt(state, 4, 2)
     }
 
     // --- Integration: backspace un-list in middle → run splits, sub-runs renumber ---
@@ -157,9 +157,75 @@ class ListIntegrationTest {
         // Block c is Paragraph, text preserved
         assertEquals(BlockType.Paragraph, state.blocks[2].type)
         assertEquals("Third", (state.blocks[2].content as BlockContent.Text).text)
-        // Second sub-run: d(4), e(5) — base preserved from d's original number
-        assertNumberedAt(state, 3, 4)
-        assertNumberedAt(state, 4, 5)
+        // Second sub-run: always starts from 1
+        assertNumberedAt(state, 3, 1)
+        assertNumberedAt(state, 4, 2)
+    }
+
+    // --- Integration: swap blocks within a run ---
+
+    @Test
+    fun `swap two numbered blocks renumbers correctly`() {
+        // Two-item list: 1, 2
+        val blocks = listOf(
+            numberedBlock("a", "First", 1),
+            numberedBlock("b", "Second", 2),
+        )
+        var state = EditorState.withBlocks(blocks)
+
+        // Move block "a" to after block "b" (swap)
+        state = MoveBlocks(setOf(BlockId("a")), toIndex = 2).reduce(state)
+
+        // After swap: b, a — should be renumbered 1, 2
+        assertEquals(2, state.blocks.size)
+        assertEquals(BlockId("b"), state.blocks[0].id)
+        assertEquals(BlockId("a"), state.blocks[1].id)
+        assertNumberedAt(state, 0, 1)
+        assertNumberedAt(state, 1, 2)
+    }
+
+    @Test
+    fun `swap first and last in three-item list renumbers correctly`() {
+        val blocks = listOf(
+            numberedBlock("a", "First", 1),
+            numberedBlock("b", "Second", 2),
+            numberedBlock("c", "Third", 3),
+        )
+        var state = EditorState.withBlocks(blocks)
+
+        // Move block "a" to after block "c"
+        state = MoveBlocks(setOf(BlockId("a")), toIndex = 3).reduce(state)
+
+        // After move: b, c, a — should be renumbered 1, 2, 3
+        assertEquals(3, state.blocks.size)
+        assertEquals(BlockId("b"), state.blocks[0].id)
+        assertEquals(BlockId("c"), state.blocks[1].id)
+        assertEquals(BlockId("a"), state.blocks[2].id)
+        assertNumberedAt(state, 0, 1)
+        assertNumberedAt(state, 1, 2)
+        assertNumberedAt(state, 2, 3)
+    }
+
+    @Test
+    fun `move last block to first position renumbers correctly`() {
+        val blocks = listOf(
+            numberedBlock("a", "First", 1),
+            numberedBlock("b", "Second", 2),
+            numberedBlock("c", "Third", 3),
+        )
+        var state = EditorState.withBlocks(blocks)
+
+        // Move block "c" to position 0 (before all)
+        state = MoveBlocks(setOf(BlockId("c")), toIndex = 0).reduce(state)
+
+        // After move: c, a, b — should be renumbered 1, 2, 3
+        assertEquals(3, state.blocks.size)
+        assertEquals(BlockId("c"), state.blocks[0].id)
+        assertEquals(BlockId("a"), state.blocks[1].id)
+        assertEquals(BlockId("b"), state.blocks[2].id)
+        assertNumberedAt(state, 0, 1)
+        assertNumberedAt(state, 1, 2)
+        assertNumberedAt(state, 2, 3)
     }
 
     // --- Integration: move blocks → both runs renumber ---
