@@ -34,9 +34,11 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import io.github.linreal.cascade.editor.action.ClearFocus
 import io.github.linreal.cascade.editor.action.CloseSlashCommand
 import io.github.linreal.cascade.editor.action.FocusBlock
 import io.github.linreal.cascade.editor.action.UpdateDragTarget
+import io.github.linreal.cascade.editor.isIos
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
@@ -535,6 +537,11 @@ public fun CascadeEditor(
                                 replace(sel.min + 1, sel.max + 1, "/")
                                 selection = TextRange(sel.min + 2)
                             }
+                        },
+                        onHideKeyboard = if (isIos) {
+                            { stateHolder.dispatch(ClearFocus) }
+                        } else {
+                            null
                         },
                     )
                 }

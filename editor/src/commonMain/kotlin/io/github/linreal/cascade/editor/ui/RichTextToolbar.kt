@@ -53,6 +53,7 @@ internal fun RichTextToolbar(
     actions: FormattingActions,
     config: RichTextToolbarConfig,
     onSlashInsert: () -> Unit,
+    onHideKeyboard: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val state = formattingState.value
@@ -69,27 +70,36 @@ internal fun RichTextToolbar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            SlashActionButton(
-                enabled = state.canFormat,
-                colors = colors,
-                typography = typography,
-                strings = strings,
-                onClick = onSlashInsert,
-            )
-            config.buttons.forEach { spec ->
-                ToolbarToggleButton(
-                    spec = spec,
-                    status = state.styleStatusOf(spec.style),
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                SlashActionButton(
                     enabled = state.canFormat,
                     colors = colors,
                     typography = typography,
                     strings = strings,
-                    onClick = { actions.toggleStyle(spec.style) },
+                    onClick = onSlashInsert,
                 )
+                config.buttons.forEach { spec ->
+                    ToolbarToggleButton(
+                        spec = spec,
+                        status = state.styleStatusOf(spec.style),
+                        enabled = state.canFormat,
+                        colors = colors,
+                        typography = typography,
+                        strings = strings,
+                        onClick = { actions.toggleStyle(spec.style) },
+                    )
+                }
+            }
+            if (onHideKeyboard != null) {
+                HideKeyboardToolbarButton(onClick = onHideKeyboard)
             }
         }
     }

@@ -52,6 +52,11 @@ class CascadeEditorStringsTest {
         assertTrue(strings.slashCommand.isNotEmpty())
     }
 
+    @Test
+    fun `hideKeyboard is non-empty`() {
+        assertTrue(strings.hideKeyboard.isNotEmpty())
+    }
+
     // -- unsupportedBlock lambda --
 
     @Test
@@ -109,5 +114,6 @@ class CascadeEditorStringsTest {
         assertEquals("Inline Code", strings.inlineCode)
         assertEquals("Highlight", strings.highlight)
         assertEquals("Slash Command", strings.slashCommand)
+        assertEquals("Hide Keyboard", strings.hideKeyboard)
     }
 }

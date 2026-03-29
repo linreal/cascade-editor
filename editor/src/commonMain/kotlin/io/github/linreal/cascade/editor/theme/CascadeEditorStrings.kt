@@ -30,6 +30,8 @@ public data class CascadeEditorStrings(
     val highlight: String,
     /** Toolbar accessibility label for the Slash Command button. */
     val slashCommand: String,
+    /** Toolbar accessibility label for the Hide Keyboard button. */
+    val hideKeyboard: String,
 ) {
     public companion object {
         /** Default [unsupportedBlock] lambda — extracted as a singleton for stable equality. */
@@ -48,6 +50,7 @@ public data class CascadeEditorStrings(
             inlineCode = "Inline Code",
             highlight = "Highlight",
             slashCommand = "Slash Command",
+            hideKeyboard = "Hide Keyboard",
         )
     }
 }

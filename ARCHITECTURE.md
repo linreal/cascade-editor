@@ -74,6 +74,8 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Formatting observer | `richtext/FormattingStateObserver.kt` | `rememberFormattingState()` |
 | Formatting actions impl | `richtext/DefaultFormattingActions.kt` | `DefaultFormattingActions` |
 | Default toolbar UI | `ui/RichTextToolbar.kt` | `RichTextToolbar()` |
+| Hide keyboard button | `ui/HideKeyboardToolbarButton.kt` | `HideKeyboardToolbarButton()` (public, iOS-only in default toolbar) |
+| Platform detection | `Platform.kt` | `internal expect val isIos: Boolean` |
 | Slash popup defaults | `ui/SlashPopupDefaults.kt` | `SlashPopupDefaults` |
 | Slash popup overlay | `ui/SlashCommandPopup.kt` | `SlashCommandPopup()` |
 | Slash command row | `ui/SlashCommandRow.kt` | `SlashCommandRow()` |
@@ -236,6 +238,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Multi-block drag | Not done | `DragState` supports it, UI doesn't |
 | Keyboard shortcuts — formatting | Done | Cmd+B/I/U (macOS) / Ctrl+B/I/U (other) via `onPreviewKeyEvent` in `TextBlockField` + `LocalFormattingActions` |
 | Keyboard shortcuts — other | Not done | General shortcuts beyond formatting not done |
+| iOS keyboard dismiss | Done | `HideKeyboardToolbarButton` pinned to trailing toolbar edge, iOS-only via `isIos` expect/actual; dispatches `ClearFocus` |
 
 ## Known Gaps
 
