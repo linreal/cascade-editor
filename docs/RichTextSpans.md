@@ -87,7 +87,6 @@ sealed interface SpanStyle {
     data object StrikeThrough : SpanStyle
     data object InlineCode : SpanStyle
     data class Highlight(val colorArgb: Long) : SpanStyle
-    data class Link(val url: String) : SpanStyle
     data class Custom(val typeId: String, val payload: String? = null) : SpanStyle
 }
 ```
@@ -95,6 +94,7 @@ sealed interface SpanStyle {
 - `Custom.payload` is an opaque JSON string. The core layer never parses it — serialization layer handles conversion.
 - **Kind-based matching for Highlight:** `SpanStyle.kindMatches(a, b)` treats all `Highlight` instances as equivalent regardless of `colorArgb`. This is used throughout algorithms, formatting state, and toggle logic. Other styles use exact data-class equality.
 - `Highlight.colorArgb` is retained for serialization backward compatibility but ignored at render time — the theme's `CascadeEditorColors.highlight` controls the visual color.
+- **Link is not in V1.** Link span support is deferred to a future version.
 
 ### BlockContent.Text (`core/BlockContent.kt`)
 
@@ -232,7 +232,6 @@ Visual rendering (bold, italic, underline, etc.)
    - `StrikeThrough` → `TextDecoration.LineThrough`
    - `InlineCode` → `FontFamily.Monospace` + semi-transparent background
    - `Highlight` → theme `highlightBackground` color (span's `colorArgb` ignored at render time)
-   - `Link(url)` → blue color + underline
    - `Custom` → `null` (not rendered, but retained in state)
 
 2. **Cumulative decoration overlay** — when `Underline` and `StrikeThrough` spans overlap, an overlay span with `TextDecoration.combine(Underline, LineThrough)` is generated for the intersection range so both decorations render.
@@ -451,7 +450,6 @@ JSON schema (version 1):
 | StrikeThrough | `"strikethrough"` | — |
 | InlineCode | `"inline_code"` | — |
 | Highlight | `"highlight"` | `colorArgb: Long` |
-| Link | `"link"` | `url: String` |
 | Custom | `"custom"` | `typeId: String`, `payload?: JsonElement` |
 
 ### Decode Normalization

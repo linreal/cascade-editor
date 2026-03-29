@@ -413,31 +413,31 @@ class FormattingIntegrationTest {
     fun `adding custom button to config is data-only change`() {
         val custom = RichTextToolbarConfig(
             buttons = RichTextToolbarConfig.Default.buttons + ToolbarButtonSpec(
-                style = SpanStyle.Link("https://example.com"),
-                label = "Link",
+                style = SpanStyle.Custom("my-custom"),
+                label = "Custom",
             )
         )
         assertEquals(7, custom.buttons.size)
-        assertTrue(custom.buttons.last().style is SpanStyle.Link)
+        assertTrue(custom.buttons.last().style is SpanStyle.Custom)
     }
 
     @Test
     fun `custom config tracked styles flow into calculator`() {
         val blockId = BlockId("b1")
-        val linkUrl = "https://example.com"
-        val spans = listOf(TextSpan(0, 5, SpanStyle.Link(linkUrl)))
+        val customStyle = SpanStyle.Custom("my-custom")
+        val spans = listOf(TextSpan(0, 5, customStyle))
         val block = Block(blockId, BlockType.Paragraph, BlockContent.Text("Hello", spans))
         val harness = Harness(blocks = listOf(block), focusedBlockId = blockId)
         harness.initBlock(blockId, "Hello", spans, selectionStart = 0, selectionEnd = 5)
 
-        // Default tracked styles don't include Link
+        // Default tracked styles don't include Custom
         val defaultState = harness.computeFormattingState(trackedStyles = defaultTracked)
-        assertEquals(StyleStatus.Absent, defaultState.styleStatusOf(SpanStyle.Link(linkUrl)))
+        assertEquals(StyleStatus.Absent, defaultState.styleStatusOf(customStyle))
 
-        // Custom tracked styles include Link
-        val customTracked = defaultTracked + SpanStyle.Link(linkUrl)
+        // Custom tracked styles include it
+        val customTracked = defaultTracked + customStyle
         val customState = harness.computeFormattingState(trackedStyles = customTracked)
-        assertEquals(StyleStatus.FullyActive, customState.styleStatusOf(SpanStyle.Link(linkUrl)))
+        assertEquals(StyleStatus.FullyActive, customState.styleStatusOf(customStyle))
     }
 
  // 10. Cursor at end of bold + type scenario

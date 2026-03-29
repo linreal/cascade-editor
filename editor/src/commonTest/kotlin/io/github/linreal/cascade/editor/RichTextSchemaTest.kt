@@ -112,17 +112,6 @@ class RichTextSchemaTest {
         assertEquals(original, decoded)
     }
 
-    @Test
-    fun `round-trip link span`() {
-        val original = BlockContent.Text(
-            text = "Click here for more",
-            spans = listOf(TextSpan(6, 10, SpanStyle.Link("https://example.com")))
-        )
-        val decoded = RichTextSchema.decodeFromString(RichTextSchema.encodeToString(original))
-
-        assertEquals(original, decoded)
-    }
-
     // -- Round-trip: custom styles --
 
     @Test
@@ -261,7 +250,7 @@ class RichTextSchemaTest {
     }
 
     @Test
-    fun `link span with missing url is dropped`() {
+    fun `unknown style type link is dropped`() {
         val json = """{"version":1,"text":"Hello","spans":[{"start":0,"end":3,"style":{"type":"link"}}]}"""
         val decoded = RichTextSchema.decodeFromString(json)
 

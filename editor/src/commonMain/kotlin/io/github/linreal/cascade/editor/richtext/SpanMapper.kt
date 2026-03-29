@@ -2,12 +2,12 @@ package io.github.linreal.cascade.editor.richtext
 
 import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldBuffer
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle as ComposeSpanStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.graphics.Color
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
 
@@ -35,13 +35,12 @@ internal object SpanMapper {
      */
     fun toOutputTransformation(
         spans: List<TextSpan>,
-        linkColor: Color,
         inlineCodeBackground: Color,
         highlightBackground: Color,
     ): OutputTransformation? {
         if (spans.isEmpty()) return null
 
-        val mapped = mapRenderableSpans(spans, linkColor, inlineCodeBackground, highlightBackground)
+        val mapped = mapRenderableSpans(spans, inlineCodeBackground, highlightBackground)
         if (mapped.isEmpty()) return null
 
         return OutputTransformation {
@@ -57,13 +56,12 @@ internal object SpanMapper {
      */
     fun TextFieldBuffer.applyStyles(
         spans: List<TextSpan>,
-        linkColor: Color,
         inlineCodeBackground: Color,
         highlightBackground: Color,
     ) {
         if (spans.isEmpty()) return
 
-        val mapped = mapRenderableSpans(spans, linkColor, inlineCodeBackground, highlightBackground)
+        val mapped = mapRenderableSpans(spans, inlineCodeBackground, highlightBackground)
         if (mapped.isEmpty()) return
 
         applyMappedStyles(mapped)
@@ -92,14 +90,13 @@ internal object SpanMapper {
      */
     internal fun mapRenderableSpans(
         spans: List<TextSpan>,
-        linkColor: Color,
         inlineCodeBackground: Color,
         highlightBackground: Color,
     ): List<RenderSpan> {
         if (spans.isEmpty()) return emptyList()
 
         val base = spans.mapNotNull { span ->
-            val composeStyle = toComposeSpanStyle(span.style, linkColor, inlineCodeBackground, highlightBackground) ?: return@mapNotNull null
+            val composeStyle = toComposeSpanStyle(span.style, inlineCodeBackground, highlightBackground) ?: return@mapNotNull null
             RenderSpan(start = span.start, end = span.end, style = composeStyle)
         }
         if (base.isEmpty()) return emptyList()
@@ -158,7 +155,6 @@ internal object SpanMapper {
      */
     fun toComposeSpanStyle(
         style: SpanStyle,
-        linkColor: Color,
         inlineCodeBackground: Color,
         highlightBackground: Color,
     ): ComposeSpanStyle? {
@@ -172,10 +168,6 @@ internal object SpanMapper {
                 background = inlineCodeBackground,
             )
             is SpanStyle.Highlight -> ComposeSpanStyle(background = highlightBackground)
-            is SpanStyle.Link -> ComposeSpanStyle(
-                color = linkColor,
-                textDecoration = TextDecoration.Underline,
-            )
             is SpanStyle.Custom -> null
         }
     }

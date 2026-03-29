@@ -189,7 +189,6 @@ private fun buttonDisplayText(style: SpanStyle): String = when (style) {
     SpanStyle.StrikeThrough -> "S"
     SpanStyle.InlineCode -> "<>"
     is SpanStyle.Highlight -> "H"
-    is SpanStyle.Link -> "L"
     is SpanStyle.Custom -> style.typeId.take(2).uppercase()
 }
 

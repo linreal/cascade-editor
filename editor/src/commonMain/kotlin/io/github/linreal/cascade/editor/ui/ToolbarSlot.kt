@@ -24,7 +24,7 @@ public sealed interface ToolbarSlot {
      *
      * @param trackedStyles Styles to include in [FormattingState.styles].
      *        Defaults to the default toolbar styles. Override to track additional
-     *        styles (e.g., [SpanStyle.Link][io.github.linreal.cascade.editor.core.SpanStyle.Link]).
+     *        styles (e.g., [SpanStyle.Custom][io.github.linreal.cascade.editor.core.SpanStyle.Custom]).
      */
     public data class Custom(
         val trackedStyles: List<SpanStyle> =

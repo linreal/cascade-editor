@@ -16,7 +16,6 @@ class SpanMapperTest {
 
     // Test colors — values match CascadeEditorColors.light() but kept local
     // so SpanMapper stays decoupled from theme.
-    private val testLinkColor = Color(0xFF0B57D0)
     private val testInlineCodeBg = Color(0x14000000)
     private val testHighlightBg = Color(0xFFFFEB3B)
 
@@ -26,21 +25,21 @@ class SpanMapperTest {
 
     @Test
     fun `bold maps to FontWeight Bold`() {
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Bold)
+        val result = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Bold)
         assertNotNull(result)
         assertEquals(androidx.compose.ui.text.font.FontWeight.Bold, result.fontWeight)
     }
 
     @Test
     fun `italic maps to FontStyle Italic`() {
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Italic)
+        val result = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Italic)
         assertNotNull(result)
         assertEquals(androidx.compose.ui.text.font.FontStyle.Italic, result.fontStyle)
     }
 
     @Test
     fun `underline maps to TextDecoration Underline`() {
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Underline)
+        val result = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Underline)
         assertNotNull(result)
         assertEquals(
             androidx.compose.ui.text.style.TextDecoration.Underline,
@@ -50,7 +49,7 @@ class SpanMapperTest {
 
     @Test
     fun `strikethrough maps to TextDecoration LineThrough`() {
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.StrikeThrough)
+        val result = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.StrikeThrough)
         assertNotNull(result)
         assertEquals(
             androidx.compose.ui.text.style.TextDecoration.LineThrough,
@@ -60,7 +59,7 @@ class SpanMapperTest {
 
     @Test
     fun `inline code maps to Monospace font and background`() {
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.InlineCode)
+        val result = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.InlineCode)
         assertNotNull(result)
         assertEquals(androidx.compose.ui.text.font.FontFamily.Monospace, result.fontFamily)
         assertNotEquals(
@@ -73,7 +72,7 @@ class SpanMapperTest {
     @Test
     fun `highlight maps to theme background color`() {
         val argb = 0xFFFF0000 // red — ignored, theme color used instead
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Highlight(argb))
+        val result = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Highlight(argb))
         assertNotNull(result)
         assertEquals(
             testHighlightBg,
@@ -83,28 +82,13 @@ class SpanMapperTest {
     }
 
     @Test
-    fun `link maps to colored underline`() {
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Link("https://example.com"))
-        assertNotNull(result)
-        assertEquals(
-            androidx.compose.ui.text.style.TextDecoration.Underline,
-            result.textDecoration,
-        )
-        assertNotEquals(
-            Color.Unspecified,
-            result.color,
-            "Link should set text color",
-        )
-    }
-
-    @Test
     fun `custom returns null`() {
-        assertNull(SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Custom("myType")))
+        assertNull(SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Custom("myType")))
     }
 
     @Test
     fun `custom with payload returns null`() {
-        assertNull(SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Custom("myType", """{"key":"val"}""")))
+        assertNull(SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Custom("myType", """{"key":"val"}""")))
     }
 
     // ╔══════════════════════════════════════════════════════════════════╗
@@ -113,47 +97,39 @@ class SpanMapperTest {
 
     @Test
     fun `bold does not set textDecoration or fontStyle`() {
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Bold)!!
+        val result = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Bold)!!
         assertNull(result.textDecoration)
         assertNull(result.fontStyle)
     }
 
     @Test
     fun `italic does not set fontWeight or textDecoration`() {
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Italic)!!
+        val result = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Italic)!!
         assertNull(result.fontWeight)
         assertNull(result.textDecoration)
     }
 
     @Test
     fun `underline does not set fontWeight or fontStyle`() {
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Underline)!!
+        val result = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Underline)!!
         assertNull(result.fontWeight)
         assertNull(result.fontStyle)
     }
 
     @Test
     fun `strikethrough does not set fontWeight or fontStyle`() {
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.StrikeThrough)!!
+        val result = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.StrikeThrough)!!
         assertNull(result.fontWeight)
         assertNull(result.fontStyle)
     }
 
     @Test
     fun `highlight only sets background`() {
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Highlight(0xFFFF0000))!!
+        val result = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Highlight(0xFFFF0000))!!
         assertNull(result.fontWeight)
         assertNull(result.fontStyle)
         assertNull(result.textDecoration)
         assertEquals(Color.Unspecified, result.color)
-    }
-
-    @Test
-    fun `link does not set fontWeight or background`() {
-        val result = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Link("https://example.com"))!!
-        assertNull(result.fontWeight)
-        assertNull(result.fontStyle)
-        assertEquals(Color.Unspecified, result.background)
     }
 
     // ╔══════════════════════════════════════════════════════════════════╗
@@ -169,11 +145,10 @@ class SpanMapperTest {
             SpanStyle.StrikeThrough,
             SpanStyle.InlineCode,
             SpanStyle.Highlight(0xFFFFFF00),
-            SpanStyle.Link("https://example.com"),
         )
         for (style in renderableStyles) {
             assertNotNull(
-                SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = style),
+                SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = style),
                 "Expected non-null ComposeSpanStyle for ${style::class.simpleName}",
             )
         }
@@ -181,17 +156,10 @@ class SpanMapperTest {
 
     @Test
     fun `highlight uses theme color regardless of span colorArgb`() {
-        val red = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Highlight(0xFFFF0000L))!!
-        val blue = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Highlight(0xFF0000FFL))!!
+        val red = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Highlight(0xFFFF0000L))!!
+        val blue = SpanMapper.toComposeSpanStyle(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Highlight(0xFF0000FFL))!!
         assertEquals(red.background, blue.background, "Both highlights should use the theme color")
         assertEquals(testHighlightBg, red.background, "Highlight background should equal theme highlight color")
-    }
-
-    @Test
-    fun `different link urls produce same style`() {
-        val a = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Link("https://a.com"))
-        val b = SpanMapper.toComposeSpanStyle(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, style = SpanStyle.Link("https://b.com"))
-        assertEquals(a, b, "Link style should not depend on URL content")
     }
 
     // ╔══════════════════════════════════════════════════════════════════╗
@@ -200,7 +168,7 @@ class SpanMapperTest {
 
     @Test
     fun `empty span list returns null`() {
-        assertNull(SpanMapper.toOutputTransformation(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = emptyList()))
+        assertNull(SpanMapper.toOutputTransformation(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = emptyList()))
     }
 
     @Test
@@ -209,13 +177,13 @@ class SpanMapperTest {
             TextSpan(0, 5, SpanStyle.Custom("a")),
             TextSpan(5, 10, SpanStyle.Custom("b", "payload")),
         )
-        assertNull(SpanMapper.toOutputTransformation(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans))
+        assertNull(SpanMapper.toOutputTransformation(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans))
     }
 
     @Test
     fun `single renderable span returns non-null`() {
         val spans = listOf(TextSpan(0, 5, SpanStyle.Bold))
-        assertNotNull(SpanMapper.toOutputTransformation(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans))
+        assertNotNull(SpanMapper.toOutputTransformation(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans))
     }
 
     @Test
@@ -224,7 +192,7 @@ class SpanMapperTest {
             TextSpan(0, 3, SpanStyle.Custom("x")),
             TextSpan(3, 6, SpanStyle.Italic),
         )
-        assertNotNull(SpanMapper.toOutputTransformation(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans))
+        assertNotNull(SpanMapper.toOutputTransformation(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans))
     }
 
     @Test
@@ -232,9 +200,9 @@ class SpanMapperTest {
         val spans = listOf(
             TextSpan(0, 3, SpanStyle.Bold),
             TextSpan(3, 6, SpanStyle.Underline),
-            TextSpan(6, 10, SpanStyle.Link("https://example.com")),
+            TextSpan(6, 10, SpanStyle.Highlight(0xFFFFFF00)),
         )
-        assertNotNull(SpanMapper.toOutputTransformation(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans))
+        assertNotNull(SpanMapper.toOutputTransformation(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans))
     }
 
     @Test
@@ -246,11 +214,9 @@ class SpanMapperTest {
             SpanStyle.StrikeThrough,
             SpanStyle.InlineCode,
             SpanStyle.Highlight(0xFFFFFF00),
-            SpanStyle.Link("https://example.com"),
         )
         for (style in styles) {
             val transformation = SpanMapper.toOutputTransformation(
-                linkColor = testLinkColor,
                 inlineCodeBackground = testInlineCodeBg,
                 highlightBackground = testHighlightBg,
                 spans = listOf(TextSpan(0, 5, style)),
@@ -268,7 +234,7 @@ class SpanMapperTest {
         // (Bold is renderable), so toOutputTransformation returns non-null.
         // The lambda will skip the empty range at render time via clamping.
         val spans = listOf(TextSpan(3, 3, SpanStyle.Bold))
-        assertNotNull(SpanMapper.toOutputTransformation(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans))
+        assertNotNull(SpanMapper.toOutputTransformation(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans))
     }
 
     // ╔══════════════════════════════════════════════════════════════════╗
@@ -282,7 +248,7 @@ class SpanMapperTest {
             TextSpan(3, 8, SpanStyle.StrikeThrough),
         )
 
-        val mapped = SpanMapper.mapRenderableSpans(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans)
+        val mapped = SpanMapper.mapRenderableSpans(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans)
         val combined = TextDecoration.combine(
             listOf(TextDecoration.Underline, TextDecoration.LineThrough)
         )
@@ -294,31 +260,13 @@ class SpanMapperTest {
     }
 
     @Test
-    fun `link underline overlapping strikethrough also gets combined decoration overlay`() {
-        val spans = listOf(
-            TextSpan(0, 6, SpanStyle.Link("https://example.com")),
-            TextSpan(2, 4, SpanStyle.StrikeThrough),
-        )
-
-        val mapped = SpanMapper.mapRenderableSpans(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans)
-        val combined = TextDecoration.combine(
-            listOf(TextDecoration.Underline, TextDecoration.LineThrough)
-        )
-
-        assertTrue(
-            mapped.any { it.start == 2 && it.end == 4 && it.style.textDecoration == combined },
-            "Expected combined overlay on link overlap [2,4)",
-        )
-    }
-
-    @Test
     fun `non-overlapping underline and strikethrough produce no combined overlay`() {
         val spans = listOf(
             TextSpan(0, 2, SpanStyle.Underline),
             TextSpan(3, 5, SpanStyle.StrikeThrough),
         )
 
-        val mapped = SpanMapper.mapRenderableSpans(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans)
+        val mapped = SpanMapper.mapRenderableSpans(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans)
         val combined = TextDecoration.combine(
             listOf(TextDecoration.Underline, TextDecoration.LineThrough)
         )
@@ -336,8 +284,8 @@ class SpanMapperTest {
     @Test
     fun `same input produces equal-behavior transformations`() {
         val spans = listOf(TextSpan(0, 5, SpanStyle.Bold))
-        val t1 = SpanMapper.toOutputTransformation(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans)
-        val t2 = SpanMapper.toOutputTransformation(linkColor = testLinkColor, inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans)
+        val t1 = SpanMapper.toOutputTransformation(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans)
+        val t2 = SpanMapper.toOutputTransformation(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans)
         // Both should be non-null (same input)
         assertNotNull(t1)
         assertNotNull(t2)

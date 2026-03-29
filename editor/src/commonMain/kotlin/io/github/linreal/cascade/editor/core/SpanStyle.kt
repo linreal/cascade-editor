@@ -26,13 +26,6 @@ public sealed interface SpanStyle {
     public data class Highlight(val colorArgb: Long) : SpanStyle
 
     /**
-     * Inline hyperlink.
-     * @param url The link target URL
-     */
-    @Immutable
-    public data class Link(val url: String) : SpanStyle
-
-    /**
      * Extension point for custom span styles.
      *
      * @param typeId Identifier for the custom style type
@@ -64,7 +57,6 @@ public sealed interface SpanStyle {
             is StrikeThrough -> StrikeThrough
             is InlineCode -> InlineCode
             is Highlight -> Highlight::class // all Highlights share one key
-            is Link -> style                 // different URLs = different keys
             is Custom -> style               // different typeId/payload = different keys
         }
 
@@ -76,7 +68,7 @@ public sealed interface SpanStyle {
          * toolbar detect and toggle highlights even when the theme color differs
          * from the color stored in the span data.
          *
-         * For all other styles (data objects, [Link], [Custom]) falls back to
+         * For all other styles (data objects, [Custom]) falls back to
          * normal equality.
          */
         public fun kindMatches(a: SpanStyle, b: SpanStyle): Boolean =

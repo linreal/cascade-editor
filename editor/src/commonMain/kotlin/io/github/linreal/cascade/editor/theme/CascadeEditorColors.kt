@@ -43,8 +43,6 @@ public data class CascadeEditorColors(
     val slashSelectedItem: Color,
     /** Inline code span background tint. */
     val inlineCodeBackground: Color,
-    /** Link span text color. */
-    val linkText: Color,
     /** Default text highlight color (used by [SpanStyle.Highlight]). */
     val highlight: Color,
     /** Text cursor (caret) color. */
@@ -80,7 +78,6 @@ public data class CascadeEditorColors(
             contentDivider = Color(0xFFE0E0E0),
             slashSelectedItem = Color(0xFFE3F2FD),
             inlineCodeBackground = Color(0x14000000),
-            linkText = Color(0xFF0B57D0),
             highlight = Color(0xCCFFEB3B),
             cursor = Color(0xFF1A73E8),
             textSelectionBackground = Color(0x661A73E8),
@@ -110,7 +107,6 @@ public data class CascadeEditorColors(
             contentDivider = Color(0xFF3E3E42),
             slashSelectedItem = Color(0xFF1A3352),
             inlineCodeBackground = Color(0x29FFFFFF),
-            linkText = Color(0xFF8AB4F8),
             highlight = Color(0x99FFEB3B),
             cursor = Color(0xFF8AB4F8),
             textSelectionBackground = Color(0x668AB4F8),

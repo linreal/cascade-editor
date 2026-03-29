@@ -121,7 +121,6 @@ class CascadeEditorColorsTest {
         "contentDivider" to c.contentDivider,
         "slashSelectedItem" to c.slashSelectedItem,
         "inlineCodeBackground" to c.inlineCodeBackground,
-        "linkText" to c.linkText,
         "highlight" to c.highlight,
         "cursor" to c.cursor,
         "textSelectionBackground" to c.textSelectionBackground,

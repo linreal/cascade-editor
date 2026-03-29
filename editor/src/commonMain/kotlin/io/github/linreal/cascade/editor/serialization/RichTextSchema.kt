@@ -105,10 +105,6 @@ public object RichTextSchema {
                 put("type", JsonPrimitive("highlight"))
                 put("colorArgb", JsonPrimitive(style.colorArgb))
             }
-            is SpanStyle.Link -> {
-                put("type", JsonPrimitive("link"))
-                put("url", JsonPrimitive(style.url))
-            }
             is SpanStyle.Custom -> {
                 put("type", JsonPrimitive("custom"))
                 put("typeId", JsonPrimitive(style.typeId))
@@ -165,10 +161,6 @@ public object RichTextSchema {
             "highlight" -> {
                 val colorArgb = json["colorArgb"]?.jsonPrimitive?.longOrNull ?: return null
                 SpanStyle.Highlight(colorArgb)
-            }
-            "link" -> {
-                val url = json["url"]?.jsonPrimitive?.content ?: return null
-                SpanStyle.Link(url)
             }
             "custom" -> {
                 val typeId = json["typeId"]?.jsonPrimitive?.content ?: return null

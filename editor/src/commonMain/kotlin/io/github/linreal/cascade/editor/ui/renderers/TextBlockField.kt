@@ -98,12 +98,11 @@ internal fun TextBlockField(
     val spanState = remember(block.id, spanStates.generation) {
         spanStates.getOrCreate(block.id, textContent.spans, textContent.text.length)
     }
-    val linkColor = colors.linkText
     val inlineCodeBackground = colors.inlineCodeBackground
     val highlightBackground = colors.highlight
-    val outputTransformation = remember(block.id, spanState, linkColor, inlineCodeBackground, highlightBackground) {
+    val outputTransformation = remember(block.id, spanState, inlineCodeBackground, highlightBackground) {
         OutputTransformation {
-            SpanMapper.run { applyStyles(spanState.value, linkColor, inlineCodeBackground, highlightBackground) }
+            SpanMapper.run { applyStyles(spanState.value, inlineCodeBackground, highlightBackground) }
         }
     }
     val spanTextObserver = remember(block.id, textStates, spanStates) {
