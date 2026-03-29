@@ -16,7 +16,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Editor registry setup | `ui/EditorRegistry.kt` | `createEditorRegistry()` |
 | Drop indicator | `ui/DropIndicator.kt` | `DropIndicator()` |
 | Drag preview | `ui/DragPreview.kt` | `DragPreview()` |
-| Drag gesture | `ui/DragModifier.kt` | — |
+| Block gestures (tap, drag, selection) | `ui/BlockGestureModifier.kt` | — |
 | Auto-scroll | `ui/AutoScrollEffect.kt` | `AutoScrollDuringDrag()` |
 | Drop target calc | `ui/utils/DragUtils.kt` | `calculateDropTargetIndex()` |
 | Text state local | `ui/LocalBlockTextStates.kt` | `LocalBlockTextStates` |

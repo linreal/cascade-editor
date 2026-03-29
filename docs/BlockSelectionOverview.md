@@ -12,9 +12,9 @@ Block selection introduces a multi-select mode to the CascadeEditor. Users long-
 |--------|----------|---------|
 | `handlesSelectionVisual` | `BlockRenderer<T>` interface | Boolean property (default `false`). Lets renderers opt out of the wrapper-level selection overlay and draw their own selection chrome |
 | `selectionOverlay` | `CascadeEditorColors` data class | Theme color slot for the semi-transparent overlay (`Color(0x221A73E8)` light, `Color(0x228AB4F8)` dark) |
-| `isDropAtOriginalPosition()` | `DragModifier.kt` | Pure function: returns `true` when a drag's drop target matches the block's original position (meaning no movement occurred) |
-| `detectDragAfterLongPress()` | `DragModifier.kt` | Custom gesture detector replacing Compose's `detectDragGesturesAfterLongPress`, adding configurable `longPressTimeoutMillis` and an `onTap` callback |
-| `awaitCustomLongPress()` | `DragModifier.kt` | Low-level pointer wait loop with custom timeout |
+| `isDropAtOriginalPosition()` | `BlockGestureModifier.kt` | Pure function: returns `true` when a drag's drop target matches the block's original position (meaning no movement occurred) |
+| `detectDragAfterLongPress()` | `BlockGestureModifier.kt` | Custom gesture detector replacing Compose's `detectDragGesturesAfterLongPress`, adding configurable `longPressTimeoutMillis` and an `onTap` callback |
+| `awaitCustomLongPress()` | `BlockGestureModifier.kt` | Low-level pointer wait loop with custom timeout |
 
 ### Key design decisions
 
@@ -127,7 +127,7 @@ public interface BlockRenderer<T : BlockType> {
 | Component | What changed |
 |-----------|-------------|
 | `EditorAction.kt` | 8 reducer implementations updated for focus/selection invariant; 2 reducers updated for block existence validation |
-| `DragModifier.kt` | Custom long-press detector with configurable timeout; `onTap` callback for selection-mode taps; `isDropAtOriginalPosition()` pure function; `finishDrag()` helper dispatching `ToggleBlockSelection` when drop is at original position |
+| `BlockGestureModifier.kt` | Custom long-press detector with configurable timeout; `onTap` callback for selection-mode taps; `isDropAtOriginalPosition()` pure function; `finishDrag()` helper dispatching `ToggleBlockSelection` when drop is at original position |
 | `CascadeEditor.kt` | Selection overlay modifier on block wrapper; clickable overlay `Box` that consumes all taps during selection mode; `LaunchedEffect` clearing Compose focus on `hasSelection`; `selectionOverlayColor` read from theme |
 | `BlockRenderer.kt` | `handlesSelectionVisual` property on `BlockRenderer<T>` interface; focus suppression guard in `DefaultBlockCallbacks.onFocus()` |
 | `CascadeEditorColors.kt` | `selectionOverlay` color slot with light/dark presets |

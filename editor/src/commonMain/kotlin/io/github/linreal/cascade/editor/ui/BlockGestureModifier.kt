@@ -47,12 +47,13 @@ import kotlinx.coroutines.CancellationException
  * @param longPressTimeoutMillis Custom long-press timeout in milliseconds.
  *        If null, uses the platform default from ViewConfiguration.
  */
-internal fun Modifier.blockDragGesture(
+internal fun Modifier.blockGestures(
     lazyListState: LazyListState,
     dragOffsetY: MutableFloatState,
     stateProvider: () -> EditorState,
     callbacks: BlockCallbacks,
     longPressTimeoutMillis: Long? = null,
+    onEmptySpaceTap: () -> Unit = {},
 ): Modifier = this.pointerInput(Unit) {
     var longPressedBlockId: BlockId? = null
     val timeout = longPressTimeoutMillis ?: viewConfiguration.longPressTimeoutMillis
@@ -86,7 +87,13 @@ internal fun Modifier.blockDragGesture(
                 }
                 true
             } else {
-                false
+                val item = findItemAtPosition(lazyListState.layoutInfo, offset.y)
+                if (item == null) {
+                    onEmptySpaceTap()
+                    true
+                } else {
+                    false
+                }
             }
         },
         onDragStart = { offset ->

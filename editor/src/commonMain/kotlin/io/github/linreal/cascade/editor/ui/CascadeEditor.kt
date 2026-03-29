@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import io.github.linreal.cascade.editor.action.CloseSlashCommand
+import io.github.linreal.cascade.editor.action.FocusBlock
 import io.github.linreal.cascade.editor.action.UpdateDragTarget
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
@@ -382,12 +383,21 @@ public fun CascadeEditor(
                     .weight(1f)
                     .fillMaxWidth()
                     .clipToBounds()
-                    .blockDragGesture(
+                    .blockGestures(
                         lazyListState = lazyListState,
                         dragOffsetY = dragOffsetY,
                         stateProvider = { stateHolder.state },
                         callbacks = callbacks,
-                        longPressTimeoutMillis = BLOCK_LONG_PRESS_MS
+                        longPressTimeoutMillis = BLOCK_LONG_PRESS_MS,
+                        onEmptySpaceTap = {
+                            val blocks = stateHolder.state.blocks
+                            val lastTextBlock = blocks.lastOrNull { it.type.supportsText }
+                            if (lastTextBlock != null) {
+                                val visibleText = textStates.getVisibleText(lastTextBlock.id)
+                                textStates.setCursorPosition(lastTextBlock.id, visibleText?.length ?: 0)
+                                stateHolder.dispatch(FocusBlock(lastTextBlock.id))
+                            }
+                        }
                     )
             ) {
                 LazyColumn(
