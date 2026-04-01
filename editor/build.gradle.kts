@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.vanniktechPublish)
 }
 
 kotlin {
@@ -63,5 +64,46 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+mavenPublishing {
+    publishToMavenCentral(automaticRelease = false)
+
+    signAllPublications()
+
+    coordinates(
+        groupId = "io.github.linreal",
+        artifactId = "cascade-editor",
+        version = "1.0.0"
+    )
+
+    pom {
+        name.set("CascadeEditor")
+        description.set("Block-based editor (Craft/Notion-like) for Compose Multiplatform")
+        url.set("https://github.com/linreal/cascade-editor")
+        inceptionYear.set("2026")
+
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://opensource.org/licenses/MIT")
+                distribution.set("repo")
+            }
+        }
+
+        developers {
+            developer {
+                id.set("linreal")
+                name.set("Sergey Drymchenko")
+                url.set("https://github.com/linreal")
+            }
+        }
+
+        scm {
+            url.set("https://github.com/linreal/cascade-editor")
+            connection.set("scm:git:git://github.com/linreal/cascade-editor.git")
+            developerConnection.set("scm:git:ssh://git@github.com/linreal/cascade-editor.git")
+        }
     }
 }
