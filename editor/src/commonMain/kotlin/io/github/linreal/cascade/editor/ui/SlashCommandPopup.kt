@@ -13,8 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Text
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +37,7 @@ import io.github.linreal.cascade.editor.action.NavigateSlashBack
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
 import io.github.linreal.cascade.editor.theme.LocalCascadeStrings
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
+import io.github.linreal.cascade.editor.ui.utils.Dividers
 import io.github.linreal.cascade.editor.slash.SlashCommandItem
 import io.github.linreal.cascade.editor.state.EditorStateHolder
 import io.github.linreal.cascade.editor.state.SlashCommandState
@@ -146,13 +146,12 @@ internal fun SlashCommandPopup(
                         .padding(horizontal = 12.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
+                    BasicText(
                         text = strings.back,
-                        style = typography.slashBackButton,
-                        color = colors.primary,
+                        style = typography.slashBackButton.copy(color = colors.primary),
                     )
                 }
-                HorizontalDivider(color = colors.uiDivider)
+                Dividers.Horizontal(color = colors.uiDivider)
             }
 
             // Scrollable item list

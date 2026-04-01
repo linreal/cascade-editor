@@ -47,7 +47,7 @@
     {
       "id": "try-4",
       "type": { "typeId": "todo", "checked": false },
-      "content": { "kind": "text", "version": 1, "text": "Type / to open slash commands", "spans": [
+      "content": { "kind": "text", "version": 1, "text": "Type / to open slash commands (or just use / icon from the toolbar)", "spans": [
         { "start": 5, "end": 6, "style": { "type": "inline_code" } }
       ] }
     },

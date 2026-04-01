@@ -11,8 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Text
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
@@ -37,6 +36,7 @@ import io.github.linreal.cascade.editor.theme.CascadeEditorStrings
 import io.github.linreal.cascade.editor.theme.CascadeEditorTypography
 import io.github.linreal.cascade.editor.theme.LocalCascadeStrings
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
+import io.github.linreal.cascade.editor.ui.utils.Dividers
 
 /**
  * Default config-driven rich text toolbar.
@@ -66,7 +66,7 @@ internal fun RichTextToolbar(
             .fillMaxWidth()
             .focusProperties { canFocus = false },
     ) {
-        HorizontalDivider(color = colors.uiDivider)
+        Dividers.Horizontal(color = colors.uiDivider)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -131,7 +131,7 @@ private fun SlashActionButton(
             .semantics { contentDescription = strings.slashCommand },
         contentAlignment = Alignment.Center,
     ) {
-        Text(
+        BasicText(
             text = "/",
             style = typography.toolbarButton.copy(color = contentColor),
         )
@@ -182,7 +182,7 @@ private fun ToolbarToggleButton(
             .semantics { contentDescription = localizedLabel(spec, strings) },
         contentAlignment = Alignment.Center,
     ) {
-        Text(
+        BasicText(
             text = buttonDisplayText(spec.style),
             style = buttonTextStyle(spec.style, contentColor, typography),
         )

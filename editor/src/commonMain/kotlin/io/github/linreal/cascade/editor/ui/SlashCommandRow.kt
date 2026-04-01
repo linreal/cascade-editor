@@ -7,12 +7,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,19 +53,20 @@ internal fun SlashCommandRow(
         Column(
             modifier = Modifier.weight(1f),
         ) {
-            Text(
+            BasicText(
                 text = item.title,
-                style = typography.slashItemTitle,
-                color = colors.slashItemTitle,
+                style = typography.slashItemTitle.copy(color = colors.slashItemTitle),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
         if (item is SlashCommandMenu) {
-            Text(
+            BasicText(
                 text = "\u203A", // single right-pointing angle quotation mark
-                fontSize = 16.sp,
-                color = colors.slashChevron,
+                style = TextStyle(
+                    fontSize = 16.sp,
+                    color = colors.slashChevron,
+                ),
                 modifier = Modifier.padding(start = 8.dp),
             )
         }
