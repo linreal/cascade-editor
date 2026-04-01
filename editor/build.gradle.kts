@@ -29,10 +29,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
-
-            implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.kotlinx.serialization.json)
         }
@@ -40,10 +37,6 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
-        }
-
-        androidMain.dependencies {
-            implementation(libs.compose.uiToolingPreview)
         }
     }
 }
