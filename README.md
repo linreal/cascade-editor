@@ -1,4 +1,4 @@
-# CascadeEditor
+# Cascade Editor
 
 A block-based rich text editor for Compose Multiplatform - the Notion/Craft editing model, natively in Kotlin.
 
@@ -6,7 +6,7 @@ A block-based rich text editor for Compose Multiplatform - the Notion/Craft edit
 [![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.10-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Android](https://img.shields.io/badge/Android-minSdk_28-3DDC84?logo=android)](https://developer.android.com/)
-[![iOS](https://img.shields.io/badge/iOS-arm64-000000?logo=apple)](https://developer.apple.com/)
+[![iOS](https://img.shields.io/badge/iOS-16+-000000?logo=apple)](https://developer.apple.com/)
 
 ![Demo](demo.gif)
 
@@ -44,17 +44,69 @@ fun MyEditor() {
 }
 ```
 
-All state mutations flow through the sealed `EditorAction` hierarchy:
+## Theming
+
+Built-in light and dark presets, or full control over every visual detail:
 
 ```kotlin
-stateHolder.dispatch(EditorAction.InsertBlockAfter(
-    afterBlockId = currentBlockId,
-    newBlock = Block.paragraph()
-))
+// Use a preset
+CascadeEditor(
+    stateHolder = stateHolder,
+    theme = CascadeEditorTheme.dark(),
+)
 
-val currentBlocks = stateHolder.state.blocks
-val focusedId = stateHolder.state.focusedBlockId
+// Or customize individual slots
+CascadeEditor(
+    stateHolder = stateHolder,
+    theme = CascadeEditorTheme.light().copy(
+        colors = CascadeEditorColors.light().copy(
+            primary = Color(0xFF6750A4),
+            cursor = Color(0xFF6750A4),
+            quoteBorder = Color(0xFF6750A4),
+        ),
+    ),
+)
 ```
+
+`CascadeEditorColors` exposes 20+ slots — cursor, selection, toolbar icons, slash popup, quote borders, inline code background, highlight, and more. `CascadeEditorTypography` controls font size, weight, and family for every text element from body to headings to code blocks.
+
+All UI strings are localizable via `CascadeEditorStrings` and `CascadeEditorBlockStrings`:
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    strings = CascadeEditorStrings.default().copy(bold = "Fett"),
+)
+```
+
+## Slash Commands
+
+Type `/` in any text block to open a Notion-style command palette — fuzzy search, keyboard navigation, submenus — all without stealing focus from the text field.
+
+Built-in commands for all block types are generated automatically. Add your own:
+
+```kotlin
+val slashRegistry = remember { SlashCommandRegistry() }
+
+slashRegistry.register(
+    SlashCommandAction(
+        id = SlashCommandId("custom.timestamp"),
+        title = "Timestamp",
+        description = "Insert current date/time",
+        onExecute = {
+            editor.replaceQueryText(Clock.System.now().toString())
+            SlashCommandResult.Done
+        }
+    )
+)
+
+CascadeEditor(
+    stateHolder = stateHolder,
+    slashRegistry = slashRegistry,
+)
+```
+
+Custom commands get the full `SlashCommandContext` — replace text, swap blocks, insert new ones, or control focus. You can also organize commands into nested submenus with `SlashCommandMenu`.
 
 ## Block Types
 
@@ -69,44 +121,6 @@ val focusedId = stateHolder.state.focusedBlockId
 | `Divider` | No | Horizontal rule |
 
 Extend with custom types via the `CustomBlockType` interface (see [Custom Block Types](#custom-block-types)).
-
-## Slash Commands
-
-Type `/` in any text block to open the slash command popup. Built-in commands for all standard block types are generated automatically from the block registry. Register custom commands:
-
-```kotlin
-val slashRegistry = remember { SlashCommandRegistry() }
-
-slashRegistry.register(
-    SlashCommandItem(
-        id = SlashCommandId("my-callout"),
-        title = "Callout",
-        description = "Insert a callout block",
-        keywords = listOf("callout", "note", "info"),
-        action = SlashCommandAction.Custom { context ->
-            context.replaceAnchorBlock(Block.paragraph(text = "Callout content"))
-            SlashCommandResult.Handled
-        }
-    )
-)
-
-CascadeEditor(
-    stateHolder = stateHolder,
-    slashRegistry = slashRegistry,
-)
-```
-
-## Theming & Localization
-
-```kotlin
-CascadeEditor(
-    stateHolder = stateHolder,
-    theme = CascadeEditorTheme.dark(),
-    strings = CascadeEditorStrings.default().copy(bold = "Fett"),
-)
-```
-
-`CascadeEditorTheme` provides `colors` and `typography` with `light()` and `dark()` presets — every color from cursor tint to slash popup background to quote border is configurable. `CascadeEditorStrings` localizes UI chrome; `CascadeEditorBlockStrings` localizes per-block-type display names, descriptions, and slash command keywords.
 
 ## Custom Block Types
 
@@ -137,14 +151,37 @@ registry.register(
 )
 ```
 
-## Serialization
+## Save & Load
+
+Save a document to JSON and restore it later — two lines:
 
 ```kotlin
+// Save
 val json = stateHolder.toJson(textStates, spanStates)
+
+// Load
 val result = stateHolder.loadFromJson(json, textStates, spanStates)
 ```
 
-Versioned `DocumentSchema` with `BlockTypeCodec` and `BlockContentCodec` hooks for custom types. Configurable `BlockIdMode` (preserve or regenerate), `DuplicateIdMode`, and `CustomDataMode`.
+All block types, text content, and rich text formatting (bold, italic, etc.) are preserved through the round-trip. Unknown block types from newer editor versions are kept as-is — no silent data loss on re-save.
+
+For custom block types, plug in `BlockTypeCodec` and `BlockContentCodec` to control how your types are serialized.
+
+## State Management
+
+All state mutations flow through a sealed `EditorAction` hierarchy with unidirectional data flow:
+
+```kotlin
+stateHolder.dispatch(EditorAction.InsertBlockAfter(
+    afterBlockId = currentBlockId,
+    newBlock = Block.paragraph()
+))
+
+val currentBlocks = stateHolder.state.blocks
+val focusedId = stateHolder.state.focusedBlockId
+```
+
+Every action is a pure reducer function over immutable state — deterministic and testable without UI infrastructure.
 
 ## Architecture
 
@@ -192,6 +229,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
 | Compose Multiplatform | 1.10.3 |
 | Android minSdk | 28 |
 | Android compileSdk | 36 |
+| iOS min version | 16.0 |
 | iOS targets | arm64, simulatorArm64 |
 | JVM target | 11 |
 
