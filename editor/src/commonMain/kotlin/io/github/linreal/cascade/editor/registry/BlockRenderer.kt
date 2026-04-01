@@ -19,6 +19,7 @@ import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
+import io.github.linreal.cascade.editor.logd
 import io.github.linreal.cascade.editor.loge
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
@@ -256,11 +257,11 @@ public open class DefaultBlockCallbacks(
     }
 
     override fun onClick(blockId: BlockId) {
-        // TODO
+        // TODO could be deleted in future versions
     }
 
     override fun onLongClick(blockId: BlockId) {
-        loge(message = "Long click on block $blockId")
+        // TODO could be deleted in future versions
     }
 
     override fun onDeleteAtEnd(blockId: BlockId) {

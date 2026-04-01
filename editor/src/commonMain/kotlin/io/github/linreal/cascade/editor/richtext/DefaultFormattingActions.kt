@@ -2,7 +2,6 @@ package io.github.linreal.cascade.editor.richtext
 
 import androidx.compose.runtime.Stable
 import io.github.linreal.cascade.editor.core.BlockId
-import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorStateHolder
