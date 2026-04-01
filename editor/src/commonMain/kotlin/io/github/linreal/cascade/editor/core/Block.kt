@@ -28,6 +28,9 @@ public data class Block(
     public companion object {
         /**
          * Creates a new paragraph block with the given text and optional spans.
+         *
+         * @param text Initial plain text content. Defaults to empty.
+         * @param spans Rich text style spans applied to ranges within [text]. Defaults to empty.
          */
         public fun paragraph(
             text: String = "",
@@ -40,6 +43,9 @@ public data class Block(
 
         /**
          * Creates a new heading block with the given level and text.
+         *
+         * @param level Heading level from 1 (largest) to 6 (smallest).
+         * @param text Initial plain text content. Defaults to empty.
          */
         public fun heading(level: Int, text: String = ""): Block = Block(
             id = BlockId.generate(),
