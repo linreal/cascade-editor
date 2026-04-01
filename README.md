@@ -1,6 +1,6 @@
 # CascadeEditor
 
-A block-based rich text editor for Compose Multiplatform — the Notion/Craft editing model, natively in Kotlin.
+A block-based rich text editor for Compose Multiplatform - the Notion/Craft editing model, natively in Kotlin.
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
 [![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.10-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
@@ -8,40 +8,24 @@ A block-based rich text editor for Compose Multiplatform — the Notion/Craft ed
 [![Android](https://img.shields.io/badge/Android-minSdk_28-3DDC84?logo=android)](https://developer.android.com/)
 [![iOS](https://img.shields.io/badge/iOS-arm64-000000?logo=apple)](https://developer.apple.com/)
 
-<!-- TODO: Record demo GIF (docs/demo.gif) -->
-![Demo](docs/demo.gif)
+![Demo](demo.gif)
 
-## The Problem
+## Features
 
-Building structured document editing in Compose means solving problems that `BasicTextField` was never designed for: splitting paragraphs, merging blocks, reordering sections, inline formatting with span preservation, slash commands, cross-platform serialization. Most teams either settle for a flat text area or bridge to a web-based editor, losing Compose's native rendering pipeline entirely.
-
-Existing Compose rich-text libraries take the **single-field** approach — one state object wrapping one text buffer. That works for formatted text input, but it isn't document editing. Splitting a paragraph requires substring math and span offset recalculation. Reordering sections means cut-paste with careful re-stitching. Converting a paragraph to a heading means applying a style range to a character span rather than changing the block's type. The gap between "rich text field" and "structured document editor" is where most of the hard engineering lives.
-
-## Block-Based Architecture
-
-CascadeEditor treats a document as an ordered list of typed blocks, each an independent unit with its own type, content, and text state. Structural operations are first-class:
-
-| Operation | Block-based (CascadeEditor) | Single-field approach |
-|---|---|---|
-| Split a paragraph at the cursor | `SplitBlock` — two blocks, cursor in the new one | Substring math + offset recalculation |
-| Convert paragraph to heading | `ConvertBlockType` — type change, content preserved | Style range applied to characters |
-| Reorder sections | `MoveBlocks` — drag-and-drop with full state preservation | Cut-paste substrings + re-stitch all spans |
-| Delete a section | `DeleteBlock` — remove the block | Find range boundaries + delete + adjust offsets |
-
-Each block owns its own `TextFieldState`. Editing one block never affects another's cursor or text state — no global offset recalculation, no cursor-jump bugs, no race conditions between adjacent edits.
-
-### Design decisions
-
-- **Unidirectional data flow** — sealed action hierarchy, pure reducer functions, immutable state snapshots. Every state change is deterministic and testable without UI infrastructure.
-- **Kotlin Multiplatform** — single codebase, native Compose rendering on Android and iOS. No WebView bridging.
-- **Rich text spans** — bold, italic, underline, strikethrough, inline code, highlight, and custom styles with O(n) normalization. Split/merge operations transfer spans with deterministic snapshot alignment.
-- **Slash command system** — searchable popup with submenus, keyboard navigation, caret-relative positioning, and custom command registration.
-- **Full serialization** — `toJson()` / `loadFromJson()` with versioned document schemas, codec hooks for custom types, configurable ID and duplicate handling.
-- **Theming and localization** — colors, typography, and all UI strings configurable through data classes and `CompositionLocal` providers, with light/dark presets.
+- **Block-based editing** — paragraphs, headings (H1-H6), todo lists, bullet lists, numbered lists, quotes, and dividers, each as an independent block you can split, merge, reorder, and convert freely
+- **Rich text formatting** — bold, italic, underline, strikethrough, inline code, highlight, and custom styles with full span preservation across block operations
+- **Drag & drop** — reorder blocks with native drag gestures and full state preservation
+- **Slash commands** — type `/` to open a searchable command popup with keyboard navigation and custom command registration
+- **Custom block types** — extend the editor with your own block types and renderers via `CustomBlockType` and `BlockRenderer`
+- **Serialization** — `toJson()` / `loadFromJson()` with versioned document schemas and codec hooks for custom types
+- **Theming & localization** — fully configurable colors, typography, and UI strings with light/dark presets
+- **Kotlin Multiplatform** — single codebase, native Compose rendering on Android and iOS, no WebView bridging
 
 ## Quick Start
 
-> Maven Central publication is in progress. For now, clone the repository and use the `editor` module as a local dependency, or explore the included `sample/` app.
+```groovy
+implementation("io.github.linreal:cascade-editor:1.0.0")
+```
 
 ```kotlin
 @Composable
@@ -53,7 +37,10 @@ fun MyEditor() {
         )
     )
 
-    CascadeEditor(stateHolder = stateHolder)
+    CascadeEditor(
+        modifier = Modifier.fillMaxSize(),
+        stateHolder = stateHolder
+    )
 }
 ```
 
@@ -208,14 +195,6 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
 | iOS targets | arm64, simulatorArm64 |
 | JVM target | 11 |
 
-## Roadmap
-
-- [ ] Undo / redo (requires span state snapshot integration)
-- [ ] Text transformation panel
-- [ ] Block nesting / indentation
-- [ ] Multi-block drag
-- [ ] Block anchor / action menu
-- [ ] Maven Central publication
 
 ## Contributing
 

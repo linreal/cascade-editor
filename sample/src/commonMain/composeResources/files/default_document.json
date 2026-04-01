@@ -120,11 +120,6 @@
       "content": { "kind": "text", "version": 1, "text": "Try deleting the second item above", "spans": [] }
     },
     {
-      "id": "blocks-7",
-      "type": { "typeId": "code" },
-      "content": { "kind": "text", "version": 1, "text": "val editor = CascadeEditor(\n    stateHolder = rememberEditorState(),\n    theme = CascadeEditorTheme.dark(),\n)", "spans": [] }
-    },
-    {
       "id": "blocks-8",
       "type": { "typeId": "quote" },
       "content": { "kind": "text", "version": 1, "text": "The best way to predict the future is to invent it. \u2014 Alan Kay", "spans": [] }
