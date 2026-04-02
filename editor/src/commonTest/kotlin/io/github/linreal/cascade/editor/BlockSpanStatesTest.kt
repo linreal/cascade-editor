@@ -43,7 +43,7 @@ class BlockSpanStatesTest {
     }
 
     @Test
-    fun `getOrCreate - returns same state on second call (idempotent)`() {
+    fun `getOrCreate - returns same state on second call - idempotent`() {
         val holder = BlockSpanStates()
         val spans1 = listOf(TextSpan(0, 3, SpanStyle.Bold))
         val spans2 = listOf(TextSpan(0, 5, SpanStyle.Italic))

@@ -162,7 +162,7 @@ class BlockSelectionIntegrationTest {
     }
 
     @Test
-    fun `full lifecycle - select, multi-select, delete, back to normal`() {
+    fun `full lifecycle - select then multi-select then delete then back to normal`() {
         var state = EditorState.withBlocks(listOf(blockA, blockB, blockC, blockD)).copy(
             focusedBlockId = blockA.id,
         )

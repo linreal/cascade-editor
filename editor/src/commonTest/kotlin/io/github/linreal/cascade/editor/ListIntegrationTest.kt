@@ -337,7 +337,7 @@ class ListIntegrationTest {
     // --- Integration: combined multi-step scenario ---
 
     @Test
-    fun `full lifecycle - create list, add items, delete middle, exit at end`() {
+    fun `full lifecycle - create list then add items then delete middle then exit at end`() {
         // Step 1: Start with a paragraph, simulate auto-detect to NumberedList(1)
         var state = EditorState.withBlocks(listOf(paragraphBlock("a", "Item one")))
         state = ConvertBlockType(BlockId("a"), BlockType.NumberedList(1)).reduce(state)

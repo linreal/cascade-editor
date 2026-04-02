@@ -179,7 +179,7 @@ class DocumentSchemaEncodeTest {
     // Custom data map serialization
 
     @Test
-    fun `custom data - string, int, long, double, boolean, null`() {
+    fun `custom data - string int long double boolean null`() {
         val data = mapOf<String, Any?>(
             "s" to "hello",
             "i" to 42,

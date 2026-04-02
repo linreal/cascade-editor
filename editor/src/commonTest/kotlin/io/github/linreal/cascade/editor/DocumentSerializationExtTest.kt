@@ -110,7 +110,7 @@ class DocumentSerializationExtTest {
     }
 
     @Test
-    fun `toJson mixed - some blocks have runtime, some use snapshot`() {
+    fun `toJson mixed - some blocks have runtime and some use snapshot`() {
         val id1 = BlockId("b1")
         val id2 = BlockId("b2")
         val blocks = listOf(

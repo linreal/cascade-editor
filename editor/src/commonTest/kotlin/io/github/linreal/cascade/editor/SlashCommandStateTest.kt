@@ -36,7 +36,7 @@ class SlashCommandStateTest {
     // --- Opening a slash session ---
 
     @Test
-    fun `opening a slash session stores anchor, range, and query`() {
+    fun `opening a slash session stores anchor and range and query`() {
         val state = stateWithBlock()
         val range = SlashQueryRange(start = 6, endExclusive = 12)
 

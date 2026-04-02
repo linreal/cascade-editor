@@ -388,7 +388,7 @@ class DocumentSchemaDecodeTest {
     // Custom data types round-trip
 
     @Test
-    fun `custom data types round-trip - string, long, double, boolean, null, list, map`() {
+    fun `custom data types round-trip - string long double boolean null list map`() {
         val data = mapOf<String, Any?>(
             "s" to "hello",
             "l" to 42L,
