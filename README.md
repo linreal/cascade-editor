@@ -1,6 +1,6 @@
 # Cascade Editor
 
-A block-based rich text editor for Compose Multiplatform - the Notion/Craft editing model, natively in Kotlin.
+The first native block-based editor for Compose Multiplatform. Notion/Craft-style editing - blocks, drag-and-drop, slash commands, all without WebView, natively in Kotlin.
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
 [![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.10-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
@@ -9,6 +9,21 @@ A block-based rich text editor for Compose Multiplatform - the Notion/Craft edit
 [![iOS](https://img.shields.io/badge/iOS-16+-000000?logo=apple)](https://developer.apple.com/)
 
 ![Demo](assets/demo.gif)
+
+## Why CascadeEditor?
+
+Every Compose rich text library wraps a single `BasicTextField` with formatting spans. That works for styled text - but not for structured documents with draggable blocks, slash command palettes, and custom block types.
+
+CascadeEditor is architecturally different: each paragraph, heading, list item, and divider is an independent block with its own state, renderer, and lifecycle. This is the same model Notion, Craft, and BlockNote use — now available natively for Android and iOS.
+
+| | CascadeEditor | Single-field editors |
+|---|:---:|:---:|
+| Block-based architecture | Yes | No |
+| Drag-and-drop reorder | Yes | No |
+| Slash command system | Yes | No |
+| Custom block types | Yes | No |
+| Rich text spans | Yes | Yes |
+| Compose Multiplatform | Yes | Yes |
 
 ## Features
 
