@@ -8,7 +8,7 @@ A block-based rich text editor for Compose Multiplatform - the Notion/Craft edit
 [![Android](https://img.shields.io/badge/Android-minSdk_28-3DDC84?logo=android)](https://developer.android.com/)
 [![iOS](https://img.shields.io/badge/iOS-16+-000000?logo=apple)](https://developer.apple.com/)
 
-![Demo](demo.gif)
+![Demo](assets/demo.gif)
 
 ## Features
 
@@ -67,6 +67,7 @@ CascadeEditor(
     ),
 )
 ```
+![Demo](assets/CascadeThemes.png)
 
 `CascadeEditorColors` exposes 20+ slots — cursor, selection, toolbar icons, slash popup, quote borders, inline code background, highlight, and more. `CascadeEditorTypography` controls font size, weight, and family for every text element from body to headings to code blocks.
 
@@ -107,6 +108,48 @@ CascadeEditor(
 ```
 
 Custom commands get the full `SlashCommandContext` — replace text, swap blocks, insert new ones, or control focus. You can also organize commands into nested submenus with `SlashCommandMenu`.
+
+## Toolbar
+
+A built-in formatting toolbar ships with bold, italic, underline, strikethrough, inline code, and highlight — plus keyboard shortcuts (Cmd/Ctrl+B/I/U) that work even with the toolbar hidden.
+
+Customize which buttons appear and in what order:
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    toolbar = ToolbarSlot.Default(
+        config = RichTextToolbarConfig(
+            buttons = listOf(
+                ToolbarButtonSpec(SpanStyle.Bold, "Bold"),
+                ToolbarButtonSpec(SpanStyle.Italic, "Italic"),
+                ToolbarButtonSpec(SpanStyle.InlineCode, "Code"),
+            )
+        )
+    ),
+)
+```
+
+Or replace it entirely with your own composable — you get full access to `FormattingState` and `FormattingActions`:
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    toolbar = ToolbarSlot.Custom { formattingState, formattingActions ->
+        MyCustomToolbar(formattingState, formattingActions)
+    },
+)
+```
+
+Need to sync formatting state with an external UI (like an app bar)? Use the `onFormattingStateChanged` callback:
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    toolbar = ToolbarSlot.None,
+    onFormattingStateChanged = { state -> updateAppBar(state) },
+)
+```
 
 ## Block Types
 
@@ -167,22 +210,6 @@ All block types, text content, and rich text formatting (bold, italic, etc.) are
 
 For custom block types, plug in `BlockTypeCodec` and `BlockContentCodec` to control how your types are serialized.
 
-## State Management
-
-All state mutations flow through a sealed `EditorAction` hierarchy with unidirectional data flow:
-
-```kotlin
-stateHolder.dispatch(EditorAction.InsertBlockAfter(
-    afterBlockId = currentBlockId,
-    newBlock = Block.paragraph()
-))
-
-val currentBlocks = stateHolder.state.blocks
-val focusedId = stateHolder.state.focusedBlockId
-```
-
-Every action is a pure reducer function over immutable state — deterministic and testable without UI infrastructure.
-
 ## Architecture
 
 ```
@@ -207,19 +234,11 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full quick-reference table (90+ p
 
 ## Testing
 
-**43 test files** in `editor/src/commonTest/` cover the full architecture:
-
-- **Reducer coverage** (~87 tests) — every `EditorAction` including span transfer across split/merge
-- **Span algorithms** (~62 tests) — normalize, edit adjust, split/merge, apply/remove/toggle, style queries
-- **Span state management** (~57 tests) — lifecycle, runtime operations, pending styles, edge cases
-- **Slash commands** (~30 tests) — session management, text observer, registry ranking, factory generation
-- **Integration suites** — block selection workflows, list behavior chains (auto-detect, enter continuation, renumbering), formatting round-trips, serialization encode/decode, drag-and-drop, theming presets, localization
+300+ tests across 43 test files — reducers, span algorithms, slash commands, serialization, drag-and-drop, and integration workflows. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
 
 ```bash
 ./gradlew :editor:allTests
 ```
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
 
 ## Platform Requirements
 
@@ -236,15 +255,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
 
 ## Contributing
 
-```bash
-git clone https://github.com/linreal/cascade-editor.git
-cd cascade-editor
-./gradlew :editor:allTests
-```
-
-The codebase enforces `explicitApi()` — all public declarations require explicit visibility modifiers. State objects use `@Immutable` data classes. New actions must extend the `EditorAction` sealed hierarchy with a `reduce()` override.
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for conventions and the full quick-reference table.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, code conventions, and PR guidelines.
 
 ## License
 
