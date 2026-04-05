@@ -1,6 +1,10 @@
 # Cascade Editor
 
-The first native block-based editor for Compose Multiplatform. Notion/Craft-style editing - blocks, drag-and-drop, slash commands, all without WebView, natively in Kotlin.
+The first native block-based editor for Compose Multiplatform.
+
+Notion/Craft-style editing, implemented as a shared Kotlin editor core for Android and iOS: draggable blocks, slash commands, rich-text spans, custom block types, and versioned document serialization, all without WebView, HTML/contentEditable, or embedded JavaScript editors.
+
+Shared `commonMain` editor core | Android + iOS | 900+ tests | No WebView | Extensible block registry
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
 [![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.10-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
@@ -12,31 +16,36 @@ The first native block-based editor for Compose Multiplatform. Notion/Craft-styl
 
 ## Why CascadeEditor?
 
-Every Compose rich text library wraps a single `BasicTextField` with formatting spans. That works for styled text - but not for structured documents with draggable blocks, slash command palettes, and custom block types.
+Notion and Craft feel different from ordinary rich-text fields because the document is not a single styled text buffer. It is an ordered block document: paragraphs, headings, todos, quotes, lists, and dividers exist as structural units that can be inserted, converted, reordered, and serialized independently.
 
-CascadeEditor is architecturally different: each paragraph, heading, list item, and divider is an independent block with its own state, renderer, and lifecycle. This is the same model Notion, Craft, and BlockNote use — now available natively for Android and iOS.
+CascadeEditor brings that model to Compose Multiplatform natively. Each block has its own live text state, renderer, slash-command behavior, and serialization path, while rich-text spans still work inside text-capable blocks. That is what enables Notion-style editing on Android and iOS without delegating the editor core to a WebView.
 
-| | CascadeEditor | Single-field editors |
+| Capability | CascadeEditor | Typical single-buffer rich-text editors |
 |---|:---:|:---:|
-| Block-based architecture | Yes | No |
+| Document model | Ordered block document | Single styled text buffer |
+| Independent block state/lifecycle | Yes | No |
+| Block split / merge / convert | Yes | Limited / manual |
 | Drag-and-drop reorder | Yes | No |
-| Slash command system | Yes | No |
-| Custom block types | Yes | No |
-| Rich text spans | Yes | Yes |
-| Compose Multiplatform | Yes | Yes |
+| Slash-command insertion | Yes | Rare / custom |
+| Custom block renderers | Yes | Limited |
+| Rich-text spans | Yes | Yes |
+| Versioned document serialization | Yes | Limited / app-specific |
+
+If you only need a formatted text area, a single-buffer editor is simpler. CascadeEditor is for apps that need a real document editor.
 
 ## Features
 
-- **Block-based editing** — paragraphs, headings (H1-H6), todo lists, bullet lists, numbered lists, quotes, and dividers, each as an independent block you can split, merge, reorder, and convert freely
-- **Rich text formatting** — bold, italic, underline, strikethrough, inline code, highlight, and custom styles with full span preservation across block operations
-- **Drag & drop** — reorder blocks with native drag gestures and full state preservation
-- **Slash commands** — type `/` to open a searchable command popup with keyboard navigation and custom command registration
-- **Custom block types** — extend the editor with your own block types and renderers via `CustomBlockType` and `BlockRenderer`
-- **Serialization** — `toJson()` / `loadFromJson()` with versioned document schemas and codec hooks for custom types
-- **Theming & localization** — fully configurable colors, typography, and UI strings with light/dark presets
-- **Kotlin Multiplatform** — single codebase, native Compose rendering on Android and iOS, no WebView bridging
+- **Structured document editing** — paragraphs, headings (H1-H6), todos, bullet lists, numbered lists, quotes, and dividers as independent blocks that can be inserted, split, merged, converted, reordered, and deleted
+- **Notion-style editing workflows** — native drag-and-drop block reordering, slash-command insertion, list continuation, and structural editing behaviors without WebView
+- **Rich-text spans inside blocks** — bold, italic, underline, strikethrough, inline code, highlight, and custom styles with span preservation across split, merge, and replace operations
+- **Versioned document serialization** — `toJson()` / `loadFromJson()` with explicit schemas, codec hooks, and support for custom block types
+- **Custom block system** — extend the editor with your own `CustomBlockType`, `BlockRenderer`, slash commands, and block-specific behavior
+- **Shared multiplatform editor core** — one Kotlin codebase for Android and iOS with native Compose rendering instead of HTML/contentEditable or embedded JavaScript editors
+- **Theming and localization** — configurable colors, typography, and UI strings for integrating the editor into product-specific design systems
 
 ## Quick Start
+
+Create a native block document with an initial heading and paragraph:
 
 ```groovy
 implementation("io.github.linreal:cascade-editor:1.0.0")
@@ -58,6 +67,8 @@ fun MyEditor() {
     )
 }
 ```
+
+From here you can add slash commands, custom block renderers, theming, and JSON serialization.
 
 ## Theming
 
@@ -247,9 +258,25 @@ Six layers with strict dependency direction. The reducer pattern ensures every s
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full quick-reference table (90+ public symbols), layer interactions, data flow details, and conventions.
 
+## Engineering Challenges Solved
+
+This is not a styled text field. CascadeEditor combines block-structured document editing, rich-text ranges, slash commands, drag-and-drop, and serialization in shared Compose Multiplatform code. The difficulty is preserving correct behavior across compound editing operations, not rendering individual UI controls.
+
+**Live runtime state and immutable document state must stay aligned.** Each text-capable block owns a long-lived `TextFieldState` for live editing, while the document model remains an immutable `EditorState` used by reducers, persistence, and structural operations. Split, merge, slash-command edits, and list conversion can mutate the live buffer first and the snapshot second, so `BlockTextStates` records pending programmatic commits and `SpanMaintenanceTextObserver` rebases against the committed result instead of treating it as user input. That is the mechanism that prevents runtime/snapshot drift during compound operations.
+
+**Rich-text formatting has to survive split, merge, replace, and typing workflows.** Formatting is represented as `TextSpan` ranges in visible-text coordinates, not raw buffer coordinates. `SpanAlgorithms` handles normalization, edit adjustment, split, merge, apply/remove/toggle, and style queries, and the same algorithms are reused by runtime holders and snapshot reducers. If those paths diverge, formatting silently corrupts on the next operation. The pure algorithm suite in `SpanAlgorithmsTest.kt` currently covers this surface with 100 tests, with additional reducer and integration tests covering split/merge handoff.
+
+**The editor owns text buffers directly instead of reconstructing them from composition side effects.** `BlockTextStates` keeps one `TextFieldState` per block across recompositions. That enables direct buffer edits for merge, split, slash replacement, and list auto-detection without recreating text state from snapshot data or re-deriving cursor position after every structural change. This is an architectural choice that simplifies block-local editing invariants.
+
+**Span maintenance runs after commit, not inside the input pipeline.** `TextBlockField` observes committed text and selection with `snapshotFlow`, and `SpanMaintenanceTextObserver` updates span coordinates after the edit is accepted. It also resolves continuation rules for typing at formatting boundaries and explicit pending styles from toolbar actions. Keeping span maintenance post-commit isolates formatting logic from IME-driven text entry.
+
+**Drag auto-scroll has to coexist with an active gesture.** During block drag, the list must scroll while pointer input remains owned by the drag handler. `AutoScrollDuringDrag` uses `LazyListState.dispatchRawDelta()` instead of `scroll {}` because the standard scroll path acquires the scroll `MutatorMutex` and interferes with the active drag gesture. After each delta, the editor recomputes the drop target against the shifted viewport so reorder feedback stays correct while the list is moving.
+
+**Most of the hard logic lives in shared multiplatform code.** Core models, reducers, slash-command infrastructure, serialization, span algorithms, state holders, and most editor behavior live in `editor/src/commonMain`, with platform-specific code limited to thin Android/iOS adapters. That means the non-trivial parts are implemented once and have to remain correct across both targets, rather than being delegated to a platform-specific text widget.
+
 ## Testing
 
-300+ tests across 43 test files — reducers, span algorithms, slash commands, serialization, drag-and-drop, and integration workflows. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
+900+ tests across 43 test files — reducers, span algorithms, slash commands, serialization, drag-and-drop, and integration workflows. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
 
 ```bash
 ./gradlew :editor:allTests
