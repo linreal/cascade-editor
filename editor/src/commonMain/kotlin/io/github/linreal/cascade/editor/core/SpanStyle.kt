@@ -30,7 +30,7 @@ public sealed interface SpanStyle {
      *
      * @param typeId Identifier for the custom style type
      * @param payload Opaque JSON string. Core layer must not parse or inspect this value.
-     *   Serialization layer (Task 2) owns the String <-> JsonElement conversion
+     *   Serialization layer owns the String <-> JsonElement conversion
      *   and must canonicalize (parse then re-encode) at the persistence boundary.
      */
     @Immutable

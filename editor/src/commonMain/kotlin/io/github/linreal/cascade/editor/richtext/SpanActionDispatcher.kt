@@ -9,6 +9,9 @@ import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.SpanStyle.Companion.kindMatches
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
+import io.github.linreal.cascade.editor.state.EditorStateHolder
+import io.github.linreal.cascade.editor.state.buildHistoryEntryFromCheckpoints
+import io.github.linreal.cascade.editor.state.captureCheckpoint
 
 /**
  * Coordinates runtime [BlockSpanStates] updates with snapshot [EditorAction] dispatch
@@ -19,6 +22,7 @@ import io.github.linreal.cascade.editor.state.BlockTextStates
  * - Immediate visual update via runtime [BlockSpanStates]
  * - Snapshot state sync via [UpdateBlockContent] dispatch (carries current runtime
  *   text + spans, avoiding stale-text-length mismatch)
+ * - Optional history capture when constructed with [stateHolder]
  *
  * @param dispatchFn Function to dispatch [EditorAction]s to the state holder
  * @param textStates Text state manager for visible text length resolution
@@ -29,6 +33,7 @@ public class SpanActionDispatcher(
     private val dispatchFn: (EditorAction) -> Unit,
     private val textStates: BlockTextStates,
     private val spanStates: BlockSpanStates,
+    private val stateHolder: EditorStateHolder? = null,
 ) {
 
     /**
@@ -43,9 +48,13 @@ public class SpanActionDispatcher(
         rangeEnd: Int,
         style: SpanStyle,
     ) {
-        val visibleText = textStates.getVisibleText(blockId) ?: return
-        spanStates.applyStyle(blockId, rangeStart, rangeEnd, style, visibleText.length)
-        syncSnapshot(blockId, visibleText)
+        mutateFormatting(
+            blockId = blockId,
+            captureHistory = rangeStart != rangeEnd,
+        ) { visibleText ->
+            spanStates.applyStyle(blockId, rangeStart, rangeEnd, style, visibleText.length)
+            syncSnapshot(blockId, visibleText)
+        }
     }
 
     /**
@@ -60,9 +69,13 @@ public class SpanActionDispatcher(
         rangeEnd: Int,
         style: SpanStyle,
     ) {
-        val visibleText = textStates.getVisibleText(blockId) ?: return
-        spanStates.removeStyle(blockId, rangeStart, rangeEnd, style)
-        syncSnapshot(blockId, visibleText)
+        mutateFormatting(
+            blockId = blockId,
+            captureHistory = rangeStart != rangeEnd,
+        ) { visibleText ->
+            spanStates.removeStyle(blockId, rangeStart, rangeEnd, style)
+            syncSnapshot(blockId, visibleText)
+        }
     }
 
     /**
@@ -86,19 +99,24 @@ public class SpanActionDispatcher(
 
         // Collapsed cursor: toggle pending style for next insertion
         if (rangeStart == rangeEnd) {
-            val pending = spanStates.getPendingStyles(blockId) ?: run {
-                if (rangeStart <= 0) {
-                    emptySet()
-                } else {
-                    // Keep toggle semantics aligned with insertion continuation (`position - 1`).
-                    spanStates.activeStylesAt(blockId, rangeStart - 1)
+            mutateFormatting(
+                blockId = blockId,
+                captureHistory = false,
+            ) {
+                val pending = spanStates.getPendingStyles(blockId) ?: run {
+                    if (rangeStart <= 0) {
+                        emptySet()
+                    } else {
+                        // Keep toggle semantics aligned with insertion continuation (`position - 1`).
+                        spanStates.activeStylesAt(blockId, rangeStart - 1)
+                    }
                 }
-            }
-            val existing = pending.firstOrNull { kindMatches(it, style) }
-            if (existing != null) {
-                spanStates.setPendingStyles(blockId, pending - existing)
-            } else {
-                spanStates.setPendingStyles(blockId, pending + style)
+                val existing = pending.firstOrNull { kindMatches(it, style) }
+                if (existing != null) {
+                    spanStates.setPendingStyles(blockId, pending - existing)
+                } else {
+                    spanStates.setPendingStyles(blockId, pending + style)
+                }
             }
             return
         }
@@ -108,6 +126,43 @@ public class SpanActionDispatcher(
             StyleStatus.FullyActive -> removeStyle(blockId, rangeStart, rangeEnd, style)
             else -> applyStyle(blockId, rangeStart, rangeEnd, style)
         }
+    }
+
+    /**
+     * Shared mutation wrapper for formatting commands.
+     *
+     * It preserves the runtime-first behavior of the dispatcher, but when a
+     * holder is available it also:
+     * 1. breaks any in-flight typing batch for this block
+     * 2. optionally captures a before/after history entry
+     * 3. resynchronizes the block-local text tracker baseline afterward
+     */
+    private inline fun mutateFormatting(
+        blockId: BlockId,
+        captureHistory: Boolean,
+        mutation: (visibleText: String) -> Unit,
+    ) {
+        val visibleText = textStates.getVisibleText(blockId) ?: return
+        val beforeCheckpoint = if (captureHistory) {
+            stateHolder?.captureCheckpoint(textStates, spanStates)
+        } else {
+            null
+        }
+
+        stateHolder?.breakTextHistoryBatch(blockId)
+        mutation(visibleText)
+
+        val holder = stateHolder ?: return
+        val afterCheckpoint = holder.captureCheckpoint(textStates, spanStates)
+        if (beforeCheckpoint != null) {
+            holder.pushHistoryEntry(
+                buildHistoryEntryFromCheckpoints(
+                    before = beforeCheckpoint,
+                    after = afterCheckpoint,
+                )
+            )
+        }
+        holder.syncTextHistoryTracker(blockId, afterCheckpoint)
     }
 
     /**

@@ -346,7 +346,7 @@ class EnterContinuationTest {
         )
     }
 
-    // --- Empty list item exit (Task 6) ---
+    // --- Empty list item exit ---
 
     @Test
     fun `enter on empty BulletList dispatches ConvertBlockType to Paragraph`() {

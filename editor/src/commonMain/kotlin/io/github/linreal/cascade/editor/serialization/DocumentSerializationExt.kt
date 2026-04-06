@@ -1,5 +1,6 @@
 package io.github.linreal.cascade.editor.serialization
 
+import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
@@ -21,7 +22,30 @@ public fun EditorStateHolder.toJson(
     typeCodec: BlockTypeCodec? = null,
     contentCodec: BlockContentCodec? = null,
 ): String {
-    val resolvedBlocks = state.blocks.map { block ->
+    val resolvedBlocks = resolveCurrentBlocks(this, textStates, spanStates)
+    return DocumentSchema.encodeToString(resolvedBlocks, options, typeCodec, contentCodec)
+}
+
+/**
+ * Resolves the current authoritative document blocks without JSON encoding.
+ *
+ * Runtime text/span state takes priority over snapshot content exactly like
+ * [toJson], while unchanged blocks keep their original object identity.
+ */
+internal fun resolveCurrentBlocks(
+    stateHolder: EditorStateHolder,
+    textStates: BlockTextStates,
+    spanStates: BlockSpanStates,
+): List<Block> {
+    return resolveCurrentBlocks(stateHolder.state.blocks, textStates, spanStates)
+}
+
+internal fun resolveCurrentBlocks(
+    snapshotBlocks: List<Block>,
+    textStates: BlockTextStates,
+    spanStates: BlockSpanStates,
+): List<Block> {
+    return snapshotBlocks.map { block ->
         val content = block.content
         if (content !is BlockContent.Text) return@map block
 
@@ -39,9 +63,10 @@ public fun EditorStateHolder.toJson(
         } else {
             content.spans
         }
-        block.withContent(BlockContent.Text(resolvedText, resolvedSpans))
+
+        val resolvedContent = BlockContent.Text(resolvedText, resolvedSpans)
+        if (resolvedContent == content) block else block.withContent(resolvedContent)
     }
-    return DocumentSchema.encodeToString(resolvedBlocks, options, typeCodec, contentCodec)
 }
 
 /**
@@ -49,6 +74,7 @@ public fun EditorStateHolder.toJson(
  *
  * Clears runtime text and span state before setting new blocks, so that
  * Compose renderers initialize fresh state from the new snapshot blocks.
+ * This is treated as a hard replacement and therefore clears undo/redo history.
  */
 public fun EditorStateHolder.loadFromJson(
     jsonString: String,

@@ -161,47 +161,49 @@ internal class SlashCommandExecutor(
         action: SlashCommandAction,
         session: SlashCommandState,
     ) {
-        val host = SlashCommandEditorHost(
-            anchorBlockId = session.anchorBlockId,
-            queryRange = session.queryRange,
-            stateHolder = stateHolder,
-            textStates = textStates,
-            spanStates = spanStates,
-        )
+        stateHolder.runStructuralHistoryTransactionSuspend(textStates, spanStates) {
+            val host = SlashCommandEditorHost(
+                anchorBlockId = session.anchorBlockId,
+                queryRange = session.queryRange,
+                stateHolder = stateHolder,
+                textStates = textStates,
+                spanStates = spanStates,
+            )
 
-        // Step 2: apply query text policy
-        val queryTextRemoved = action.queryTextPolicy == SlashQueryTextPolicy.RemoveBeforeExecute
-        if (queryTextRemoved) {
-            host.replaceQueryText("")
-        }
-
-        // Step 3: invoke action with captured session context
-        val context = SlashCommandContext(
-            anchorBlockId = session.anchorBlockId,
-            query = session.query,
-            queryRange = session.queryRange,
-            editor = host,
-        )
-
-        val result = try {
-            action.onExecute(context)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            SlashCommandResult.Failure(e.message)
-        }
-
-        // Step 4: apply result
-        when (result) {
-            is SlashCommandResult.Done -> host.closeMenu()
-            is SlashCommandResult.KeepOpen -> {
-                // Keeping the menu open requires a valid slash session range.
-                // After RemoveBeforeExecute, the tracked slash token no longer exists.
-                if (queryTextRemoved) {
-                    host.closeMenu()
-                }
+            // Step 2: apply query text policy
+            val queryTextRemoved = action.queryTextPolicy == SlashQueryTextPolicy.RemoveBeforeExecute
+            if (queryTextRemoved) {
+                host.replaceQueryText("")
             }
-            is SlashCommandResult.Failure -> host.closeMenu()
+
+            // Step 3: invoke action with captured session context
+            val context = SlashCommandContext(
+                anchorBlockId = session.anchorBlockId,
+                query = session.query,
+                queryRange = session.queryRange,
+                editor = host,
+            )
+
+            val result = try {
+                action.onExecute(context)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                SlashCommandResult.Failure(e.message)
+            }
+
+            // Step 4: apply result
+            when (result) {
+                is SlashCommandResult.Done -> host.closeMenu()
+                is SlashCommandResult.KeepOpen -> {
+                    // Keeping the menu open requires a valid slash session range.
+                    // After RemoveBeforeExecute, the tracked slash token no longer exists.
+                    if (queryTextRemoved) {
+                        host.closeMenu()
+                    }
+                }
+                is SlashCommandResult.Failure -> host.closeMenu()
+            }
         }
     }
 

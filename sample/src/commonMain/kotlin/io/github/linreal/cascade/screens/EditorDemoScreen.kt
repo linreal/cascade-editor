@@ -37,8 +37,11 @@ import cascadeeditor.sample.generated.resources.ic_arrow_back
 import cascadeeditor.sample.generated.resources.ic_dark_mode
 import cascadeeditor.sample.generated.resources.ic_delete
 import cascadeeditor.sample.generated.resources.ic_light_mode
+import cascadeeditor.sample.generated.resources.ic_redo
+import cascadeeditor.sample.generated.resources.ic_undo
 import io.github.linreal.cascade.editor.action.ClearSelection
 import io.github.linreal.cascade.editor.action.DeleteSelectedOrFocused
+import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
 import io.github.linreal.cascade.editor.serialization.loadFromJson
 import io.github.linreal.cascade.editor.serialization.toJson
 import io.github.linreal.cascade.editor.state.BlockSpanStates
@@ -68,6 +71,15 @@ fun EditorDemoScreen(
     val textStates = remember { BlockTextStates() }
     val spanStates = remember { BlockSpanStates() }
     val editorState = rememberEditorState()
+    val callbacks = remember(editorState, textStates, spanStates) {
+        DefaultBlockCallbacks(
+            dispatchFn = { action -> editorState.dispatch(action) },
+            stateProvider = { editorState.state },
+            textStates = textStates,
+            spanStates = spanStates,
+            stateHolder = editorState,
+        )
+    }
     var isLoaded by remember { mutableStateOf(false) }
     var saveStatus by remember { mutableStateOf("") }
 
@@ -126,7 +138,7 @@ fun EditorDemoScreen(
                         )
                     }
                     IconButton(
-                        onClick = { editorState.dispatch(DeleteSelectedOrFocused) },
+                        onClick = { callbacks.dispatch(DeleteSelectedOrFocused) },
                         modifier = Modifier.size(40.dp),
                     ) {
                         Image(
@@ -157,11 +169,36 @@ fun EditorDemoScreen(
                                 modifier = Modifier.size(24.dp),
                             )
                         }
-                        Text(
-                            text = "Editor Demo",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
+                        val undoTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = if (editorState.canUndo) 1f else 0.38f
                         )
+                        val redoTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = if (editorState.canRedo) 1f else 0.38f
+                        )
+                        IconButton(
+                            onClick = { editorState.undo() },
+                            enabled = editorState.canUndo,
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Image(
+                                painter = painterResource(Res.drawable.ic_undo),
+                                contentDescription = "Undo",
+                                colorFilter = ColorFilter.tint(undoTint),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        IconButton(
+                            onClick = { editorState.redo() },
+                            enabled = editorState.canRedo,
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Image(
+                                painter = painterResource(Res.drawable.ic_redo),
+                                contentDescription = "Redo",
+                                colorFilter = ColorFilter.tint(redoTint),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                         AnimatedVisibility(
                             visible = saveStatus.isNotEmpty(),
                             enter = fadeIn(),

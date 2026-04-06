@@ -5,6 +5,7 @@ import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import io.github.linreal.cascade.editor.action.CloseSlashCommand
@@ -18,12 +19,12 @@ import io.github.linreal.cascade.editor.ui.SlashPopupDefaults
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
 
 /**
- * Handles keyboard events for [TextBlockField]: formatting shortcuts (Cmd/Ctrl+B/I/U)
+ * Handles keyboard events for [TextBlockField]: history shortcuts
+ * (Cmd/Ctrl+Z, Shift+Cmd/Ctrl+Z), formatting shortcuts (Cmd/Ctrl+B/I/U),
  * and slash popup navigation (Up/Down/Enter/Escape).
  *
- * Formatting shortcuts include a deduplication guard because iOS delivers duplicate
- * KeyDown events for the same key press, which would toggle the style on then
- * immediately off.
+ * Hardware-keyboard shortcuts include deduplication guards because iOS can deliver
+ * duplicate `KeyDown` events for the same physical press.
  */
 internal class TextBlockKeyHandler(
     private val formattingActions: FormattingActions?,
@@ -32,43 +33,106 @@ internal class TextBlockKeyHandler(
     private val slashHighlightedCommandId: () -> SlashCommandId?,
     private val slashPopupItems: () -> List<SlashCommandItem>,
     private val slashCommandExecutor: () -> SlashCommandExecutor?,
+    private val onBatchBreaker: () -> Unit,
+    private val onPasteShortcutDetected: () -> Unit,
+    private val onUndo: () -> Unit,
+    private val onRedo: () -> Unit,
 ) {
-    /** Tracks which formatting key is currently held to prevent duplicate iOS KeyDown. */
+    /** Tracks which formatting key is currently held to prevent duplicate iOS `KeyDown`. */
     private var handledFormattingKey: Key? = null
+    /** Tracks which history key is currently held to prevent duplicate iOS `KeyDown`. */
+    private var handledHistoryKey: Key? = null
 
     /**
      * Returns `true` if the event was consumed.
      */
     fun onPreviewKeyEvent(keyEvent: KeyEvent): Boolean {
-        if (handleFormattingShortcut(keyEvent)) return true
+        detectPasteShortcut(keyEvent)
+        val shortcutEvent = keyEvent.toShortcutKeyEvent()
+        if (onPreviewShortcutEvent(shortcutEvent)) return true
         if (handleSlashPopupNav(keyEvent)) return true
         return false
     }
 
+    /**
+     * Handles shortcut resolution after normalizing Cmd and Ctrl into one modifier.
+     *
+     * This helper exists so common tests can exercise shortcut behavior without
+     * constructing platform-native [KeyEvent] instances.
+     */
+    internal fun onPreviewShortcutEvent(keyEvent: ShortcutKeyEvent): Boolean {
+        if (handleHistoryShortcut(keyEvent)) return true
+        if (handleFormattingShortcut(keyEvent)) return true
+        return false
+    }
+
+    /**
+     * Best-effort explicit paste signal for the typing coalescer.
+     *
+     * Compose does not currently expose reliable paste origin metadata on the
+     * committed text observer path, so shortcut detection gives us a stronger
+     * hint before the eventual text commit arrives.
+     */
+    private fun detectPasteShortcut(keyEvent: KeyEvent) {
+        val isShortcutModifier = keyEvent.isMetaPressed || keyEvent.isCtrlPressed
+        if (!isShortcutModifier) return
+        if (keyEvent.type != KeyEventType.KeyDown) return
+        if (keyEvent.key == Key.V) {
+            onPasteShortcutDetected()
+        }
+    }
+
+    // history shortcuts (Cmd/Ctrl + Z, Shift+Cmd/Ctrl + Z)
+
+    private fun handleHistoryShortcut(keyEvent: ShortcutKeyEvent): Boolean {
+        if (keyEvent.type == KeyEventType.KeyUp && handledHistoryKey == keyEvent.key) {
+            handledHistoryKey = null
+            return true
+        }
+
+        val shortcut = historyShortcutForKey(keyEvent.key, keyEvent.isShiftPressed)
+        if (!keyEvent.hasShortcutModifier || shortcut == null) {
+            return false
+        }
+
+        return when (keyEvent.type) {
+            KeyEventType.KeyUp -> true
+            KeyEventType.KeyDown -> {
+                if (handledHistoryKey != keyEvent.key) {
+                    handledHistoryKey = keyEvent.key
+                    when (shortcut) {
+                        HistoryShortcut.Undo -> onUndo()
+                        HistoryShortcut.Redo -> onRedo()
+                    }
+                }
+                true
+            }
+            else -> true
+        }
+    }
+
     // formatting shortcuts (Cmd/Ctrl + B/I/U)
 
-    private fun handleFormattingShortcut(keyEvent: KeyEvent): Boolean {
-        val isShortcutModifier = keyEvent.isMetaPressed || keyEvent.isCtrlPressed
-        if (isShortcutModifier && formattingActions != null) {
+    private fun handleFormattingShortcut(keyEvent: ShortcutKeyEvent): Boolean {
+        if (keyEvent.type == KeyEventType.KeyUp && handledFormattingKey == keyEvent.key) {
+            handledFormattingKey = null
+            return true
+        }
+
+        if (keyEvent.hasShortcutModifier && formattingActions != null) {
             val style = formattingStyleForKey(keyEvent.key) ?: return false
             return when (keyEvent.type) {
-                KeyEventType.KeyUp -> {
-                    handledFormattingKey = null
-                    true
-                }
+                KeyEventType.KeyUp -> true
                 KeyEventType.KeyDown -> {
                     if (handledFormattingKey != keyEvent.key) {
                         handledFormattingKey = keyEvent.key
+                        onBatchBreaker()
                         formattingActions.toggleStyle(style)
                     }
                     true // consume duplicate KeyDown too
                 }
                 else -> true
             }
-        }
-        // Clear guard when the modifier is released
-        if (keyEvent.type == KeyEventType.KeyUp) {
-            handledFormattingKey = null
         }
         return false
     }
@@ -99,6 +163,7 @@ internal class TextBlockKeyHandler(
                 val item = if (id != null) slashPopupItems().firstOrNull { it.id == id } else null
                 val executor = slashCommandExecutor()
                 if (item != null && executor != null) {
+                    onBatchBreaker()
                     executor.execute(item)
                     true
                 } else {
@@ -112,6 +177,24 @@ internal class TextBlockKeyHandler(
             else -> false
         }
     }
+}
+
+/**
+ * Normalized shortcut event used by [TextBlockKeyHandler].
+ *
+ * Cmd and Ctrl are intentionally collapsed into [hasShortcutModifier] because v1
+ * editor shortcuts treat them as equivalent on different platforms.
+ */
+internal data class ShortcutKeyEvent(
+    val key: Key,
+    val type: KeyEventType,
+    val hasShortcutModifier: Boolean,
+    val isShiftPressed: Boolean,
+)
+
+private enum class HistoryShortcut {
+    Undo,
+    Redo,
 }
 
 /**
@@ -130,4 +213,25 @@ private fun formattingStyleForKey(key: Key): SpanStyle? = when (key) {
         0x18L -> SpanStyle.Underline
         else -> null
     }
+}
+
+private fun historyShortcutForKey(
+    key: Key,
+    isShiftPressed: Boolean,
+): HistoryShortcut? {
+    val isUndoRedoKey = when (key) {
+        Key.Z -> true
+        else -> key.keyCode == 0x1DL
+    }
+    if (!isUndoRedoKey) return null
+    return if (isShiftPressed) HistoryShortcut.Redo else HistoryShortcut.Undo
+}
+
+private fun KeyEvent.toShortcutKeyEvent(): ShortcutKeyEvent {
+    return ShortcutKeyEvent(
+        key = key,
+        type = type,
+        hasShortcutModifier = isMetaPressed || isCtrlPressed,
+        isShiftPressed = isShiftPressed,
+    )
 }

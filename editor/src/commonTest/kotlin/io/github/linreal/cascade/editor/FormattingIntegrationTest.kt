@@ -31,7 +31,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
- * Integration tests for Task 10 — Selection Status, Toolbar Contracts, and Formatting UI.
+ * Integration tests for Selection Status, Toolbar Contracts, and Formatting UI.
  *
  * These tests exercise the full non-Compose integration paths:
  * FormattingStateCalculator + DefaultFormattingActions + BlockSpanStates +
@@ -64,6 +64,9 @@ class FormattingIntegrationTest {
                 slashCommandState = null,
             )
         )
+        init {
+            stateHolder.bindHistoryRuntime(textStates, spanStates)
+        }
 
         val spanActionDispatcher = SpanActionDispatcher(
             dispatchFn = { action ->
@@ -72,6 +75,7 @@ class FormattingIntegrationTest {
             },
             textStates = textStates,
             spanStates = spanStates,
+            stateHolder = stateHolder,
         )
 
         val formattingActions = DefaultFormattingActions(

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +40,7 @@ import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
 import androidx.compose.ui.graphics.SolidColor
 import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
+import io.github.linreal.cascade.editor.ui.LocalEditorStateHolder
 import io.github.linreal.cascade.editor.ui.LocalFormattingActions
 import io.github.linreal.cascade.editor.ui.LocalSlashCaretRect
 import io.github.linreal.cascade.editor.ui.LocalSlashCommandExecutor
@@ -47,6 +49,9 @@ import io.github.linreal.cascade.editor.ui.LocalSlashPopupItems
 import io.github.linreal.cascade.editor.ui.LocalSlashSessionAnchorBlockId
 import io.github.linreal.cascade.editor.ui.visibleSelection
 import io.github.linreal.cascade.editor.ui.visibleText
+import io.github.linreal.cascade.editor.state.TextEditHistoryTracker
+import io.github.linreal.cascade.editor.state.captureCheckpoint
+import io.github.linreal.cascade.editor.state.captureFocusedEditingUiState
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 
 /**
@@ -79,6 +84,7 @@ internal fun TextBlockField(
     val colors = LocalCascadeTheme.current.colors
     val focusRequester = remember { FocusRequester() }
     var hasComposeFocus by remember { mutableStateOf(false) }
+    val stateHolder = LocalEditorStateHolder.current
 
     // Get TextFieldState from the shared holder.
     // generation key invalidates the cache when loadFromJson clears all states.
@@ -122,37 +128,66 @@ internal fun TextBlockField(
             initialVisibleText = textFieldState.visibleText(),
         )
     }
+    val textHistoryTracker = remember(block.id, stateHolder, textStates.generation, spanStates.generation) {
+        // Generation only changes on hard runtime resets (load/replay clear paths).
+        // By the time this tracker is recreated, the holder has already restored
+        // the authoritative runtime state for the current composition pass.
+        TextEditHistoryTracker(
+            initialCheckpoint = stateHolder.captureCheckpoint(textStates, spanStates),
+        )
+    }
+    DisposableEffect(block.id, stateHolder, textHistoryTracker) {
+        // Toolbar-driven formatting bypasses this composable's snapshotFlow, so
+        // the holder needs a back-reference to the live tracker for this block.
+        stateHolder.registerTextHistoryTracker(block.id, textHistoryTracker)
+        onDispose {
+            stateHolder.unregisterTextHistoryTracker(block.id, textHistoryTracker)
+        }
+    }
     val isCurrentlyList = block.type is BlockType.BulletList || block.type is BlockType.NumberedList
-    val listAutoDetectObserver = remember(block.id, isCurrentlyList, callbacks, textStates, spanStates) {
+    val listAutoDetectObserver = remember(
+        block.id,
+        isCurrentlyList,
+        callbacks,
+        textStates,
+        spanStates,
+        textHistoryTracker,
+    ) {
         ListAutoDetectObserver(
             isListBlock = { isCurrentlyList },
             onListDetected = { newType, prefixLength ->
-                // Remove trigger prefix and adjust spans
-                spanStates.adjustForRangeReplacement(
-                    blockId = block.id,
-                    start = 0,
-                    endExclusive = prefixLength,
-                    replacementLength = 0,
-                )
-                val newText = textStates.replaceVisibleRange(
-                    blockId = block.id,
-                    start = 0,
-                    endExclusive = prefixLength,
-                    replacement = "",
-                    cursorPositionAfter = 0,
-                )
-                // Sync snapshot with cleaned text + adjusted spans before converting
-                if (newText != null) {
-                    val spans = spanStates.getSpans(block.id)
-                    callbacks.dispatch(UpdateBlockContent(block.id, BlockContent.Text(newText, spans)))
+                stateHolder.runStructuralHistoryTransaction(textStates, spanStates) {
+                    textHistoryTracker.noteBatchBreaker()
+                    // Remove trigger prefix and adjust spans
+                    spanStates.adjustForRangeReplacement(
+                        blockId = block.id,
+                        start = 0,
+                        endExclusive = prefixLength,
+                        replacementLength = 0,
+                    )
+                    val newText = textStates.replaceVisibleRange(
+                        blockId = block.id,
+                        start = 0,
+                        endExclusive = prefixLength,
+                        replacement = "",
+                        cursorPositionAfter = 0,
+                    )
+                    // Sync snapshot with cleaned text + adjusted spans before converting
+                    if (newText != null) {
+                        val spans = spanStates.getSpans(block.id)
+                        callbacks.dispatch(UpdateBlockContent(block.id, BlockContent.Text(newText, spans)))
+                    }
+                    callbacks.dispatch(ConvertBlockType(block.id, newType))
                 }
-                callbacks.dispatch(ConvertBlockType(block.id, newType))
             },
             initialVisibleText = textFieldState.visibleText(),
         )
     }
 
-    LaunchedEffect(isFocused) {
+    LaunchedEffect(isFocused, textHistoryTracker, stateHolder, textStates, spanStates) {
+        textHistoryTracker.noteFocusChanged(
+            stateHolder.captureCheckpoint(textStates, spanStates)
+        )
         if (isFocused) {
             focusRequester.requestFocus()
         }
@@ -171,9 +206,23 @@ internal fun TextBlockField(
 
     // Combined text + selection observation keeps ordering deterministic.
     // We observe raw text snapshots and only derive visible text when text actually changes.
-    LaunchedEffect(textFieldState, spanTextObserver, slashTextObserver, listAutoDetectObserver) {
+    LaunchedEffect(
+        textFieldState,
+        spanTextObserver,
+        slashTextObserver,
+        listAutoDetectObserver,
+        stateHolder,
+        textHistoryTracker,
+    ) {
         var lastObservedVisibleText = textFieldState.visibleText()
         var lastObservedTextSnapshot = textFieldState.text
+        fun noteSelectionState(selection: TextRange) {
+            textHistoryTracker.noteSelectionChanged(
+                selection = selection,
+                ui = captureFocusedEditingUiState(stateHolder.state, textStates, spanStates),
+            )
+            slashTextObserver.onSelectionChanged(selection.start, selection.end)
+        }
 
         snapshotFlow {
             Pair(textFieldState.text, textFieldState.visibleSelection())
@@ -181,15 +230,40 @@ internal fun TextBlockField(
             val textSnapshotChanged =
                 currentTextSnapshot !== lastObservedTextSnapshot ||
                     currentTextSnapshot.length != lastObservedTextSnapshot.length
+            val currentVisibleText = if (textSnapshotChanged) {
+                visibleTextFromSnapshot(currentTextSnapshot)
+            } else {
+                lastObservedVisibleText
+            }
+
+            if (stateHolder.isApplyingHistory) {
+                if (textSnapshotChanged) {
+                    lastObservedVisibleText = currentVisibleText
+                    lastObservedTextSnapshot = currentTextSnapshot
+                }
+                // Replay baseline sync is driven by the holder:
+                // - BlockTextEntry replay patches the registered tracker directly
+                // - Structural replay clears runtime holders, forcing tracker recreation
+                return@collect
+            }
 
             if (textSnapshotChanged) {
-                val currentVisibleText = visibleTextFromSnapshot(currentTextSnapshot)
                 // Peek before span observer consumes the commit
                 val isProgrammatic = textStates.hasPendingProgrammaticCommit(block.id)
                 val cursor = if (selection.collapsed) selection.start else -1
                 if (currentVisibleText != lastObservedVisibleText) {
                     slashTextObserver.onTextChanged(currentVisibleText, isProgrammatic, cursor)
                     spanTextObserver.onCommittedVisibleText(currentVisibleText)
+                    if (isProgrammatic) {
+                        textHistoryTracker.onProgrammaticCommit(
+                            stateHolder.captureCheckpoint(textStates, spanStates)
+                        )
+                    } else {
+                        val afterCheckpoint = stateHolder.captureCheckpoint(textStates, spanStates)
+                        textHistoryTracker.onUserTextCommit(afterCheckpoint)?.let { push ->
+                            stateHolder.pushHistoryEntry(push.entry, push.policy)
+                        }
+                    }
                     listAutoDetectObserver.onTextChanged(currentVisibleText, isProgrammatic)
                     lastObservedVisibleText = currentVisibleText
                 } else {
@@ -199,13 +273,17 @@ internal fun TextBlockField(
                     // the next real user edit to be misidentified as programmatic.
                     if (isProgrammatic) {
                         textStates.consumeProgrammaticCommit(block.id)
+                        textHistoryTracker.onProgrammaticCommit(
+                            stateHolder.captureCheckpoint(textStates, spanStates)
+                        )
+                    } else {
+                        noteSelectionState(selection)
                     }
-                    slashTextObserver.onSelectionChanged(selection.start, selection.end)
                 }
                 lastObservedTextSnapshot = currentTextSnapshot
             } else {
                 // Selection-only change: check slash session cursor validity
-                slashTextObserver.onSelectionChanged(selection.start, selection.end)
+                noteSelectionState(selection)
             }
         }
     }
@@ -248,7 +326,7 @@ internal fun TextBlockField(
 
     val cursorBrush = remember(colors.cursor) { SolidColor(colors.cursor) }
 
-    val keyHandler = remember(formattingActions, callbacks) {
+    val keyHandler = remember(formattingActions, callbacks, textHistoryTracker, stateHolder) {
         TextBlockKeyHandler(
             formattingActions = formattingActions,
             callbacks = callbacks,
@@ -256,6 +334,10 @@ internal fun TextBlockField(
             slashHighlightedCommandId = { slashHighlightedCommandId },
             slashPopupItems = { slashPopupItems },
             slashCommandExecutor = { slashCommandExecutor },
+            onBatchBreaker = { textHistoryTracker.noteBatchBreaker() },
+            onPasteShortcutDetected = { textHistoryTracker.noteExplicitPaste() },
+            onUndo = stateHolder::undo,
+            onRedo = stateHolder::redo,
         )
     }
 
@@ -281,6 +363,7 @@ internal fun TextBlockField(
             onTextLayout = { result -> textLayoutResult = result() },
             focusRequester = focusRequester,
             onBackspaceAtStart = {
+                textHistoryTracker.noteBatchBreaker()
                 callbacks.onBackspaceAtStart(block.id)
             },
             onEnterPressed = { cursorPosition ->
@@ -296,9 +379,11 @@ internal fun TextBlockField(
                     highlightedItem != null &&
                     executor != null
                 ) {
+                    textHistoryTracker.noteBatchBreaker()
                     executor.execute(highlightedItem)
                     return@BackspaceAwareTextField
                 }
+                textHistoryTracker.noteBatchBreaker()
                 callbacks.onEnter(block.id, cursorPosition)
             }
         )

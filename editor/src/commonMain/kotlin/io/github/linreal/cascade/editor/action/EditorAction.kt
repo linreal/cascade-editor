@@ -460,6 +460,10 @@ public data object ClearFocus : EditorAction {
  * @param blockId The ID of the block being dragged (the one user touched)
  * @param touchOffsetY Y offset from the top of the block where the touch occurred.
  *        Stored in DragState for preview positioning.
+ *
+ * If block selection mode is active and [blockId] is part of that selection,
+ * the full selected set becomes the drag payload while keeping [blockId] as
+ * the primary preview anchor.
  */
 public data class StartDrag(
     val blockId: BlockId,
@@ -469,9 +473,25 @@ public data class StartDrag(
         val originalIndex = state.indexOfBlock(blockId)
         if (originalIndex == -1) return state // Block not found
 
+        val draggingBlockIds = if (
+            state.selectedBlockIds.isNotEmpty() &&
+            blockId in state.selectedBlockIds
+        ) {
+            linkedSetOf<BlockId>().apply {
+                add(blockId)
+                state.selectedBlocks
+                    .asSequence()
+                    .map { it.id }
+                    .filter { it != blockId }
+                    .forEach(::add)
+            }
+        } else {
+            setOf(blockId)
+        }
+
         return state.copy(
             dragState = DragState(
-                draggingBlockIds = setOf(blockId),
+                draggingBlockIds = draggingBlockIds,
                 targetIndex = null,
                 initialTouchOffsetY = touchOffsetY,
                 primaryBlockOriginalIndex = originalIndex

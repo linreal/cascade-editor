@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -92,10 +93,13 @@ import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
  * @param stateHolder The state holder managing editor state
  * @param textStates Runtime text field states. Pass your own instance to access
  *        live text from outside the composition (e.g., for save/load). Defaults to
- *        an internally remembered instance.
+ *        an internally remembered instance. Custom instances should stay stable
+ *        for the lifetime of the bound [stateHolder]; swapping them while reusing
+ *        the same holder can desynchronize history replay from the live editor session.
  * @param spanStates Runtime rich-text span states. Pass your own instance to access
  *        live spans from outside the composition (e.g., for save/load). Defaults to
- *        an internally remembered instance.
+ *        an internally remembered instance. The same lifetime rule as [textStates]
+ *        applies when history replay is enabled.
  * @param registry Block registry with renderers. Defaults to [createEditorRegistry].
  * @param slashRegistry Slash command registry. Register custom [SlashCommandItem]s here to
  *        make them appear alongside built-in block commands. Custom items override built-ins
@@ -135,6 +139,15 @@ public fun CascadeEditor(
     onFormattingStateChanged: ((FormattingState) -> Unit)? = null,
 ) {
     val state = stateHolder.state
+
+    // History replay uses the live runtime holders owned by this composition.
+    // Caller-provided instances should remain stable for the lifetime of stateHolder.
+    DisposableEffect(stateHolder, textStates, spanStates) {
+        stateHolder.bindHistoryRuntime(textStates, spanStates)
+        onDispose {
+            stateHolder.unbindHistoryRuntime(textStates, spanStates)
+        }
+    }
 
     // Slash wiring: built-in executor → built-in items → merged registry → executor.
     // The builtInExecutor lambda only needs stateHolder + blockRegistry, not the
@@ -197,6 +210,7 @@ public fun CascadeEditor(
             dispatchFn = { action -> stateHolder.dispatch(action) },
             textStates = textStates,
             spanStates = spanStates,
+            stateHolder = stateHolder,
         )
     }
 
@@ -207,6 +221,7 @@ public fun CascadeEditor(
             stateProvider = { stateHolder.state },
             textStates = textStates,
             spanStates = spanStates,
+            stateHolder = stateHolder,
         )
     }
 
@@ -314,6 +329,7 @@ public fun CascadeEditor(
         LocalCascadeStrings provides strings,
         LocalCascadeBlockStrings provides blockStrings,
         LocalTextSelectionColors provides textSelectionColors,
+        LocalEditorStateHolder provides stateHolder,
         LocalBlockTextStates provides textStates,
         LocalBlockSpanStates provides spanStates,
         LocalSpanActionDispatcher provides spanActionDispatcher,
