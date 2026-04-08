@@ -33,7 +33,8 @@ All tests must pass before submitting a PR.
 2. Make your changes
 3. Add or update tests for your changes
 4. Run `./gradlew :editor:allTests` and ensure all tests pass
-5. Submit a pull request
+5. Run `./gradlew checkKotlinAbi` and ensure all public APIs are tracked
+6. Submit a pull request
 
 ## Pull Request Guidelines
 
