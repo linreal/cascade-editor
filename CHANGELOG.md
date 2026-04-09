@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-09
+
+### Added
+
+- Undo/redo support with a hybrid linear history model: compact one-block entries for typing and eligible formatting edits, plus full-document checkpoints for structural edits
+- Public history API on `EditorStateHolder`: `canUndo`, `canRedo`, `undo()`, and `redo()`
+- Built-in history keyboard shortcuts: `Cmd/Ctrl+Z` for undo and `Shift+Cmd/Ctrl+Z` for redo
+- History-aware replay that restores focused block selection/caret and pending formatting styles
+- Demo toolbar controls for undo and redo in the sample editor screen
+
+### Changed
+
+- Built-in editor flows such as split/merge, drag reorder, slash commands, list auto-detection, todo toggles, and selected-range formatting now participate in undo/redo history
+- Hard document replacement paths (`setState(...)`, `loadFromJson(...)`) now clear undo/redo history
+
 ## [1.0.0] - 2026-04-02
 
 ### Added

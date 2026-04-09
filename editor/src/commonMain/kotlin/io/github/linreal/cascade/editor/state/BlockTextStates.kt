@@ -76,7 +76,24 @@ public class BlockTextStates {
      * Gets visible text (without ZWSP sentinel) for a block.
      */
     public fun getVisibleText(blockId: BlockId): String? {
-        return states[blockId]?.text?.toString()?.removePrefix(ZWSP)
+        return states[blockId]?.visibleTextInfo()?.text
+    }
+
+    /**
+     * Gets the current selection for a block in visible-text coordinates.
+     *
+     * The returned range excludes the internal sentinel offset and preserves
+     * selection direction for reversed ranges.
+     */
+    public fun getSelection(blockId: BlockId): TextRange? {
+        val state = states[blockId] ?: return null
+        val visibleTextInfo = state.visibleTextInfo()
+        val visibleLength = visibleTextInfo.text.length
+        val rawSelection = state.selection
+        return TextRange(
+            start = (rawSelection.start - visibleTextInfo.sentinelOffset).coerceIn(0, visibleLength),
+            end = (rawSelection.end - visibleTextInfo.sentinelOffset).coerceIn(0, visibleLength),
+        )
     }
 
     /**
@@ -146,6 +163,29 @@ public class BlockTextStates {
     }
 
     /**
+     * Sets an arbitrary selection for a block in visible-text coordinates.
+     *
+     * This is used by history replay and other programmatic cursor/selection
+     * restoration paths. Selection-only updates do not register a programmatic
+     * text commit because the visible text is unchanged.
+     */
+    public fun setSelection(blockId: BlockId, selection: TextRange) {
+        val state = states[blockId] ?: return
+        val visibleTextInfo = state.visibleTextInfo()
+        val visibleLength = visibleTextInfo.text.length
+        val safeSelection = TextRange(
+            start = selection.start.coerceIn(0, visibleLength),
+            end = selection.end.coerceIn(0, visibleLength),
+        )
+        state.edit {
+            this.selection = TextRange(
+                safeSelection.start + visibleTextInfo.sentinelOffset,
+                safeSelection.end + visibleTextInfo.sentinelOffset,
+            )
+        }
+    }
+
+    /**
      * Consumes the expected visible text for the next programmatic commit on [blockId].
      *
      * Returns null when no programmatic commit is pending.
@@ -211,12 +251,7 @@ public class BlockTextStates {
      * @param cursorPosition Cursor position in visible text coordinates
      */
     public fun setCursorPosition(blockId: BlockId, cursorPosition: Int) {
-        val state = states[blockId] ?: return
-        val maxPosition = (state.text.length - 1).coerceAtLeast(0) // -1 for ZWSP
-        val safePosition = cursorPosition.coerceIn(0, maxPosition)
-        state.edit {
-            selection = TextRange(safePosition + 1) // +1 for ZWSP
-        }
+        setSelection(blockId, TextRange(cursorPosition))
     }
 
     /**
@@ -241,4 +276,19 @@ public class BlockTextStates {
         pendingProgrammaticCommits.clear()
         generation++
     }
+}
+
+private data class VisibleTextInfo(
+    val text: String,
+    val sentinelOffset: Int,
+)
+
+private fun TextFieldState.visibleTextInfo(): VisibleTextInfo {
+    val rawText = text.toString()
+    val sentinelOffset = if (rawText.startsWith(ZWSP)) 1 else 0
+    val visibleText = if (sentinelOffset == 0) rawText else rawText.substring(1)
+    return VisibleTextInfo(
+        text = visibleText,
+        sentinelOffset = sentinelOffset,
+    )
 }

@@ -2,9 +2,9 @@
 
 The first native block-based editor for Compose Multiplatform.
 
-Notion/Craft-style editing, implemented as a shared Kotlin editor core for Android and iOS: draggable blocks, slash commands, rich-text spans, custom block types, and versioned document serialization, all without WebView, HTML/contentEditable, or embedded JavaScript editors.
+Notion/Craft-style editing, implemented as a shared Kotlin editor core for Android and iOS: draggable blocks, slash commands, undo/redo, rich-text spans, custom block types, and versioned document serialization, all without WebView, HTML/contentEditable, or embedded JavaScript editors.
 
-Shared `commonMain` editor core | Android + iOS | 900+ tests | No WebView | Extensible block registry
+Shared `commonMain` editor core | Android + iOS | 950+ tests | No WebView | Extensible block registry
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
 [![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.10-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
@@ -36,7 +36,7 @@ If you only need a formatted text area, a single-buffer editor is simpler. Casca
 ## Features
 
 - **Structured document editing** — paragraphs, headings (H1-H6), todos, bullet lists, numbered lists, quotes, and dividers as independent blocks that can be inserted, split, merged, converted, reordered, and deleted
-- **Notion-style editing workflows** — native drag-and-drop block reordering, slash-command insertion, list continuation, and structural editing behaviors without WebView
+- **Notion-style editing workflows** — native drag-and-drop block reordering, slash-command insertion, undo/redo, list continuation, and structural editing behaviors without WebView
 - **Rich-text spans inside blocks** — bold, italic, underline, strikethrough, inline code, highlight, and custom styles with span preservation across split, merge, and replace operations
 - **Versioned document serialization** — `toJson()` / `loadFromJson()` with explicit schemas, codec hooks, and support for custom block types
 - **Custom block system** — extend the editor with your own `CustomBlockType`, `BlockRenderer`, slash commands, and block-specific behavior
@@ -68,7 +68,7 @@ fun MyEditor() {
 }
 ```
 
-From here you can add slash commands, custom block renderers, theming, and JSON serialization.
+From here you can add undo/redo controls, slash commands, custom block renderers, theming, and JSON serialization.
 
 ## Theming
 
@@ -177,6 +177,34 @@ CascadeEditor(
 )
 ```
 
+## Undo & Redo
+
+Undo/redo is built into `EditorStateHolder`. Continuous typing is coalesced into user-friendly history steps, while structural edits such as split, merge, drag reorder, slash commands, list conversion, and todo toggles replay as semantic document transactions instead of raw UI events.
+
+History restores the focused block, visible-text selection/caret, and pending formatting styles on replay, so undo/redo returns the editor to the same editing context rather than only restoring block text.
+
+```kotlin
+Row {
+    Button(
+        onClick = { stateHolder.undo() },
+        enabled = stateHolder.canUndo,
+    ) {
+        Text("Undo")
+    }
+
+    Button(
+        onClick = { stateHolder.redo() },
+        enabled = stateHolder.canRedo,
+    ) {
+        Text("Redo")
+    }
+}
+```
+
+Hardware keyboard shortcuts are built in: `Cmd/Ctrl+Z` for undo, `Shift+Cmd/Ctrl+Z` for redo.
+
+See [Undo/Redo Feature Context](docs/UndoRedoFeatureContext.md) for the hybrid history model, replay behavior, and integration details.
+
 ## Block Types
 
 | Type | Supports Text | Notes |
@@ -260,11 +288,13 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full quick-reference table (90+ p
 
 ## Engineering Challenges Solved
 
-This is not a styled text field. CascadeEditor combines block-structured document editing, rich-text ranges, slash commands, drag-and-drop, and serialization in shared Compose Multiplatform code. The difficulty is preserving correct behavior across compound editing operations, not rendering individual UI controls.
+This is not a styled text field. CascadeEditor combines block-structured document editing, rich-text ranges, slash commands, drag-and-drop, undo/redo, and serialization in shared Compose Multiplatform code. The difficulty is preserving correct behavior across compound editing operations, not rendering individual UI controls.
 
 **Live runtime state and immutable document state must stay aligned.** Each text-capable block owns a long-lived `TextFieldState` for live editing, while the document model remains an immutable `EditorState` used by reducers, persistence, and structural operations. Split, merge, slash-command edits, and list conversion can mutate the live buffer first and the snapshot second, so `BlockTextStates` records pending programmatic commits and `SpanMaintenanceTextObserver` rebases against the committed result instead of treating it as user input. That is the mechanism that prevents runtime/snapshot drift during compound operations.
 
 **Rich-text formatting has to survive split, merge, replace, and typing workflows.** Formatting is represented as `TextSpan` ranges in visible-text coordinates, not raw buffer coordinates. `SpanAlgorithms` handles normalization, edit adjustment, split, merge, apply/remove/toggle, and style queries, and the same algorithms are reused by runtime holders and snapshot reducers. If those paths diverge, formatting silently corrupts on the next operation. The pure algorithm suite in `SpanAlgorithmsTest.kt` currently covers this surface with 100 tests, with additional reducer and integration tests covering split/merge handoff.
+
+**Undo/redo has to replay both history checkpoints and live editing state.** The history model is hybrid and linear: typing, deletion, and eligible one-block formatting edits use compact block-local entries, while split, merge, drag reorder, slash commands, and other semantic document changes use full-document checkpoints. Replay restores the focused block, exact visible-text selection, and pending styles, and reuses existing `TextFieldState` instances where possible to avoid unnecessary IME reconnection during undo/redo.
 
 **The editor owns text buffers directly instead of reconstructing them from composition side effects.** `BlockTextStates` keeps one `TextFieldState` per block across recompositions. That enables direct buffer edits for merge, split, slash replacement, and list auto-detection without recreating text state from snapshot data or re-deriving cursor position after every structural change. This is an architectural choice that simplifies block-local editing invariants.
 
@@ -276,7 +306,7 @@ This is not a styled text field. CascadeEditor combines block-structured documen
 
 ## Testing
 
-900+ tests across 43 test files — reducers, span algorithms, slash commands, serialization, drag-and-drop, and integration workflows. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
+950+ tests across 52 test files — reducers, history/undo/redo, span algorithms, slash commands, serialization, drag-and-drop, and integration workflows. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
 
 ```bash
 ./gradlew :editor:allTests

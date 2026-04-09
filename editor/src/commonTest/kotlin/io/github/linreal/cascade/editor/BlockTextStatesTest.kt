@@ -1,5 +1,7 @@
 package io.github.linreal.cascade.editor
 
+import androidx.compose.foundation.text.input.delete
+import androidx.compose.ui.text.TextRange
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import kotlin.test.Test
@@ -117,6 +119,58 @@ class BlockTextStatesTest {
         textStates.replaceVisibleRange(id, 2, 6, "")
 
         assertEquals("ab ef", textStates.getVisibleText(id))
+    }
+
+    // -- selection --
+
+    @Test
+    fun `setSelection restores collapsed selection in visible coordinates`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "Hello")
+
+        textStates.setSelection(id, TextRange(3))
+
+        assertEquals(TextRange(3, 3), textStates.getSelection(id))
+    }
+
+    @Test
+    fun `setSelection restores ranged selection in visible coordinates`() {
+        val id = BlockId.generate()
+        textStates.getOrCreate(id, "Hello")
+
+        textStates.setSelection(id, TextRange(1, 4))
+
+        assertEquals(TextRange(1, 4), textStates.getSelection(id))
+    }
+
+    @Test
+    fun `getSelection remains correct when sentinel is missing`() {
+        val id = BlockId.generate()
+        val state = textStates.getOrCreate(id, "Hello")
+
+        state.edit {
+            delete(0, 1)
+            selection = TextRange(2, 4)
+        }
+
+        assertEquals("Hello", textStates.getVisibleText(id))
+        assertEquals(TextRange(2, 4), textStates.getSelection(id))
+    }
+
+    @Test
+    fun `setSelection uses raw visible offsets when sentinel is missing`() {
+        val id = BlockId.generate()
+        val state = textStates.getOrCreate(id, "Hello")
+
+        state.edit {
+            delete(0, 1)
+            selection = TextRange(0)
+        }
+
+        textStates.setSelection(id, TextRange(1, 4))
+
+        assertEquals(TextRange(1, 4), state.selection)
+        assertEquals(TextRange(1, 4), textStates.getSelection(id))
     }
 
     // -- hasPendingProgrammaticCommit --
