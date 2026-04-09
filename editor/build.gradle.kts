@@ -68,7 +68,7 @@ android {
 }
 
 mavenPublishing {
-    publishToMavenCentral(automaticRelease = false)
+    publishToMavenCentral(automaticRelease = true)
 
     signAllPublications()
 
