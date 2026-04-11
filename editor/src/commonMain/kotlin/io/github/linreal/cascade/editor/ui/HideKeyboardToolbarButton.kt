@@ -1,7 +1,6 @@
 package io.github.linreal.cascade.editor.ui
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -10,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -40,8 +38,7 @@ public fun HideKeyboardToolbarButton(
         modifier = modifier
             .sizeIn(minWidth = 44.dp, minHeight = 44.dp)
             .clip(shape)
-            .clickable(onClick = onClick)
-            .focusProperties { canFocus = false }
+            .nonFocusableTap(onClick = onClick)
             .semantics { contentDescription = strings.hideKeyboard },
         contentAlignment = Alignment.Center,
     ) {

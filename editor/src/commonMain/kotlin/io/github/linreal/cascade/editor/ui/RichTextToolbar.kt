@@ -1,7 +1,6 @@
 package io.github.linreal.cascade.editor.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -120,14 +119,7 @@ private fun SlashActionButton(
         modifier = Modifier
             .sizeIn(minWidth = 44.dp, minHeight = 44.dp)
             .clip(shape)
-            .then(
-                if (enabled) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
-                }
-            )
-            .focusProperties { canFocus = false }
+            .nonFocusableTap(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = strings.slashCommand },
         contentAlignment = Alignment.Center,
     ) {
@@ -171,14 +163,7 @@ private fun ToolbarToggleButton(
             .sizeIn(minWidth = 44.dp, minHeight = 44.dp)
             .clip(shape)
             .background(backgroundColor)
-            .then(
-                if (enabled) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
-                }
-            )
-            .focusProperties { canFocus = false }
+            .nonFocusableTap(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = localizedLabel(spec, strings) },
         contentAlignment = Alignment.Center,
     ) {

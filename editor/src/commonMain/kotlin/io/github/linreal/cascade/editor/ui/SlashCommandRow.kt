@@ -1,7 +1,6 @@
 package io.github.linreal.cascade.editor.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,7 +10,6 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,8 +43,7 @@ internal fun SlashCommandRow(
             .fillMaxWidth()
             .heightIn(min = SlashPopupDefaults.ROW_HEIGHT_DP.dp)
             .background(backgroundColor)
-            .clickable(onClick = onClick)
-            .focusProperties { canFocus = false }
+            .nonFocusableTap(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

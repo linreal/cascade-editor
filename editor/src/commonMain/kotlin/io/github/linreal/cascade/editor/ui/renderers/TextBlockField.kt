@@ -17,6 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -38,6 +42,8 @@ import io.github.linreal.cascade.editor.slash.SlashCommandTextObserver
 import io.github.linreal.cascade.editor.ui.observers.ListAutoDetectObserver
 import io.github.linreal.cascade.editor.ui.BackspaceAwareTextField
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
 import io.github.linreal.cascade.editor.ui.LocalEditorStateHolder
@@ -340,13 +346,65 @@ internal fun TextBlockField(
             onRedo = stateHolder::redo,
         )
     }
+    var handledPhysicalEnterKey by remember { mutableStateOf<Key?>(null) }
+
+    fun handleEditorEnter(cursorPosition: Int) {
+        val highlightedItemId = slashHighlightedCommandId
+        val highlightedItem = if (highlightedItemId != null) {
+            slashPopupItems.firstOrNull { it.id == highlightedItemId }
+        } else {
+            null
+        }
+        val executor = slashCommandExecutor
+        if (
+            slashSessionAnchorBlockId == block.id &&
+            highlightedItem != null &&
+            executor != null
+        ) {
+            textHistoryTracker.noteBatchBreaker()
+            executor.execute(highlightedItem)
+            return
+        }
+        textHistoryTracker.noteBatchBreaker()
+        callbacks.onEnter(block.id, cursorPosition)
+    }
+
+    fun handlePhysicalEnterKeyEvent(keyEvent: KeyEvent): Boolean {
+        val enterKey = when (keyEvent.key) {
+            Key.Enter, Key.NumPadEnter -> keyEvent.key
+            else -> null
+        } ?: return false
+
+        if (keyEvent.isShiftPressed) return false
+
+        return when (keyEvent.type) {
+            KeyEventType.KeyUp -> {
+                if (handledPhysicalEnterKey == enterKey) {
+                    handledPhysicalEnterKey = null
+                    true
+                } else {
+                    false
+                }
+            }
+            KeyEventType.KeyDown -> {
+                if (handledPhysicalEnterKey != enterKey) {
+                    handledPhysicalEnterKey = enterKey
+                    handleEditorEnter(textFieldState.visibleSelection().start)
+                }
+                true
+            }
+            else -> true
+        }
+    }
 
     Box(modifier = modifier) {
         BackspaceAwareTextField(
             state = textFieldState,
             modifier = Modifier.fillMaxWidth()
                 .onGloballyPositioned { coords -> layoutCoordinates = coords }
-                .onPreviewKeyEvent { keyHandler.onPreviewKeyEvent(it) }
+                .onPreviewKeyEvent {
+                    keyHandler.onPreviewKeyEvent(it) || handlePhysicalEnterKeyEvent(it)
+                }
                 .onFocusChanged { focusState ->
                     val wasFocused = hasComposeFocus
                     hasComposeFocus = focusState.isFocused
@@ -355,6 +413,10 @@ internal fun TextBlockField(
                     }
                     if (!focusState.isFocused && wasFocused) {
                         slashTextObserver.onFocusLost()
+                        // KeyUp after a split lands on the new block (focus has already
+                        // migrated), so it never clears this block's KeyDown marker.
+                        // Reset on focus loss so a later re-focus can handle Enter again.
+                        handledPhysicalEnterKey = null
                     }
                 },
             textStyle = textStyle,
@@ -367,24 +429,7 @@ internal fun TextBlockField(
                 callbacks.onBackspaceAtStart(block.id)
             },
             onEnterPressed = { cursorPosition ->
-                val highlightedItemId = slashHighlightedCommandId
-                val highlightedItem = if (highlightedItemId != null) {
-                    slashPopupItems.firstOrNull { it.id == highlightedItemId }
-                } else {
-                    null
-                }
-                val executor = slashCommandExecutor
-                if (
-                    slashSessionAnchorBlockId == block.id &&
-                    highlightedItem != null &&
-                    executor != null
-                ) {
-                    textHistoryTracker.noteBatchBreaker()
-                    executor.execute(highlightedItem)
-                    return@BackspaceAwareTextField
-                }
-                textHistoryTracker.noteBatchBreaker()
-                callbacks.onEnter(block.id, cursorPosition)
+                handleEditorEnter(cursorPosition)
             }
         )
 
