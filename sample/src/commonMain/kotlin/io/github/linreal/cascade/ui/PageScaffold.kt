@@ -20,15 +20,14 @@ import androidx.compose.ui.unit.dp
 internal fun PageScaffold(
     modifier: Modifier = Modifier,
     maxContentWidth: Dp = 760.dp,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val pageColor = MaterialTheme.colorScheme.background
-    val canvasColor = if (pageColor.luminance() > 0.5f) {
+    pageColor: Color = MaterialTheme.colorScheme.background,
+    canvasColor: Color = if (pageColor.luminance() > 0.5f) {
         Color(0xFFE9ECF0)
     } else {
         Color(0xFF06060C)
-    }
-
+    },
+    content: @Composable ColumnScope.() -> Unit,
+) {
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()

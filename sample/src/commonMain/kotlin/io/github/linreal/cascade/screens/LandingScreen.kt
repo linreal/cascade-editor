@@ -32,6 +32,7 @@ import cascadeeditor.sample.generated.resources.ic_editor
 import cascadeeditor.sample.generated.resources.ic_palette
 import cascadeeditor.sample.generated.resources.ic_puzzle
 import io.github.linreal.cascade.navigation.AppScreen
+import io.github.linreal.cascade.ui.PageScaffold
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -39,73 +40,79 @@ import org.jetbrains.compose.resources.painterResource
 fun LandingScreen(
     onNavigate: (AppScreen) -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp),
+    PageScaffold(
+        pageColor = MaterialTheme.colorScheme.background,
+        canvasColor = MaterialTheme.colorScheme.background,
+
     ) {
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Branding
-        Text(
-            text = "Cascade Editor",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Block-based document editor for Compose Multiplatform",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        KmpBadge()
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Hero card — Editor Demo
-        HeroCard(
-            icon = Res.drawable.ic_editor,
-            title = "Editor Demo",
-            description = "Full-featured block editor with slash commands, rich text formatting, and drag-and-drop reordering",
-            onClick = { onNavigate(AppScreen.EditorDemo) },
-        )
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // Section header
-        Text(
-            text = "Explore",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Section cards — row 1
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp),
         ) {
-            SectionCard(
-                icon = Res.drawable.ic_puzzle,
-                title = "Custom Blocks & Commands",
-                description = "Extend the editor with custom block types",
-                onClick = { onNavigate(AppScreen.CustomBlocks) },
-                modifier = Modifier.weight(1f),
-            )
-            SectionCard(
-                icon = Res.drawable.ic_code,
-                title = "Custom Toolbar",
-                description = "Build your own formatting toolbar",
-                onClick = { onNavigate(AppScreen.CustomToolbar) },
-                modifier = Modifier.weight(1f),
-            )
-        }
+            Spacer(modifier = Modifier.height(32.dp))
 
-        Spacer(modifier = Modifier.height(12.dp))
+            // Branding
+            Text(
+                text = "Cascade Editor",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Block-based document editor for Compose Multiplatform",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            KmpBadge()
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Hero card — Editor Demo
+            HeroCard(
+                icon = Res.drawable.ic_editor,
+                title = "Editor Demo",
+                description = "Full-featured block editor with slash commands, rich text formatting, and drag-and-drop reordering",
+                onClick = { onNavigate(AppScreen.EditorDemo) },
+            )
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Section header
+            Text(
+                text = "Explore",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Section cards — row 1
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                SectionCard(
+                    icon = Res.drawable.ic_puzzle,
+                    title = "Custom Blocks & Commands",
+                    description = "Extend the editor with custom block types",
+                    onClick = { onNavigate(AppScreen.CustomBlocks) },
+                    modifier = Modifier.weight(1f),
+                )
+                SectionCard(
+                    icon = Res.drawable.ic_code,
+                    title = "Custom Toolbar",
+                    description = "Build your own formatting toolbar",
+                    onClick = { onNavigate(AppScreen.CustomToolbar) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
     }
 }
 
