@@ -1,7 +1,6 @@
 package io.github.linreal.cascade.editor.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -141,8 +140,7 @@ internal fun SlashCommandPopup(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = SlashPopupDefaults.BACK_HEADER_HEIGHT_DP.dp)
-                        .clickable { stateHolder.dispatch(NavigateSlashBack) }
-                        .focusProperties { canFocus = false }
+                        .nonFocusableTap { stateHolder.dispatch(NavigateSlashBack) }
                         .padding(horizontal = 12.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

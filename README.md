@@ -2,9 +2,9 @@
 
 The first native block-based editor for Compose Multiplatform.
 
-Notion/Craft-style editing, implemented as a shared Kotlin editor core for Android and iOS: draggable blocks, slash commands, undo/redo, rich-text spans, custom block types, and versioned document serialization, all without WebView, HTML/contentEditable, or embedded JavaScript editors.
+Notion/Craft-style editing, implemented as a shared Kotlin editor core for Android, iOS, and desktop: draggable blocks, slash commands, undo/redo, rich-text spans, custom block types, and versioned document serialization, all without WebView, HTML/contentEditable, or embedded JavaScript editors.
 
-Shared `commonMain` editor core | Android + iOS | 950+ tests | No WebView | Extensible block registry
+Shared `commonMain` editor core | Android + iOS + Desktop | 950+ tests | No WebView | Extensible block registry
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
 [![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.10-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
@@ -19,7 +19,7 @@ Shared `commonMain` editor core | Android + iOS | 950+ tests | No WebView | Exte
 
 Notion and Craft feel different from ordinary rich-text fields because the document is not a single styled text buffer. It is an ordered block document: paragraphs, headings, todos, quotes, lists, and dividers exist as structural units that can be inserted, converted, reordered, and serialized independently.
 
-CascadeEditor brings that model to Compose Multiplatform natively. Each block has its own live text state, renderer, slash-command behavior, and serialization path, while rich-text spans still work inside text-capable blocks. That is what enables Notion-style editing on Android and iOS without delegating the editor core to a WebView.
+CascadeEditor brings that model to Compose Multiplatform natively. Each block has its own live text state, renderer, slash-command behavior, and serialization path, while rich-text spans still work inside text-capable blocks. That is what enables Notion-style editing on Android, iOS, and desktop without delegating the editor core to a WebView.
 
 | Capability | CascadeEditor | Typical single-buffer rich-text editors |
 |---|:---:|:---:|
@@ -41,7 +41,7 @@ If you only need a formatted text area, a single-buffer editor is simpler. Casca
 - **Rich-text spans inside blocks** — bold, italic, underline, strikethrough, inline code, highlight, and custom styles with span preservation across split, merge, and replace operations
 - **Versioned document serialization** — `toJson()` / `loadFromJson()` with explicit schemas, codec hooks, and support for custom block types
 - **Custom block system** — extend the editor with your own `CustomBlockType`, `BlockRenderer`, slash commands, and block-specific behavior
-- **Shared multiplatform editor core** — one Kotlin codebase for Android and iOS with native Compose rendering instead of HTML/contentEditable or embedded JavaScript editors
+- **Shared multiplatform editor core** — one Kotlin codebase for Android, iOS, and desktop with native Compose rendering instead of HTML/contentEditable or embedded JavaScript editors
 - **Theming and localization** — configurable colors, typography, and UI strings for integrating the editor into product-specific design systems
 
 ## Quick Start
@@ -303,7 +303,7 @@ This is not a styled text field. CascadeEditor combines block-structured documen
 
 **Drag auto-scroll has to coexist with an active gesture.** During block drag, the list must scroll while pointer input remains owned by the drag handler. `AutoScrollDuringDrag` uses `LazyListState.dispatchRawDelta()` instead of `scroll {}` because the standard scroll path acquires the scroll `MutatorMutex` and interferes with the active drag gesture. After each delta, the editor recomputes the drop target against the shifted viewport so reorder feedback stays correct while the list is moving.
 
-**Most of the hard logic lives in shared multiplatform code.** Core models, reducers, slash-command infrastructure, serialization, span algorithms, state holders, and most editor behavior live in `editor/src/commonMain`, with platform-specific code limited to thin Android/iOS adapters. That means the non-trivial parts are implemented once and have to remain correct across both targets, rather than being delegated to a platform-specific text widget.
+**Most of the hard logic lives in shared multiplatform code.** Core models, reducers, slash-command infrastructure, serialization, span algorithms, state holders, and most editor behavior live in `editor/src/commonMain`, with platform-specific code limited to thin Android/iOS/desktop adapters. That means the non-trivial parts are implemented once and have to remain correct across all supported targets, rather than being delegated to a platform-specific text widget.
 
 ## Testing
 
@@ -323,6 +323,8 @@ This is not a styled text field. CascadeEditor combines block-structured documen
 | Android compileSdk | 36 |
 | iOS min version | 16.0 |
 | iOS targets | arm64, simulatorArm64 |
+| Desktop runtime | JDK 11+ |
+| Desktop packaging | JDK 17+ |
 | JVM target | 11 |
 
 

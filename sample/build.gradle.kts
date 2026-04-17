@@ -8,13 +8,31 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+val appVersionCode = 1
+val appVersionName = "1.0.0"
+
 kotlin {
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
+    jvm("desktop") {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
+    }
+
+    wasmJs {
+        browser {
+            commonWebpackConfig {
+                outputFileName = "app.js"
+            }
+        }
+        binaries.executable()
+    }
+
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -45,6 +63,10 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        val desktopMain by getting
+        desktopMain.dependencies {
+            implementation(compose.desktop.currentOs)
+        }
     }
 }
 
@@ -56,8 +78,8 @@ android {
         applicationId = "io.github.linreal.cascade"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
     }
     packaging {
         resources {
@@ -81,3 +103,20 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
 }
 
+compose.desktop {
+    application {
+        mainClass = "io.github.linreal.cascade.MainKt"
+
+        nativeDistributions {
+            targetFormats(
+                TargetFormat.Dmg,
+                TargetFormat.Msi,
+                TargetFormat.Deb,
+            )
+            packageName = "CascadeEditor"
+            packageVersion = appVersionName
+            description = "Cascade Editor Compose Multiplatform desktop sample"
+            vendor = "linreal"
+        }
+    }
+}

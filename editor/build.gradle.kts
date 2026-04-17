@@ -18,6 +18,16 @@ kotlin {
         publishLibraryVariants("release")
     }
 
+    jvm("desktop") {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
+    }
+
+    wasmJs {
+        browser()
+    }
+
     listOf(
         iosArm64(),
         iosSimulatorArm64()

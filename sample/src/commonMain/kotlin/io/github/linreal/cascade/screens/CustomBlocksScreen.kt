@@ -50,6 +50,7 @@ import io.github.linreal.cascade.editor.state.rememberEditorState
 import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
 import io.github.linreal.cascade.editor.ui.CascadeEditor
 import io.github.linreal.cascade.editor.ui.createEditorRegistry
+import io.github.linreal.cascade.ui.PageScaffold
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
@@ -348,7 +349,7 @@ fun CustomBlocksScreen(
 
     val slashRegistry = remember { createSlashRegistry() }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    PageScaffold {
         // Header
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),

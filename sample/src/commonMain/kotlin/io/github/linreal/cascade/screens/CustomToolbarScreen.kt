@@ -9,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,6 +55,7 @@ import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
 import io.github.linreal.cascade.editor.ui.CascadeEditor
 import io.github.linreal.cascade.editor.ui.ToolbarSlot
 import io.github.linreal.cascade.editor.ui.visibleSelection
+import io.github.linreal.cascade.ui.PageScaffold
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
@@ -83,7 +83,7 @@ fun CustomToolbarScreen(
     val spanStates = remember { BlockSpanStates() }
     val editorState = rememberEditorState(buildToolbarDemoBlocks())
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    PageScaffold {
         // Header
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
@@ -318,10 +318,7 @@ private fun StyleToggleButton(
                     Modifier
                 }
             )
-            .then(
-                if (enabled) Modifier.clickable(onClick = onClick) else Modifier
-            )
-            .focusProperties { canFocus = false },
+            .nonFocusableTap(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -366,10 +363,7 @@ private fun ActionButton(
             .sizeIn(minWidth = 40.dp, minHeight = 40.dp)
             .clip(shape)
             .border(1.dp, borderColor.value, shape)
-            .then(
-                if (enabled) Modifier.clickable(onClick = onClick) else Modifier
-            )
-            .focusProperties { canFocus = false },
+            .nonFocusableTap(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -415,20 +409,13 @@ private fun ClearFormattingButton(
             .sizeIn(minWidth = 40.dp, minHeight = 40.dp)
             .clip(shape)
             .border(1.dp, borderColor.value, shape)
-            .then(
-                if (enabled) {
-                    Modifier.clickable {
-                        state.styles.forEach { (style, status) ->
-                            if (status != StyleStatus.Absent) {
-                                actions.removeStyle(style)
-                            }
-                        }
+            .nonFocusableTap(enabled = enabled) {
+                state.styles.forEach { (style, status) ->
+                    if (status != StyleStatus.Absent) {
+                        actions.removeStyle(style)
                     }
-                } else {
-                    Modifier
                 }
-            )
-            .focusProperties { canFocus = false },
+            },
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -495,3 +482,14 @@ private fun buildToolbarDemoBlocks(): List<Block> = listOf(
     Block.paragraph(""),
     Block.paragraph(""),
 )
+
+@Composable
+private fun Modifier.nonFocusableTap(
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+): Modifier {
+    if (!enabled) return this
+    return this
+        .clickable(onClick = onClick)
+        .focusProperties { canFocus = false }
+}

@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,6 +49,7 @@ import io.github.linreal.cascade.editor.state.rememberEditorState
 import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
 import io.github.linreal.cascade.editor.ui.CascadeEditor
 import io.github.linreal.cascade.storage.rememberDocumentStorage
+import io.github.linreal.cascade.ui.PageScaffold
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
@@ -112,7 +112,7 @@ fun EditorDemoScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    PageScaffold {
         // Header — swaps between normal and selection mode
         val hasSelection = editorState.state.hasSelection
         AnimatedContent(
