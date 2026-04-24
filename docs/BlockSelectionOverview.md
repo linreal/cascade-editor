@@ -2,7 +2,7 @@
 
 ## 1. Feature Overview
 
-Block selection introduces a multi-select mode to the CascadeEditor. Users long-press a block to select it, then tap additional blocks to toggle them in/out of the selection set. Selected blocks are highlighted with a semi-transparent overlay and cannot be edited or focused. The consumer observes selection state reactively via `EditorState.selectedBlockIds` and `EditorState.hasSelection`, and can perform bulk operations (delete, clear) by dispatching standard `EditorAction`s. The feature follows the editor's existing unidirectional data flow and requires zero changes from custom renderers to work out of the box.
+Block selection introduces a multi-select mode to the CascadeEditor. Users long-press a block to select it, then tap additional blocks to toggle them in/out of the selection set. Selected blocks are highlighted with a semi-transparent overlay and cannot be edited or focused. The consumer observes selection state reactively via `EditorState.selectedBlockIds` and `EditorState.hasSelection`, and can perform bulk operations (delete, clear) by dispatching standard `EditorAction`s. When a selected block is dragged, the editor moves selected outline roots plus their descendants as one subtree-aware payload, preserving relative indentation and renumbering ordered lists. The feature follows the editor's existing unidirectional data flow and requires zero changes from custom renderers to work out of the box.
 
 ## 2. Architecture & Design Decisions
 
@@ -12,7 +12,9 @@ Block selection introduces a multi-select mode to the CascadeEditor. Users long-
 |--------|----------|---------|
 | `handlesSelectionVisual` | `BlockRenderer<T>` interface | Boolean property (default `false`). Lets renderers opt out of the wrapper-level selection overlay and draw their own selection chrome |
 | `selectionOverlay` | `CascadeEditorColors` data class | Theme color slot for the semi-transparent overlay (`Color(0x221A73E8)` light, `Color(0x228AB4F8)` dark) |
-| `isDropAtOriginalPosition()` | `BlockGestureModifier.kt` | Pure function: returns `true` when a drag's drop target matches the block's original position (meaning no movement occurred) |
+| `isDropAtOriginalPosition()` | `BlockGestureModifier.kt` | Pure function: returns `true` when a drag's drop target and indentation lane match the block's original state (meaning no movement occurred) |
+| `DragState.payloadBlockIds` | `EditorState.kt` | Document-ordered block IDs included in the active drag payload, including selected root subtrees |
+| `DragState.dragRootIds` | `EditorState.kt` | Selected or touched root IDs after descendant de-duplication |
 | `detectDragAfterLongPress()` | `BlockGestureModifier.kt` | Custom gesture detector replacing Compose's `detectDragGesturesAfterLongPress`, adding configurable `longPressTimeoutMillis` and an `onTap` callback |
 | `awaitCustomLongPress()` | `BlockGestureModifier.kt` | Low-level pointer wait loop with custom timeout |
 
@@ -20,11 +22,13 @@ Block selection introduces a multi-select mode to the CascadeEditor. Users long-
 
 **Focus/selection mutual exclusivity (enforced in reducers, not UI).** All selection reducers clear `focusedBlockId`; all focus reducers (with non-null target) clear `selectedBlockIds`. This guarantees no invalid state regardless of how actions are dispatched (gesture, programmatic, tests).
 
-**Position-based "no-move" detection over distance-based.** Whether a long-press-and-release triggers selection is determined by comparing the drop target index to the block's original index, not by accumulated drag distance. This makes the check immune to touch jitter.
+**Position-and-lane "no-move" detection over distance-based.** Whether a long-press-and-release triggers selection is determined by comparing the drop target index to the block's original index and the future indentation lane to the original root indentation, not by accumulated drag distance. This keeps the check immune to touch jitter while still allowing X-axis-only indentation drags.
 
 **Wrapper-level interaction gate with renderer opt-out.** Selection overlay and tap interception live on the block wrapper in `CascadeEditor.kt`, guaranteeing all renderers (built-in and custom) participate in selection mode without any code changes. Renderers needing custom selection visuals set `handlesSelectionVisual = true`.
 
 **Shortened long-press timeout (190ms).** The default platform timeout (~400ms) felt sluggish for block selection. A `BLOCK_LONG_PRESS_MS` constant at the `CascadeEditor` level controls this.
+
+**Subtree-aware selected drag.** Dragging a selected block resolves selected roots in document order, filters out selected descendants of another selected root, and expands each root to its full flat-outline subtree. Unsupported selected block types can still move as drag roots; indentation support only affects indent/outdent commands, not drag payload membership.
 
 ## 3. Data Flow
 
@@ -35,7 +39,7 @@ User long-presses block
   -> awaitCustomLongPress() fires after 190ms
   -> onDragStart: dispatches StartDrag(blockId, touchOffsetY)
      (block appears at 0.5 alpha as drag feedback)
-  -> User lifts finger without moving block to a different position
+  -> User lifts finger without moving block to a different position or indentation lane
   -> onDragEnd: isDropAtOriginalPosition() returns true
      -> dispatches CancelDrag (clears DragState)
      -> dispatches ToggleBlockSelection(blockId)
@@ -54,6 +58,27 @@ User taps a block while state.hasSelection == true
      -> reducer adds or removes blockId from selectedBlockIds
      -> if selectedBlockIds becomes empty, selection mode exits
   -> Recomposition: overlay added/removed
+```
+
+### Drag selected roots and subtrees
+
+```
+User long-presses and drags a selected block
+  -> StartDrag(blockId, touchOffsetY)
+     -> resolveDragPayload():
+        1. Find selected root blocks in document order
+        2. Drop selected descendants already covered by another selected root
+        3. Expand each root to include following descendants with deeper indentation
+        4. Store dragRootIds, payloadBlockIds, primaryRootId, and original depths
+  -> Pointer movement updates the semantic hover target:
+     -> Y chooses the visual gap
+     -> X chooses futureRootIndentationLevel in whole indent-unit steps
+     -> invalid gaps clear DragState.targetIndex
+  -> CompleteDrag:
+     -> MoveDragPayload removes the payload, inserts it at the resolved gap,
+        applies one root-depth delta to all payload blocks, validates outline shape,
+        and renumbers ordered lists
+  -> Recomposition: selected roots and descendants appear in the new order/depth
 ```
 
 ### Focus suppression during selection
@@ -81,6 +106,18 @@ TextBlockField tap overlay fires onFocus(blockId)
 | `EditorState.hasSelection` | `Boolean` | `true` when any block is selected |
 | `EditorState.hasSingleSelection` | `Boolean` | `true` when exactly one block is selected |
 | `EditorState.selectedBlocks` | `List<Block>` | Selected blocks in list order |
+
+### Drag payload state
+
+`EditorState.dragState` is nullable, but while a drag is active it includes subtree-aware payload metadata:
+
+| Property | Description |
+|----------|-------------|
+| `dragRootIds` | Document-ordered root IDs in the payload. In selection mode this is the selected root set after descendant de-duplication. |
+| `payloadBlockIds` | Full payload IDs in document order, including every root subtree. |
+| `primaryRootId` | Root that drives preview/depth intent; this is the root containing the block that started the gesture. |
+| `originalRootIndentationLevels` | Original depth for each root, used to compute the final drag depth delta. |
+| `futureRootIndentationLevel` | Current resolved future depth for `primaryRootId`, updated only when hover resolution crosses a semantic lane. |
 
 All properties are on the `@Immutable` `EditorState` data class, observable via `stateHolder.state`.
 
@@ -126,9 +163,11 @@ public interface BlockRenderer<T : BlockType> {
 
 | Component | What changed |
 |-----------|-------------|
-| `EditorAction.kt` | 8 reducer implementations updated for focus/selection invariant; 2 reducers updated for block existence validation |
-| `BlockGestureModifier.kt` | Custom long-press detector with configurable timeout; `onTap` callback for selection-mode taps; `isDropAtOriginalPosition()` pure function; `finishDrag()` helper dispatching `ToggleBlockSelection` when drop is at original position |
-| `CascadeEditor.kt` | Selection overlay modifier on block wrapper; clickable overlay `Box` that consumes all taps during selection mode; `LaunchedEffect` clearing Compose focus on `hasSelection`; `selectionOverlayColor` read from theme |
+| `EditorAction.kt` | Selection/focus reducers enforce the mutual exclusivity invariant; public drag actions and internal hover/move reducers carry subtree payload and future-depth state |
+| `BlockGestureModifier.kt` | Custom long-press detector with configurable timeout; `onTap` callback for selection-mode taps; `isDropAtOriginalPosition()` pure function; `finishDrag()` helper dispatching `ToggleBlockSelection` when drop is at original position and indentation lane |
+| `DragUtils.kt` | Depth-aware hover target resolver used during direct drag and auto-scroll, including invalid self-payload gap rejection, unsupported-root depth pinning, and future root depth calculation |
+| `DropIndicator.kt` / `DragPreview.kt` | Use `futureRootIndentationLevel` so selection payloads preview and drop into the same depth lane; preview shows a compact `+N` badge for additional payload blocks |
+| `CascadeEditor.kt` | Selection overlay modifier on block wrapper; clickable overlay `Box` that consumes all taps during selection mode; `LaunchedEffect` clearing Compose focus on `hasSelection`; subtree drag overlay wiring; `selectionOverlayColor` read from theme |
 | `BlockRenderer.kt` | `handlesSelectionVisual` property on `BlockRenderer<T>` interface; focus suppression guard in `DefaultBlockCallbacks.onFocus()` |
 | `CascadeEditorColors.kt` | `selectionOverlay` color slot with light/dark presets |
 | `TextBlockField.kt` | Focus request routed through `callbacks.onFocus(block.id)` instead of direct `focusRequester.requestFocus()` |
@@ -138,8 +177,8 @@ public interface BlockRenderer<T : BlockType> {
 
 The feature depends on:
 - `EditorState.selectedBlockIds` / `hasSelection` (pre-existing state fields)
-- `DragState.targetIndex` / `primaryBlockOriginalIndex` (pre-existing drag state)
-- `convertVisualGapToMoveBlocksIndex` from `DragUtils.kt` (pre-existing logic, reused conceptually)
+- `DragState.targetIndex`, `primaryBlockOriginalIndex`, `payloadBlockIds`, and `futureRootIndentationLevel`
+- `calculateDropTargetIndex()`, `resolveDepthAwareDragHoverTarget()`, and `recomputeDepthAwareDragHoverTarget()` from `DragUtils.kt`
 - `BlockRegistry.getRenderer()` (for `handlesSelectionVisual` lookup)
 - `LocalCascadeTheme` (for `selectionOverlay` color)
 
@@ -159,7 +198,11 @@ The feature depends on:
 
 - **`ClearFocus` and `ClearSelection` are orthogonal.** Neither enforces the mutual exclusivity invariant on the other. This is correct because `ClearFocus` is used in drag paths where selection should persist.
 
-- **Multi-block drag is deferred to V2.** In V1, only single-block drag is supported. `DragState.draggingBlockIds` already holds a `Set<BlockId>`, so multi-block drag is a UI-only change.
+- **Selected descendants are not duplicated in drag payloads.** If both a parent and child are selected, dragging the parent moves the child once as part of the parent's subtree.
+
+- **Unsupported blocks can be dragged but not indented by selection commands.** Drag payload membership follows outline position and selection, while `IndentForward`/`IndentBackward` only target supported block types. If an unsupported block is the primary drag root, horizontal drag movement cannot give it indentation; the future root depth stays `0`.
+
+- **Invalid drag hover clears the target.** Gaps inside the payload or gaps that cannot accept the payload without corrupting outline depth set `DragState.targetIndex = null`, hide the indicator, and make `CompleteDrag` clear drag state without moving blocks.
 
 - **No "tap on empty area" to exit selection.** The consumer must clear selection via `ClearSelection` dispatch or by having the user deselect all blocks one by one.
 
@@ -172,6 +215,8 @@ The feature depends on:
 | **Interaction gate** | The wrapper-level `Box` and `clickable` overlay in `CascadeEditor.kt` that intercepts all pointer events during selection mode. |
 | **`handlesSelectionVisual`** | `BlockRenderer` property allowing renderers to opt out of the default selection overlay and provide custom selection chrome. |
 | **`selectionOverlay`** | `CascadeEditorColors` slot for the semi-transparent background drawn behind selected blocks. |
-| **`isDropAtOriginalPosition`** | Pure function determining whether a drag ended at the block's starting position, used to convert long-press-without-move into a selection toggle. |
+| **`isDropAtOriginalPosition`** | Pure function determining whether a drag ended at the block's starting position and indentation lane, used to convert long-press-without-move into a selection toggle. |
 | **`BLOCK_LONG_PRESS_MS`** | Constant (190ms) defining the custom long-press timeout, shorter than the platform default (~400ms). |
 | **Visual gap** | The drop indicator position during drag (index into the gaps between blocks). Gap N and N+1 for a block at index N both represent "no movement". |
+| **Drag root** | A selected or touched block that owns a moved subtree in the drag payload. |
+| **Drag payload** | The document-ordered set of blocks moved by a drag: roots plus descendants. |

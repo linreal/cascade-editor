@@ -124,6 +124,49 @@ class EditorHistoryUiStateTest {
     }
 
     @Test
+    fun `captureFocusedEditingUiState captures block selection when focus is absent`() {
+        val firstBlockId = BlockId("b1")
+        val secondBlockId = BlockId("b2")
+        val state = EditorState.withBlocks(
+            listOf(
+                textBlock(firstBlockId, "Hello"),
+                textBlock(secondBlockId, "World"),
+            )
+        ).copy(
+            selectedBlockIds = setOf(firstBlockId, secondBlockId),
+        )
+        val textStates = BlockTextStates()
+        val spanStates = BlockSpanStates()
+
+        val uiState = captureFocusedEditingUiState(state, textStates, spanStates)
+
+        assertNull(uiState.focusedBlockId)
+        assertEquals(setOf(firstBlockId, secondBlockId), uiState.selectedBlockIds)
+    }
+
+    @Test
+    fun `captureFocusedEditingUiState drops block selection when focus is present`() {
+        val firstBlockId = BlockId("b1")
+        val secondBlockId = BlockId("b2")
+        val state = EditorState.withBlocks(
+            listOf(
+                textBlock(firstBlockId, "Hello"),
+                textBlock(secondBlockId, "World"),
+            )
+        ).copy(
+            focusedBlockId = firstBlockId,
+            selectedBlockIds = setOf(secondBlockId),
+        )
+        val textStates = BlockTextStates()
+        val spanStates = BlockSpanStates()
+
+        val uiState = captureFocusedEditingUiState(state, textStates, spanStates)
+
+        assertEquals(firstBlockId, uiState.focusedBlockId)
+        assertEquals(emptySet(), uiState.selectedBlockIds)
+    }
+
+    @Test
     fun `restoreFocusedEditingUiState is safe no-op when focus is absent`() {
         val blockId = BlockId("b1")
         val state = EditorState.withBlocks(listOf(textBlock(blockId, "Hello")))

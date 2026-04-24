@@ -1,5 +1,6 @@
 package io.github.linreal.cascade.editor.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -26,7 +29,12 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import cascadeeditor.editor.generated.resources.Res
+import cascadeeditor.editor.generated.resources.ic_format_indent_decrease
+import cascadeeditor.editor.generated.resources.ic_format_indent_increase
 import io.github.linreal.cascade.editor.core.SpanStyle
+import io.github.linreal.cascade.editor.indentation.IndentationActions
+import io.github.linreal.cascade.editor.indentation.IndentationState
 import io.github.linreal.cascade.editor.richtext.FormattingActions
 import io.github.linreal.cascade.editor.richtext.FormattingState
 import io.github.linreal.cascade.editor.richtext.StyleStatus
@@ -36,12 +44,14 @@ import io.github.linreal.cascade.editor.theme.CascadeEditorTypography
 import io.github.linreal.cascade.editor.theme.LocalCascadeStrings
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 import io.github.linreal.cascade.editor.ui.utils.Dividers
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * Default config-driven rich text toolbar.
  *
- * Renders toggle buttons for each style in [config], reflecting the current
- * [formattingState] and dispatching toggle actions via [actions].
+ * Renders toggle buttons for each style in [config], plus structural indent
+ * controls driven by [indentationState] and [indentationActions].
  *
  * Buttons use [Modifier.focusProperties] to prevent stealing focus from the
  * text field. The toolbar supports horizontal scrolling for overflow.
@@ -50,6 +60,8 @@ import io.github.linreal.cascade.editor.ui.utils.Dividers
 internal fun RichTextToolbar(
     formattingState: State<FormattingState>,
     actions: FormattingActions,
+    indentationState: State<IndentationState>,
+    indentationActions: IndentationActions,
     config: RichTextToolbarConfig,
     onSlashInsert: () -> Unit,
     onHideKeyboard: (() -> Unit)? = null,
@@ -85,6 +97,24 @@ internal fun RichTextToolbar(
                     strings = strings,
                     onClick = onSlashInsert,
                 )
+
+                if (config.showIndentation) {
+                    ToolbarIconButton(
+                        icon = Res.drawable.ic_format_indent_decrease,
+                        label = strings.indentBackward,
+                        enabled = indentationState.value.canIndentBackward,
+                        colors = colors,
+                        onClick = indentationActions::indentBackward,
+                    )
+                    ToolbarIconButton(
+                        icon = Res.drawable.ic_format_indent_increase,
+                        label = strings.indentForward,
+                        enabled = indentationState.value.canIndentForward,
+                        colors = colors,
+                        onClick = indentationActions::indentForward,
+                    )
+                }
+
                 config.buttons.forEach { spec ->
                     ToolbarToggleButton(
                         spec = spec,
@@ -101,6 +131,34 @@ internal fun RichTextToolbar(
                 HideKeyboardToolbarButton(onClick = onHideKeyboard)
             }
         }
+    }
+}
+
+@Composable
+private fun ToolbarIconButton(
+    icon: DrawableResource,
+    label: String,
+    enabled: Boolean,
+    colors: CascadeEditorColors,
+    onClick: () -> Unit,
+) {
+    val contentColor = if (enabled) colors.toolbarIcon else colors.toolbarIconDisabled
+    val shape = RoundedCornerShape(6.dp)
+
+    Box(
+        modifier = Modifier
+            .sizeIn(minWidth = 44.dp, minHeight = 44.dp)
+            .clip(shape)
+            .nonFocusableTap(enabled = enabled, onClick = onClick)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = painterResource(icon),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(contentColor),
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 

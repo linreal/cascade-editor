@@ -57,6 +57,16 @@ class CascadeEditorStringsTest {
         assertTrue(strings.hideKeyboard.isNotEmpty())
     }
 
+    @Test
+    fun `indentForward is non-empty`() {
+        assertTrue(strings.indentForward.isNotEmpty())
+    }
+
+    @Test
+    fun `indentBackward is non-empty`() {
+        assertTrue(strings.indentBackward.isNotEmpty())
+    }
+
     // -- unsupportedBlock lambda --
 
     @Test
@@ -84,6 +94,17 @@ class CascadeEditorStringsTest {
     fun `copy with custom unsupportedBlock lambda works`() {
         val custom = strings.copy(unsupportedBlock = { "Unknown: $it" })
         assertEquals("Unknown: test_block", custom.unsupportedBlock("test_block"))
+    }
+
+    @Test
+    fun `copy with custom indentation labels works`() {
+        val custom = strings.copy(
+            indentForward = "Indent",
+            indentBackward = "Outdent",
+        )
+
+        assertEquals("Indent", custom.indentForward)
+        assertEquals("Outdent", custom.indentBackward)
     }
 
     @Test
@@ -115,5 +136,7 @@ class CascadeEditorStringsTest {
         assertEquals("Highlight", strings.highlight)
         assertEquals("Slash Command", strings.slashCommand)
         assertEquals("Hide Keyboard", strings.hideKeyboard)
+        assertEquals("Indent Forward", strings.indentForward)
+        assertEquals("Indent Backward", strings.indentBackward)
     }
 }

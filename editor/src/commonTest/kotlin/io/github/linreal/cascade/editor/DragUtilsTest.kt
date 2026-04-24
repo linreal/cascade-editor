@@ -1,6 +1,17 @@
 package io.github.linreal.cascade.editor
 
+import io.github.linreal.cascade.editor.action.StartDrag
+import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
+import io.github.linreal.cascade.editor.core.BlockContent
+import io.github.linreal.cascade.editor.core.BlockId
+import io.github.linreal.cascade.editor.core.BlockType
+import io.github.linreal.cascade.editor.state.EditorState
+import io.github.linreal.cascade.editor.ui.calculateDropIndicatorGeometry
+import io.github.linreal.cascade.editor.ui.dragPreviewPayloadBadgeText
+import io.github.linreal.cascade.editor.ui.utils.DragHoverOutlineIndex
 import io.github.linreal.cascade.editor.ui.utils.convertVisualGapToMoveBlocksIndex
+import io.github.linreal.cascade.editor.ui.utils.resolveDepthAwareDragHoverTarget
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -13,7 +24,297 @@ import kotlin.test.assertNull
  * to create fakes. They should be tested via UI/integration tests or after
  * adding the compose-foundation test dependency.
  */
+@Suppress("DEPRECATION")
 class DragUtilsTest {
+
+    private fun block(
+        id: String,
+        depth: Int,
+        type: BlockType = BlockType.Paragraph,
+    ): Block {
+        return Block(
+            id = BlockId(id),
+            type = type,
+            content = BlockContent.Text(id),
+            attributes = BlockAttributes(indentationLevel = depth),
+        )
+    }
+
+    private fun draggingState(
+        blocks: List<Block>,
+        draggedBlockId: String,
+    ): EditorState {
+        return StartDrag(BlockId(draggedBlockId), touchOffsetY = 0f)
+            .reduce(EditorState.withBlocks(blocks))
+    }
+
+    // =========================================================================
+    // resolveDepthAwareDragHoverTarget
+    // =========================================================================
+
+    @Test
+    fun `hover target caps future depth to previous block plus one`() {
+        val state = draggingState(
+            blocks = listOf(
+                block("A", depth = 0),
+                block("B", depth = 1),
+                block("C", depth = 0),
+            ),
+            draggedBlockId = "C",
+        )
+
+        val target = resolveDepthAwareDragHoverTarget(
+            blocks = state.blocks,
+            dragState = state.dragState,
+            visualGap = 2,
+            horizontalDragDeltaPx = 72f,
+            indentUnitPx = 24f,
+        )
+
+        assertEquals(2, target?.visualGap)
+        assertEquals(2, target?.futureRootIndentationLevel)
+    }
+
+    @Test
+    fun `hover target before first block only allows root depth zero`() {
+        val state = draggingState(
+            blocks = listOf(
+                block("A", depth = 0),
+                block("B", depth = 0),
+            ),
+            draggedBlockId = "B",
+        )
+
+        val target = resolveDepthAwareDragHoverTarget(
+            blocks = state.blocks,
+            dragState = state.dragState,
+            visualGap = 0,
+            horizontalDragDeltaPx = 48f,
+            indentUnitPx = 24f,
+        )
+
+        assertEquals(0, target?.visualGap)
+        assertEquals(0, target?.futureRootIndentationLevel)
+    }
+
+    @Test
+    fun `hover target is invalid when next depth would be adopted and payload cannot fit there`() {
+        val state = draggingState(
+            blocks = listOf(
+                block("A", depth = 0),
+                block("B", depth = 1),
+                block("C", depth = 2),
+                block("D", depth = 0),
+                block("E", depth = 1),
+                block("F", depth = 2),
+            ),
+            draggedBlockId = "D",
+        )
+
+        val target = resolveDepthAwareDragHoverTarget(
+            blocks = state.blocks,
+            dragState = state.dragState,
+            visualGap = 2,
+            horizontalDragDeltaPx = 0f,
+            indentUnitPx = 24f,
+        )
+
+        assertNull(target)
+    }
+
+    @Test
+    fun `hover target caps future depth by deepest dragged descendant offset`() {
+        val state = draggingState(
+            blocks = listOf(
+                block("A", depth = 0),
+                block("B", depth = 0),
+                block("C", depth = 1),
+                block("D", depth = 2),
+            ),
+            draggedBlockId = "B",
+        )
+
+        val target = resolveDepthAwareDragHoverTarget(
+            blocks = state.blocks,
+            dragState = state.dragState,
+            visualGap = 1,
+            horizontalDragDeltaPx = 72f,
+            indentUnitPx = 24f,
+        )
+
+        assertEquals(1, target?.visualGap)
+        assertEquals(1, target?.futureRootIndentationLevel)
+    }
+
+    @Test
+    fun `hover target is invalid for gaps inside drag payload`() {
+        val state = draggingState(
+            blocks = listOf(
+                block("A", depth = 0),
+                block("B", depth = 0),
+                block("C", depth = 1),
+                block("D", depth = 0),
+            ),
+            draggedBlockId = "B",
+        )
+
+        val target = resolveDepthAwareDragHoverTarget(
+            blocks = state.blocks,
+            dragState = state.dragState,
+            visualGap = 2,
+            horizontalDragDeltaPx = 0f,
+            indentUnitPx = 24f,
+        )
+
+        assertNull(target)
+    }
+
+    @Test
+    fun `hover target keeps starting depth when horizontal movement is less than one indent unit`() {
+        val state = draggingState(
+            blocks = listOf(
+                block("A", depth = 0),
+                block("B", depth = 1),
+                block("C", depth = 0),
+            ),
+            draggedBlockId = "B",
+        )
+
+        val target = resolveDepthAwareDragHoverTarget(
+            blocks = state.blocks,
+            dragState = state.dragState,
+            visualGap = 1,
+            horizontalDragDeltaPx = 23f,
+            indentUnitPx = 24f,
+        )
+
+        assertEquals(1, target?.visualGap)
+        assertEquals(1, target?.futureRootIndentationLevel)
+    }
+
+    @Test
+    fun `hover target keeps unsupported primary root at depth zero during horizontal drag`() {
+        val state = draggingState(
+            blocks = listOf(
+                block("A", depth = 0),
+                block("B", depth = 1),
+                block("C", depth = 1),
+                block("H", depth = 0, type = BlockType.Heading(1)),
+            ),
+            draggedBlockId = "H",
+        )
+
+        val target = resolveDepthAwareDragHoverTarget(
+            blocks = state.blocks,
+            dragState = state.dragState,
+            visualGap = 2,
+            horizontalDragDeltaPx = 72f,
+            indentUnitPx = 24f,
+        )
+
+        assertEquals(2, target?.visualGap)
+        assertEquals(0, target?.futureRootIndentationLevel)
+    }
+
+    @Test
+    fun `hover target treats previous unsupported block as outline boundary`() {
+        val state = draggingState(
+            blocks = listOf(
+                block("A", depth = 0),
+                block("H", depth = 0, type = BlockType.Heading(1)),
+                block("B", depth = 0),
+            ),
+            draggedBlockId = "B",
+        )
+
+        val target = resolveDepthAwareDragHoverTarget(
+            outlineIndex = DragHoverOutlineIndex(state.blocks),
+            dragState = state.dragState,
+            visualGap = 2,
+            horizontalDragDeltaPx = 24f,
+            indentUnitPx = 24f,
+        )
+
+        assertEquals(2, target?.visualGap)
+        assertEquals(0, target?.futureRootIndentationLevel)
+    }
+
+    @Test
+    fun `hover target clamps next depth against shallowest moved root in multi-root drag`() {
+        val state = EditorState.withBlocks(
+            listOf(
+                block("R", depth = 0),
+                block("P", depth = 1),
+                block("C", depth = 1),
+                block("A", depth = 0),
+                block("X", depth = 0),
+                block("B", depth = 1),
+            )
+        ).copy(
+            selectedBlockIds = setOf(BlockId("A"), BlockId("B")),
+        ).let { selectedState ->
+            StartDrag(BlockId("B"), touchOffsetY = 0f).reduce(selectedState)
+        }
+
+        val target = resolveDepthAwareDragHoverTarget(
+            blocks = state.blocks,
+            dragState = state.dragState,
+            visualGap = 2,
+            horizontalDragDeltaPx = 0f,
+            indentUnitPx = 24f,
+        )
+
+        assertEquals(2, target?.visualGap)
+        assertEquals(2, target?.futureRootIndentationLevel)
+    }
+
+    // =========================================================================
+    // Drag indicator and preview pure geometry
+    // =========================================================================
+
+    @Test
+    fun `indicator geometry at depth zero starts at base padding`() {
+        val geometry = calculateDropIndicatorGeometry(
+            viewportWidthPx = 320f,
+            futureRootIndentationLevel = 0f,
+            blockHorizontalPaddingPx = 16f,
+            indentUnitPx = 24f,
+        )
+
+        assertEquals(16f, geometry?.startX)
+        assertEquals(304f, geometry?.endX)
+    }
+
+    @Test
+    fun `indicator geometry at depth two includes two indent units`() {
+        val geometry = calculateDropIndicatorGeometry(
+            viewportWidthPx = 320f,
+            futureRootIndentationLevel = 2f,
+            blockHorizontalPaddingPx = 16f,
+            indentUnitPx = 24f,
+        )
+
+        assertEquals(64f, geometry?.startX)
+        assertEquals(304f, geometry?.endX)
+    }
+
+    @Test
+    fun `indicator geometry returns null when line would be inverted`() {
+        val geometry = calculateDropIndicatorGeometry(
+            viewportWidthPx = 80f,
+            futureRootIndentationLevel = 3f,
+            blockHorizontalPaddingPx = 16f,
+            indentUnitPx = 24f,
+        )
+
+        assertNull(geometry)
+    }
+
+    @Test
+    fun `preview badge text reports additional payload blocks`() {
+        assertNull(dragPreviewPayloadBadgeText(payloadBlockCount = 1))
+        assertEquals("+2", dragPreviewPayloadBadgeText(payloadBlockCount = 3))
+    }
 
     // =========================================================================
     // convertVisualGapToMoveBlocksIndex

@@ -18,10 +18,14 @@ public data class ToolbarButtonSpec(
 /**
  * Configuration for the default rich text toolbar.
  * Controls which buttons appear and in what order.
+ *
+ * @param buttons Text formatting buttons to render in order.
+ * @param showIndentation Whether the default toolbar renders indent/outdent buttons.
  */
 @Immutable
 public data class RichTextToolbarConfig(
     val buttons: List<ToolbarButtonSpec>,
+    val showIndentation: Boolean = true,
 ) {
     public companion object {
         /** Default V1 toolbar buttons. */

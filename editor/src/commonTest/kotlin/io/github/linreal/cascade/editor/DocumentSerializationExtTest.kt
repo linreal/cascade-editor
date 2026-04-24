@@ -1,6 +1,7 @@
 package io.github.linreal.cascade.editor
 
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
@@ -133,6 +134,44 @@ class DocumentSerializationExtTest {
     }
 
     @Test
+    fun `toJson preserves block attributes while resolving runtime text`() {
+        val blockId = BlockId("b1")
+        val parentId = BlockId("parent")
+        val childId = BlockId("child")
+        val blocks = listOf(
+            Block(
+                id = parentId,
+                type = BlockType.Paragraph,
+                content = BlockContent.Text("parent"),
+            ),
+            Block(
+                id = childId,
+                type = BlockType.BulletList,
+                content = BlockContent.Text("child"),
+                attributes = BlockAttributes(indentationLevel = 1),
+            ),
+            Block(
+                id = blockId,
+                type = BlockType.BulletList,
+                content = BlockContent.Text("snapshot"),
+                attributes = BlockAttributes(indentationLevel = 2),
+            )
+        )
+        val holder = EditorStateHolder(EditorState.withBlocks(blocks))
+        val textStates = BlockTextStates()
+        val spanStates = BlockSpanStates()
+
+        textStates.getOrCreate(blockId, "snapshot")
+        textStates.setText(blockId, "runtime")
+
+        val json = holder.toJson(textStates, spanStates)
+        val decoded = DocumentSchema.decodeFromString(json)
+
+        assertEquals("runtime", (decoded[2].content as BlockContent.Text).text)
+        assertEquals(2, decoded[2].attributes.indentationLevel)
+    }
+
+    @Test
     fun `toJson non-text blocks pass through unchanged`() {
         val blocks = listOf(
             Block(BlockId("b1"), BlockType.Divider, BlockContent.Empty),
@@ -170,6 +209,22 @@ class DocumentSerializationExtTest {
         assertEquals("Hello", (holder.state.blocks[0].content as BlockContent.Text).text)
         assertIs<BlockType.Heading>(holder.state.blocks[1].type)
         assertTrue(result.warnings.isEmpty())
+    }
+
+    @Test
+    fun `loadFromJson applies decoded block attributes`() {
+        val holder = EditorStateHolder()
+        val textStates = BlockTextStates()
+        val spanStates = BlockSpanStates()
+
+        val json = """{"version":2,"blocks":[
+            {"id":"b1","type":{"typeId":"paragraph"},"content":{"kind":"text","version":1,"text":"Parent","spans":[]}},
+            {"id":"b2","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":1},"content":{"kind":"text","version":1,"text":"Nested","spans":[]}}
+        ]}"""
+
+        holder.loadFromJson(json, textStates, spanStates)
+
+        assertEquals(1, holder.state.blocks[1].attributes.indentationLevel)
     }
 
     @Test

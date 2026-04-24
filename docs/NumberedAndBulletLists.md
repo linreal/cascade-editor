@@ -5,13 +5,14 @@
 CascadeEditor's block model already defined `BulletList` and `NumberedList` as block types, but they rendered as plain paragraphs with no visual distinction or list-specific editing behavior.
 
 This feature adds:
-- **Visual prefixes** — a non-editable `•` or `N.` gutter to the left of the text field
+- **Visual prefixes** — a non-editable `•` or depth-formatted ordered-list gutter to the left of the text field
 - **Auto-detection** — typing `- ` or `1. ` in a paragraph automatically converts it to the corresponding list type
 - **Enter continuation** — pressing Enter in a list item creates a new item of the same type; pressing Enter on an empty item exits the list
 - **Backspace un-listing** — backspace at position 0 of a list item demotes it to a paragraph
-- **Automatic renumbering** — sequential numbers in numbered lists are corrected after every structural mutation (insert, delete, move, merge, convert)
+- **Automatic renumbering** — sequential numbers in numbered lists are corrected after structural mutations and document decode, using indentation depth and derived parent scope
+- **Nested ordered-list formats** — stored numbers remain decimal, but rendering formats prefixes by depth (`1.`, `a.`, `i.`, `A.`)
 
-The implementation touches the core model, action reducers, rendering layer, and a new text observer — but no new public API types were introduced beyond the `number` parameter on `NumberedList`.
+The implementation touches the core model, action reducers, rendering layer, and text observers. List numbering now integrates with block indentation through `BlockAttributes.indentationLevel`, but list content remains a flat `List<Block>` rather than a tree.
 
 ---
 
@@ -21,30 +22,33 @@ The implementation touches the core model, action reducers, rendering layer, and
 
 | File | Purpose |
 |------|---------|
-| `core/ListUtils.kt` | `renumberNumberedLists()` — pure function that corrects sequential numbers across all consecutive runs |
+| `core/ListUtils.kt` | `renumberNumberedLists()` — pure function that corrects sequential numbers across outline-aware sequences |
 | `ui/observers/ListAutoDetectObserver.kt` | Text observer that detects `- ` and `N. ` trigger patterns and fires conversion callbacks |
+| `ui/renderers/OrderedListPrefixFormatter.kt` | Presentation-only ordered prefix formatter for depth-specific decimal, alphabetic, and roman forms |
 
 ### Modified Files
 
 | File | Change Summary |
 |------|---------------|
 | `core/BlockType.kt` | `NumberedList` changed from `data object` to `data class` with `number: Int` (validated ≥ 1) |
-| `core/Block.kt` | New `Block.numberedList(text, number)` factory method |
-| `action/EditorAction.kt` | `SplitBlock` propagates list type to new block; 8 reducers wired with `renumberNumberedLists()` post-processing |
+| `core/Block.kt` | `Block.numberedList(text, number)` factory method and `Block.attributes` participate in nested list depth |
+| `action/EditorAction.kt` | `SplitBlock` propagates list type to new block; structural reducers and drag/indent actions call `renumberNumberedLists()` post-processing |
 | `registry/BlockRenderer.kt` | `DefaultBlockCallbacks.onEnter` — empty-list-item exit; `onBackspaceAtStart` — un-list conversion |
 | `registry/BlockRegistry.kt` | Factory updated: `NumberedList` → `NumberedList(number = 1)` |
-| `ui/renderers/TextBlockRenderer.kt` | Added `ListPrefixRow` composable; branching render path for list vs. non-list types |
+| `ui/renderers/TextBlockRenderer.kt` | Added list prefix row and depth-aware ordered prefixes; branching render path for list vs. non-list types |
 | `ui/renderers/TextBlockField.kt` | Wired `ListAutoDetectObserver` into the combined text observation `LaunchedEffect` |
 
 ### Key Design Choices
 
 **`NumberedList` as `data class` with `number` field.** The display number is stored per-block rather than computed at render time. This makes the number available to reducers, tests, and serialization without needing positional context. The trade-off is that numbers must be explicitly renumbered after mutations — handled by the centralized `renumberNumberedLists()` utility.
 
-**Centralized renumbering as post-processing.** Instead of each reducer computing the correct number inline, all structural-mutation reducers (`InsertBlock`, `InsertBlockAfter`, `DeleteBlocks`, `ConvertBlockType`, `MoveBlocks`, `MergeBlocks`, `ReplaceBlock`, `SplitBlock`) call `renumberNumberedLists()` on the resulting block list. This keeps renumbering logic in one place and makes it easy to audit which actions trigger it.
+**Centralized renumbering as post-processing.** Instead of each reducer computing the correct number inline, structural-mutation reducers call `renumberNumberedLists()` on the resulting block list. This includes insert/delete/replace/convert/split/merge/reorder paths, indentation actions, subtree drag completion, and document decode.
+
+**Outline-aware sequence scope.** A numbered-list sequence is scoped by the block's indentation depth and its derived parent in the flat outline. Deeper descendants do not break an ancestor sequence. A same-depth non-numbered block resets only the sequence at that depth and derived parent.
 
 **Text observer pattern for auto-detection.** `ListAutoDetectObserver` follows the same observer architecture as `SlashCommandTextObserver` and `SpanMaintenanceTextObserver` — a stateful class that receives committed text diffs and reacts. This avoids coupling detection logic to the composable or the action system.
 
-**Non-editable prefix via `Row` layout.** The prefix (`•` / `N.`) is a separate `Text` composable in a `Row`, not part of the editable `TextFieldState`. This avoids cursor/span offset complications and keeps the content model clean.
+**Non-editable prefix via `Row` layout.** The prefix (`•`, `1.`, `a.`, `i.`, `A.`) is a separate `Text` composable in a `Row`, not part of the editable `TextFieldState`. This avoids cursor/span offset complications and keeps the content model clean.
 
 ---
 
@@ -62,7 +66,7 @@ User types "- " in Paragraph block
       2. BlockTextStates.replaceVisibleRange(remove "- ")
       3. dispatch(UpdateBlockContent) — sync snapshot
       4. dispatch(ConvertBlockType → BulletList)
-  → ConvertBlockType.reduce() converts block + renumbers
+  → ConvertBlockType.reduce() converts block, preserves supported indentation, and renumbers
   → Recomposition: TextBlockRenderer renders ListPrefixRow with "•"
 ```
 
@@ -75,27 +79,39 @@ User presses Enter on non-empty numbered list item (number = 3)
   → SplitBlock.reduce():
       1. Splits text/spans at cursor position
       2. New block type = NumberedList(number = 4)
-      3. renumberNumberedLists() corrects downstream items
-  → Recomposition: new list item appears with correct number
+      3. New block keeps the source indentation level
+      4. renumberNumberedLists() corrects the outline sequence
+  → Recomposition: new list item appears with the correct depth-formatted prefix
 ```
 
-### Enter on Empty List Item (Exit) Flow
+### Enter on Empty Root List Item (Exit) Flow
 
 ```
-User presses Enter on empty list item
+User presses Enter on an empty root BulletList/NumberedList item
   → DefaultBlockCallbacks.onEnter()
-  → Detects: block is list type + visible text is empty
+  → Detects: block is list type + visible text is empty + indentation depth is 0
   → dispatch(ConvertBlockType → Paragraph)
   → ConvertBlockType.reduce() converts + renumbers remaining run
   → Recomposition: block renders as paragraph, no prefix
 ```
 
-### Backspace Un-List Flow
+### Enter or Backspace on Nested List Item Flow
 
 ```
-User presses Backspace at position 0 of list item
+User presses Enter on an empty nested list/todo item
+  OR presses Backspace at position 0 in any nested supported block
+  → DefaultBlockCallbacks checks indentation depth > 0 before root un-list/merge handling
+  → dispatch(IndentBackward)
+  → IndentBackward.reduce() shifts the block subtree out by one level and renumbers
+  → Recomposition: block remains the same type, but appears one depth shallower
+```
+
+### Root Backspace Un-List Flow
+
+```
+User presses Backspace at position 0 of a root list/todo item
   → DefaultBlockCallbacks.onBackspaceAtStart()
-  → Detects: block is BulletList or NumberedList
+  → Detects: depth is 0 and block is BulletList, NumberedList, or Todo
   → dispatch(ConvertBlockType → Paragraph)
   → Short-circuits: does NOT merge with previous block
   → Recomposition: block renders as paragraph, text preserved
@@ -108,9 +124,10 @@ Any reducer that modifies block list structure
   → Produces tentative new block list
   → Calls renumberNumberedLists(newBlocks)
       1. Quick scan: are any numbers wrong? If not, returns same list (no allocation)
-      2. If fix needed: iterates blocks, tracks consecutive NumberedList runs
-      3. First block in run defines base number; subsequent = base + offset
-      4. Blocks with correct numbers retain referential identity
+      2. If fix needed: scans top-to-bottom, tracking ancestor IDs and per-depth numbering runs
+      3. Numbered blocks increment the sequence for their own (depth, derived parent) scope
+      4. Same-depth non-numbered blocks reset that scope; deeper descendants do not reset ancestors
+      5. Blocks with correct numbers retain referential identity
   → Returns corrected list → state.copy(blocks = corrected)
 ```
 
@@ -132,14 +149,15 @@ public data class NumberedList(val number: Int = 1) : BlockType
 public fun numberedList(text: String = "", number: Int = 1): Block
 ```
 
-### Unchanged Public API
+### Related Public API
 
 - `BlockType.BulletList` — remains `data object`, no changes
 - `Block.bulletList()` — already existed, no changes
-- `EditorAction` sealed hierarchy — no new public action types
+- `BlockAttributes.indentationLevel` controls list nesting depth for supported block types.
+- `EditorAction.IndentForward` / `IndentBackward` change indentation and then trigger list renumbering.
 - `BlockRenderer`, `BlockCallbacks` — interfaces unchanged
 
-All new implementation classes (`ListAutoDetectObserver`, `renumberNumberedLists`) are `internal`.
+All implementation helpers (`ListAutoDetectObserver`, `renumberNumberedLists`, `formatOrderedListPrefix`) are `internal`.
 
 ---
 
@@ -149,10 +167,11 @@ All new implementation classes (`ListAutoDetectObserver`, `renumberNumberedLists
 
 | System | Integration |
 |--------|-------------|
-| **Action reducers** | 8 reducers gain `renumberNumberedLists()` post-processing: `InsertBlock`, `InsertBlockAfter`, `DeleteBlocks`, `ConvertBlockType`, `MoveBlocks`, `MergeBlocks`, `ReplaceBlock`, `SplitBlock` |
+| **Action reducers** | Structural reducers call `renumberNumberedLists()` after block insert/delete/replace/convert/split/merge/reorder, indentation, and subtree drag completion |
 | **`SplitBlock` reducer** | New block inherits list type: `BulletList` → `BulletList`, `NumberedList(n)` → `NumberedList(n+1)`, else → `Paragraph` |
 | **`DefaultBlockCallbacks`** | `onEnter` gains empty-list-item exit check (before split path); `onBackspaceAtStart` gains un-list check (before merge path) |
-| **`TextBlockRenderer`** | Now branches: list types get `ListPrefixRow`, others get direct `TextBlockField` |
+| **`TextBlockRenderer`** | Now branches: list types get a prefix row, ordered prefixes are formatted by depth, others get direct `TextBlockField` |
+| **`BlockIndentationModifier`** | Applies the visual leading inset for supported nested list blocks before list prefix rendering |
 | **`TextBlockField`** | Wires `ListAutoDetectObserver` alongside existing `SlashCommandTextObserver` and `SpanMaintenanceTextObserver` |
 | **`BlockRegistry`** | Factory for `numbered_list` updated to use `NumberedList(number = 1)` instead of `NumberedList` object |
 | **Rich text spans** | Auto-detection adjusts spans via `BlockSpanStates.adjustForRangeReplacement()` before removing trigger prefix |
@@ -161,7 +180,7 @@ All new implementation classes (`ListAutoDetectObserver`, `renumberNumberedLists
 ### Dependencies
 
 - `ListAutoDetectObserver` depends on `BlockTextStates`, `BlockSpanStates`, and `BlockCallbacks.dispatch` (all pre-existing)
-- `renumberNumberedLists` depends only on `Block` and `BlockType` (core layer, no UI dependencies)
+- `renumberNumberedLists` depends only on `Block`, `BlockType`, and `BlockAttributes` (core layer, no UI dependencies)
 - `ListPrefixRow` depends on `TextBlockField` and Material3 `Text` / `LocalContentColor`
 
 ---
@@ -178,25 +197,26 @@ All new implementation classes (`ListAutoDetectObserver`, `renumberNumberedLists
 
 ### Renumbering
 
-- **First-in-run base preservation**: Renumbering preserves the first block's number as-is. If a user manually starts a run at `3.`, subsequent items become `4.`, `5.`, etc. This is intentional for future support of custom start numbers.
-- **Non-NumberedList breaks runs**: A `BulletList` block between two `NumberedList` blocks creates two independent runs, each renumbered independently.
+- **Sequences start at 1.** Outline-aware renumbering assigns `1` to the first `NumberedList` in each depth/parent scope. Custom start numbers are not preserved in the current implementation.
+- **Same-depth non-numbered blocks break only their own scope.** A same-depth `Paragraph`, `Todo`, `BulletList`, `Heading`, `Quote`, `Divider`, or unknown/custom block resets the numbered sequence for that depth and derived parent. Deeper blocks do not break ancestor numbering.
 - **Referential equality optimization**: `renumberNumberedLists()` performs a quick scan first. If no numbers need fixing, the original list is returned without allocation. Blocks whose numbers are already correct retain referential identity (important for Compose stability).
 
 ### Backspace Behavior
 
-- **Un-list overrides merge**: Backspace at position 0 of a list item converts to Paragraph and **returns immediately** — it does not fall through to the standard merge-with-previous-block path. Text and spans are preserved.
+- **Root un-list overrides merge**: Backspace at position `0` of a root list/todo item converts to `Paragraph` and **returns immediately** — it does not fall through to the standard merge-with-previous-block path. Nested supported blocks outdent before this root-level un-list behavior. Text and spans are preserved.
 - **Paragraph after list merges normally**: Backspace at position 0 of a Paragraph following a list item still triggers the standard merge behavior (text appended to previous block, which retains its list type).
 
 ### Enter Behavior
 
-- **Empty-list exit overrides split**: The empty-text check runs before the split path in `onEnter`. This means pressing Enter on an empty list item always exits to Paragraph, never creates a new empty item.
+- **Nested empty-list Enter outdents first.** Pressing Enter on an empty nested `BulletList`, `NumberedList`, or `Todo` dispatches `IndentBackward` instead of splitting.
+- **Root empty-list exit overrides split.** Pressing Enter on an empty root `BulletList` or `NumberedList` converts the block to `Paragraph`, never creates a new empty item. Empty root `Todo` keeps todo continuation behavior.
 - **Span continuation**: When splitting a non-empty list item mid-text, span styles transfer to the new block via the existing `SplitBlock` span-split logic. The `EnterContinuationTest` suite covers pending style transfer across list-type splits.
 
 ### Rendering
 
 - **`remember` key change**: `TextBlockRenderer` changed its `remember` key for `targetStyle` from `block.type` (full object) to `block.type.typeId` (string). This prevents unnecessary style recalculation when `NumberedList.number` changes, since `number` doesn't affect text styling.
 - **Baseline alignment**: The prefix `Text` and `TextBlockField` use `alignByBaseline()` inside a `Row` to vertically align the prefix with the first line of text.
-- **Min gutter width**: `ListPrefixMinWidth = 24.dp` accommodates at least 2-digit numbers without layout shift. The prefix text uses `TextAlign.End` within this gutter.
+- **Depth-based prefix styles are render-only.** `NumberedList.number` always stores the decimal integer. `formatOrderedListPrefix()` turns that number into lower-alpha at depth `1`, lower-roman at depth `2`, upper-alpha at depth `3`, and decimal at depth `0`.
 
 ### Threading
 
@@ -209,11 +229,11 @@ All new implementation classes (`ListAutoDetectObserver`, `renumberNumberedLists
 
 | Term | Definition |
 |------|------------|
-| **Consecutive run** | A maximal sequence of adjacent blocks in the document where every block has type `NumberedList`. Non-`NumberedList` blocks (including `BulletList`) break the run. Each run is renumbered independently. |
-| **Run base** | The `number` value of the first `NumberedList` block in a consecutive run. Subsequent blocks get `base + 1`, `base + 2`, etc. |
+| **Outline sequence** | A sequence of `NumberedList` blocks with the same indentation depth and derived parent, uninterrupted by same-depth non-numbered blocks. |
+| **Derived parent** | The nearest preceding shallower outline block used to scope nested numbering in the flat block list. Depth `0` uses a shared root parent. |
 | **Trigger pattern** | A text pattern at position 0 of a non-list block that, when completed with a Space keypress, converts the block to a list type. `- ` for bullet, `N. ` for numbered. |
-| **Un-list** | Converting a list block back to a Paragraph. Triggered by backspace at position 0 or Enter on an empty list item. Text and spans are preserved. |
-| **Prefix gutter** | The non-editable area to the left of the text field in a list item, displaying `•` or `N.`. Implemented as a separate `Text` composable, not part of `TextFieldState`. |
+| **Un-list** | Converting a root list/todo block back to a Paragraph. Triggered by Backspace at position `0` for root list/todo blocks, or Enter on an empty root bullet/numbered list. Text and spans are preserved. |
+| **Prefix gutter** | The non-editable area to the left of the text field in a list item, displaying `•` or a depth-formatted ordered prefix. Implemented as a separate `Text` composable, not part of `TextFieldState`. |
 | **Quick scan** | The optimization pass in `renumberNumberedLists()` that checks whether any numbers need fixing before allocating a new list. Returns the original list by reference when no changes are needed. |
 | **`ListAutoDetectObserver`** | Internal text observer that monitors committed visible-text changes and detects list trigger patterns. Follows the same stateful-observer pattern as `SlashCommandTextObserver`. |
-| **`renumberNumberedLists()`** | Internal pure function that scans a block list for consecutive `NumberedList` runs and corrects sequential numbers. Called as post-processing in 8 action reducers. |
+| **`renumberNumberedLists()`** | Internal pure function that scans a block list for outline-aware `NumberedList` sequences and corrects stored decimal numbers. Called after structural reducers and decode. |

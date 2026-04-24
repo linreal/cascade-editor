@@ -24,8 +24,9 @@ import io.github.linreal.cascade.editor.action.UpdateDragTarget
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.state.EditorState
-import io.github.linreal.cascade.editor.ui.utils.calculateDropTargetIndex
+import io.github.linreal.cascade.editor.ui.utils.DragHoverOutlineIndex
 import io.github.linreal.cascade.editor.ui.utils.findItemAtPosition
+import io.github.linreal.cascade.editor.ui.utils.recomputeDepthAwareDragHoverTarget
 import kotlinx.coroutines.CancellationException
 
 /**
@@ -41,8 +42,14 @@ import kotlinx.coroutines.CancellationException
  * @param lazyListState LazyColumn state for hit-testing and layout queries
  * @param dragOffsetY Mutable state tracking the current drag Y position.
  *        Updated during drag; read by [AutoScrollDuringDrag] and [DragPreview].
+ * @param dragDeltaX Mutable state tracking horizontal movement since drag start.
+ *        Updated during drag; read by [AutoScrollDuringDrag] for depth-aware hover
+ *        recalculation after scroll shifts the visible items.
+ * @param indentUnitPx Width of one outline indentation step in pixels.
  * @param stateProvider Provides the current [EditorState] for drag status
  *        and block count.
+ * @param outlineIndexProvider Provides cached block lookup data keyed by the
+ *        current block list.
  * @param callbacks Block callbacks for dispatching drag actions.
  * @param longPressTimeoutMillis Custom long-press timeout in milliseconds.
  *        If null, uses the platform default from ViewConfiguration.
@@ -50,7 +57,10 @@ import kotlinx.coroutines.CancellationException
 internal fun Modifier.blockGestures(
     lazyListState: LazyListState,
     dragOffsetY: MutableFloatState,
+    dragDeltaX: MutableFloatState,
+    indentUnitPx: Float,
     stateProvider: () -> EditorState,
+    outlineIndexProvider: () -> DragHoverOutlineIndex,
     callbacks: BlockCallbacks,
     longPressTimeoutMillis: Long? = null,
     onEmptySpaceTap: () -> Unit = {},
@@ -63,9 +73,13 @@ internal fun Modifier.blockGestures(
         longPressedBlockId = null
         val dragState = stateProvider().dragState
         if (dragState != null) {
+            val originalRootIndentationLevel = dragState.primaryRootId
+                ?.let { dragState.originalRootIndentationLevels[it] }
             if (blockId != null && isDropAtOriginalPosition(
                     dragState.targetIndex,
-                    dragState.primaryBlockOriginalIndex
+                    dragState.primaryBlockOriginalIndex,
+                    originalRootIndentationLevel = originalRootIndentationLevel,
+                    futureRootIndentationLevel = dragState.futureRootIndentationLevel,
                 )
             ) {
                 callbacks.dispatch(CancelDrag)
@@ -105,19 +119,30 @@ internal fun Modifier.blockGestures(
                 longPressedBlockId = blockId
                 val touchWithinBlock = offset.y - item.offset
                 dragOffsetY.floatValue = offset.y
+                dragDeltaX.floatValue = 0f
                 callbacks.onDragStart(blockId, touchWithinBlock)
             }
         },
         onDrag = { change, dragAmount ->
             change.consume()
-            if (stateProvider().dragState != null) {
+            val currentState = stateProvider()
+            if (currentState.dragState != null) {
                 dragOffsetY.floatValue += dragAmount.y
-                val newTarget = calculateDropTargetIndex(
-                    lazyListState.layoutInfo,
-                    dragOffsetY.floatValue,
-                    stateProvider().blocks.size
+                dragDeltaX.floatValue += dragAmount.x
+                val hoverTarget = recomputeDepthAwareDragHoverTarget(
+                    layoutInfo = lazyListState.layoutInfo,
+                    dragY = dragOffsetY.floatValue,
+                    outlineIndex = outlineIndexProvider(),
+                    dragState = currentState.dragState,
+                    horizontalDragDeltaPx = dragDeltaX.floatValue,
+                    indentUnitPx = indentUnitPx,
                 )
-                callbacks.dispatch(UpdateDragTarget(newTarget))
+                callbacks.dispatch(
+                    UpdateDragTarget(
+                        targetIndex = hoverTarget?.visualGap,
+                        futureRootIndentationLevel = hoverTarget?.futureRootIndentationLevel,
+                    )
+                )
             }
         },
         onDragEnd = { finishDrag { callbacks.dispatch(CompleteDrag) } },
@@ -128,12 +153,26 @@ internal fun Modifier.blockGestures(
 /**
  * Returns `true` if the drop target is the same as the block's original position,
  * meaning the block was not moved and the gesture should be treated as a selection toggle.
+ * When indentation levels are supplied, a same-position drop still counts as movement if
+ * the primary root resolved to a different future indentation lane.
  *
  * A visual gap of N or N+1 for a block at index N both mean "same position" because
  * gap N is "before this block" and gap N+1 is "after this block" — neither results
  * in actual movement.
  */
-internal fun isDropAtOriginalPosition(targetIndex: Int?, originalIndex: Int): Boolean {
+internal fun isDropAtOriginalPosition(
+    targetIndex: Int?,
+    originalIndex: Int,
+    originalRootIndentationLevel: Int? = null,
+    futureRootIndentationLevel: Int? = null,
+): Boolean {
+    if (
+        originalRootIndentationLevel != null &&
+        futureRootIndentationLevel != null &&
+        originalRootIndentationLevel != futureRootIndentationLevel
+    ) {
+        return false
+    }
     if (targetIndex == null) return true
     return targetIndex == originalIndex || targetIndex == originalIndex + 1
 }

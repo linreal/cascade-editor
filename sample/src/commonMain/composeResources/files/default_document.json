@@ -1,143 +1,431 @@
 {
-  "version": 1,
-  "blocks": [
-    {
-      "id": "welcome-1",
-      "type": { "typeId": "heading_1" },
-      "content": { "kind": "text", "version": 1, "text": "Welcome to Cascade Editor", "spans": [] }
-    },
-    {
-      "id": "welcome-2",
-      "type": { "typeId": "paragraph" },
-      "content": {
-        "kind": "text",
-        "version": 1,
-        "text": "A block-based document editor for Compose Multiplatform. Everything you see here is editable \u2014 try it out!",
-        "spans": [
-          { "start": 2, "end": 29, "style": { "type": "bold" } },
-          { "start": 34, "end": 55, "style": { "type": "italic" } }
-        ]
-      }
-    },
-    {
-      "id": "welcome-3",
-      "type": { "typeId": "divider" },
-      "content": { "kind": "empty" }
-    },
-    {
-      "id": "try-1",
-      "type": { "typeId": "heading_2" },
-      "content": { "kind": "text", "version": 1, "text": "Try These", "spans": [] }
-    },
-    {
-      "id": "try-2",
-      "type": { "typeId": "todo", "checked": false },
-      "content": { "kind": "text", "version": 1, "text": "Tap here and start typing", "spans": [] }
-    },
-    {
-      "id": "try-3",
-      "type": { "typeId": "todo", "checked": false },
-      "content": {
-        "kind": "text",
-        "version": 1,
-        "text": "Select text, then use the toolbar to make it bold or italic",
-        "spans": []
-      }
-    },
-    {
-      "id": "try-4",
-      "type": { "typeId": "todo", "checked": false },
-      "content": { "kind": "text", "version": 1, "text": "Type / to open slash commands (or just use / icon from the toolbar)", "spans": [
-        { "start": 5, "end": 6, "style": { "type": "inline_code" } }
-      ] }
-    },
-    {
-      "id": "try-5",
-      "type": { "typeId": "todo", "checked": false },
-      "content": { "kind": "text", "version": 1, "text": "Hold and drag any block to reorder it", "spans": [] }
-    },
-    {
-      "id": "try-6",
-      "type": { "typeId": "todo", "checked": false },
-      "content": { "kind": "text", "version": 1, "text": "Long-press a block to select it, then tap others to multi-select and delete", "spans": [] }
-    },
-    {
-      "id": "try-7",
-      "type": { "typeId": "todo", "checked": false },
-      "content": { "kind": "text", "version": 1, "text": "Press Enter at the end of this line to create a new block", "spans": [] }
-    },
-    {
-      "id": "format-1",
-      "type": { "typeId": "heading_2" },
-      "content": { "kind": "text", "version": 1, "text": "Rich Text", "spans": [] }
-    },
-    {
-      "id": "format-2",
-      "type": { "typeId": "paragraph" },
-      "content": {
-        "kind": "text",
-        "version": 1,
-        "text": "Mix bold, italic, underline, strikethrough, code, highlights, and links in any block.",
-        "spans": [
-          { "start": 4, "end": 8, "style": { "type": "bold" } },
-          { "start": 10, "end": 16, "style": { "type": "italic" } },
-          { "start": 18, "end": 27, "style": { "type": "underline" } },
-          { "start": 29, "end": 42, "style": { "type": "strikethrough" } },
-          { "start": 44, "end": 48, "style": { "type": "inline_code" } },
-          { "start": 50, "end": 60, "style": { "type": "highlight", "colorArgb": 4294961979 } },
-          { "start": 66, "end": 71, "style": { "type": "link", "url": "https://github.com/nickalc/CascadeEditor" } }
-        ]
-      }
-    },
-    {
-      "id": "blocks-1",
-      "type": { "typeId": "heading_2" },
-      "content": { "kind": "text", "version": 1, "text": "Block Types", "spans": [] }
-    },
-    {
-      "id": "blocks-2",
-      "type": { "typeId": "bullet_list" },
-      "content": { "kind": "text", "version": 1, "text": "Bullet lists for unordered content", "spans": [] }
-    },
-    {
-      "id": "blocks-3",
-      "type": { "typeId": "bullet_list" },
-      "content": { "kind": "text", "version": 1, "text": "Nest ideas without numbering", "spans": [] }
-    },
-    {
-      "id": "blocks-4",
-      "type": { "typeId": "numbered_list", "number": 1 },
-      "content": { "kind": "text", "version": 1, "text": "Numbered lists auto-increment", "spans": [] }
-    },
-    {
-      "id": "blocks-5",
-      "type": { "typeId": "numbered_list", "number": 2 },
-      "content": { "kind": "text", "version": 1, "text": "Delete or reorder and they renumber", "spans": [] }
-    },
-    {
-      "id": "blocks-6",
-      "type": { "typeId": "numbered_list", "number": 3 },
-      "content": { "kind": "text", "version": 1, "text": "Try deleting the second item above", "spans": [] }
-    },
-    {
-      "id": "blocks-8",
-      "type": { "typeId": "quote" },
-      "content": { "kind": "text", "version": 1, "text": "The best way to predict the future is to invent it. \u2014 Alan Kay", "spans": [] }
-    },
-    {
-      "id": "blocks-9",
-      "type": { "typeId": "divider" },
-      "content": { "kind": "empty" }
-    },
-    {
-      "id": "blocks-10",
-      "type": { "typeId": "paragraph" },
-      "content": {
-        "kind": "text",
-        "version": 1,
-        "text": "Your changes are saved automatically. Hit Reset in the toolbar to start fresh.",
-        "spans": []
-      }
-    }
-  ]
+    "version": 2,
+    "blocks": [
+        {
+            "id": "welcome-1",
+            "type": {
+                "typeId": "heading_1"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Welcome to Cascade Editor",
+                "spans": []
+            }
+        },
+        {
+            "id": "welcome-2",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "A block-based document editor for Compose Multiplatform. Everything you see here is editable \u2014 try it out!",
+                "spans": [
+                    {
+                        "start": 2,
+                        "end": 29,
+                        "style": {
+                            "type": "bold"
+                        }
+                    },
+                    {
+                        "start": 34,
+                        "end": 55,
+                        "style": {
+                            "type": "italic"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": "welcome-3",
+            "type": {
+                "typeId": "divider"
+            },
+            "content": {
+                "kind": "empty"
+            }
+        },
+        {
+            "id": "try-1",
+            "type": {
+                "typeId": "heading_2"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Try These",
+                "spans": []
+            }
+        },
+        {
+            "id": "try-format-1",
+            "type": {
+                "typeId": "todo"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Mix bold, italic, underline, strikethrough, code, and highlights in any block.",
+                "spans": [
+                    {
+                        "start": 4,
+                        "end": 8,
+                        "style": {
+                            "type": "bold"
+                        }
+                    },
+                    {
+                        "start": 10,
+                        "end": 16,
+                        "style": {
+                            "type": "italic"
+                        }
+                    },
+                    {
+                        "start": 18,
+                        "end": 27,
+                        "style": {
+                            "type": "underline"
+                        }
+                    },
+                    {
+                        "start": 29,
+                        "end": 42,
+                        "style": {
+                            "type": "strikethrough"
+                        }
+                    },
+                    {
+                        "start": 44,
+                        "end": 48,
+                        "style": {
+                            "type": "inline_code"
+                        }
+                    },
+                    {
+                        "start": 54,
+                        "end": 64,
+                        "style": {
+                            "type": "highlight",
+                            "colorArgb": 4294961979
+                        }
+                    },
+                    {
+                        "start": 66,
+                        "end": 71,
+                        "style": {
+                            "type": "link",
+                            "url": "https://github.com/nickalc/CascadeEditor"
+                        }
+                    }
+                ]
+            }
+        },
+
+        {
+            "id": "try-2",
+            "type": {
+                "typeId": "todo",
+                "checked": false
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Tap here and start typing",
+                "spans": []
+            }
+        },
+        {
+            "id": "try-3",
+            "type": {
+                "typeId": "todo",
+                "checked": false
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Select text, then use the toolbar to make it bold or italic",
+                "spans": [
+                    {
+                        "start": 26,
+                        "end": 33,
+                        "style": {
+                            "type": "bold"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": "try-4",
+            "type": {
+                "typeId": "todo",
+                "checked": false
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Type / to open slash commands (or just use / icon from the toolbar)",
+                "spans": [
+                    {
+                        "start": 5,
+                        "end": 6,
+                        "style": {
+                            "type": "inline_code"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": "try-5",
+            "type": {
+                "typeId": "todo",
+                "checked": false
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Use indentation to group related tasks",
+                "spans": []
+            }
+        },
+        {
+            "id": "try-nested-todo-1",
+            "type": {
+                "typeId": "todo",
+                "checked": false
+            },
+            "attributes": {
+                "indentationLevel": 1
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Subtasks can sit under a parent todo",
+                "spans": []
+            }
+        },
+        {
+            "id": "try-nested-todo-2",
+            "type": {
+                "typeId": "todo",
+                "checked": false
+            },
+            "attributes": {
+                "indentationLevel": 2
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Deeper todo levels stay attached to the outline",
+                "spans": []
+            }
+        },
+        {
+            "id": "try-nested-todo-3",
+            "type": {
+                "typeId": "todo",
+                "checked": false
+            },
+            "attributes": {
+                "indentationLevel": 1
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Outdent again when the group is done",
+                "spans": []
+            }
+        },
+        {
+            "id": "try-6",
+            "type": {
+                "typeId": "todo",
+                "checked": false
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Hold and drag any block to reorder it",
+                "spans": []
+            }
+        },
+        {
+            "id": "try-7",
+            "type": {
+                "typeId": "todo",
+                "checked": false
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Long-press a block to select it, then tap others to multi-select and delete",
+                "spans": []
+            }
+        },
+        {
+            "id": "try-8",
+            "type": {
+                "typeId": "todo",
+                "checked": false
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Press Enter at the end of this line to create a new block",
+                "spans": []
+            }
+        },
+        {
+            "id": "blocks-1",
+            "type": {
+                "typeId": "heading_2"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Block Types",
+                "spans": []
+            }
+        },
+        {
+            "id": "blocks-2",
+            "type": {
+                "typeId": "bullet_list"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Bullet lists for unordered content",
+                "spans": []
+            }
+        },
+        {
+            "id": "blocks-3",
+            "type": {
+                "typeId": "bullet_list"
+            },
+            "attributes": {
+                "indentationLevel": 1
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Nest ideas without numbering",
+                "spans": []
+            }
+        },
+        {
+            "id": "blocks-4",
+            "type": {
+                "typeId": "numbered_list",
+                "number": 1
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Numbered lists auto-increment",
+                "spans": []
+            }
+        },
+        {
+            "id": "blocks-5",
+            "type": {
+                "typeId": "numbered_list",
+                "number": 1
+            },
+            "attributes": {
+                "indentationLevel": 1
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Indented numbered items keep their own sequence",
+                "spans": []
+            }
+        },
+        {
+            "id": "blocks-6",
+            "type": {
+                "typeId": "numbered_list",
+                "number": 1
+            },
+            "attributes": {
+                "indentationLevel": 2
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Deeper levels can explain a step in detail",
+                "spans": []
+            }
+        },
+        {
+            "id": "blocks-7",
+            "type": {
+                "typeId": "numbered_list",
+                "number": 2
+            },
+            "attributes": {
+                "indentationLevel": 1
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Sibling nested items continue at the same depth",
+                "spans": []
+            }
+        },
+        {
+            "id": "blocks-numbered-root-2",
+            "type": {
+                "typeId": "numbered_list",
+                "number": 2
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Delete or reorder and every level renumbers",
+                "spans": []
+            }
+        },
+        {
+            "id": "blocks-8",
+            "type": {
+                "typeId": "quote"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "The best way to predict the future is to invent it. \u2014 Alan Kay",
+                "spans": []
+            }
+        },
+        {
+            "id": "blocks-9",
+            "type": {
+                "typeId": "divider"
+            },
+            "content": {
+                "kind": "empty"
+            }
+        },
+        {
+            "id": "blocks-10",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Your changes are saved automatically. Hit Reset in the toolbar to start fresh.",
+                "spans": []
+            }
+        }
+    ]
 }

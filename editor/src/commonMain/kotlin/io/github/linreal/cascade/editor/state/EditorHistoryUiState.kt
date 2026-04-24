@@ -1,12 +1,28 @@
 package io.github.linreal.cascade.editor.state
 
 /**
- * Captures the focused editing UI state from runtime holders in visible-text
- * coordinates.
+ * Captures the replayable editor UI state that belongs to document history.
  *
- * Only the currently focused text block participates in v1 history UI capture.
- * If there is no focused block, the block is non-text, or the runtime text state
- * does not exist yet, selection capture degrades to `null` instead of failing.
+ * Structural checkpoints intentionally restore more than just block content:
+ * a user expects undoing a structural command such as subtree drag, indent, or
+ * selection delete to bring back the same block-selection context they had when
+ * the command ran. Earlier history versions only carried focused text editing
+ * state and therefore replayed structural checkpoints with an empty block
+ * selection. Subtree drag makes that lossy because selection defines the drag
+ * roots and remains visible after the drop.
+ *
+ * The replayable UI scope is still deliberately narrow:
+ * - [EditorState.focusedBlockId], plus focused visible-text selection and pending
+ *   styles when the focused block is text-editable.
+ * - [EditorState.selectedBlockIds], filtered only by normal state replay later.
+ *
+ * Transient surfaces such as slash menus and active drag state are still excluded
+ * from checkpoints. They represent in-flight interactions, not durable editor
+ * position.
+ *
+ * If there is no focused text block, or the runtime text holder has not been
+ * created yet, focused text selection capture degrades to `null` instead of
+ * failing. Block selection is snapshot state, so it can always be captured.
  */
 internal fun captureFocusedEditingUiState(
     state: EditorState,
@@ -22,15 +38,22 @@ internal fun captureFocusedEditingUiState(
         focusedBlockId = focusedBlockId,
         focusedTextSelection = focusedTextBlockId?.let(textStates::getSelection),
         focusedPendingStyles = focusedTextBlockId?.let(spanStates::getPendingStyles).orEmpty(),
+        selectedBlockIds = if (focusedBlockId == null) state.selectedBlockIds else emptySet(),
     )
 }
 
 /**
- * Restores focused selection and focused pending styles for history replay.
+ * Restores runtime-only focused text affordances after snapshot replay.
  *
- * The caller is responsible for restoring `EditorState.focusedBlockId` first.
- * This helper then applies the runtime-only editing context for that focused
- * block. Missing focus or missing blocks are treated as safe no-ops.
+ * Block selection is restored as part of rebuilding [EditorState] from the
+ * checkpoint, not here. This function only touches runtime holders that are not
+ * stored in [EditorState]: visible-text cursor/range selection and pending
+ * continuation styles for the focused text block.
+ *
+ * The caller is responsible for restoring `EditorState.focusedBlockId` and
+ * `EditorState.selectedBlockIds` first. Missing focus or missing blocks are
+ * treated as safe no-ops because history replay may target documents where a
+ * focused block was deleted by the opposite side of the entry.
  */
 internal fun restoreFocusedEditingUiState(
     uiState: EditingUiState,

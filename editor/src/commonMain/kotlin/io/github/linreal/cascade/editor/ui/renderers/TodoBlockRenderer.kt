@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.linreal.cascade.editor.action.ToggleTodo
 import io.github.linreal.cascade.editor.core.Block
@@ -50,9 +51,11 @@ public class TodoBlockRenderer : BlockRenderer<BlockType.Todo> {
     ) {
         val todoType = block.type as? BlockType.Todo ?: return
         val theme = LocalCascadeTheme.current
+        val indentationLevel = block.attributes.indentationLevel
+        val useRoundCheckbox = indentationLevel % 2 != 0
 
         Row(
-            modifier = modifier,
+            modifier = modifier.withBlockIndentation(block),
             verticalAlignment = Alignment.Top,
         ) {
             TodoCheckbox(
@@ -60,6 +63,9 @@ public class TodoBlockRenderer : BlockRenderer<BlockType.Todo> {
                 primaryColor = theme.colors.primary,
                 onPrimaryColor = theme.colors.onPrimary,
                 borderColor = theme.colors.text.copy(alpha = 0.5f),
+                checkboxSize = if (indentationLevel == 0) CheckboxSize else IndentedCheckboxSize,
+                corner = if (useRoundCheckbox) RoundCheckboxCorner else CheckboxCorner,
+                stroke = if (useRoundCheckbox) RoundCheckboxStroke else CheckboxStroke,
                 onCheckedChange = { callbacks.dispatch(ToggleTodo(block.id)) },
             )
             Spacers.Horizontal(12.dp)
@@ -78,6 +84,10 @@ private val CheckboxSize = 20.dp
 private val CheckboxCorner = 5.dp
 private val CheckboxStroke = 2.dp
 
+private val IndentedCheckboxSize = 18.dp
+private val RoundCheckboxCorner = 99.dp
+private val RoundCheckboxStroke = 2.dp
+
 @Composable
 private fun TodoCheckbox(
     checked: Boolean,
@@ -86,6 +96,9 @@ private fun TodoCheckbox(
     primaryColor: Color,
     onPrimaryColor: Color,
     borderColor: Color,
+    checkboxSize: Dp,
+    corner: Dp,
+    stroke: Dp,
 ) {
     val progress by animateFloatAsState(
         targetValue = if (checked) 1f else 0f,
@@ -95,15 +108,15 @@ private fun TodoCheckbox(
 
     Box(
         modifier = modifier
-            .size(CheckboxSize)
+            .size(checkboxSize)
             .toggleable(
                 value = checked,
                 role = Role.Checkbox,
                 onValueChange = onCheckedChange
             )
             .drawWithCache {
-                val strokeWidthPx = CheckboxStroke.toPx()
-                val cornerRadiusPx = CheckboxCorner.toPx()
+                val strokeWidthPx = stroke.toPx()
+                val cornerRadiusPx = corner.toPx()
                 val canvasSize = size.minDimension
                 val inset = strokeWidthPx / 2f
 

@@ -2,6 +2,9 @@ package io.github.linreal.cascade.editor.theme
 
 import androidx.compose.runtime.Immutable
 
+private const val DEFAULT_INDENT_FORWARD_LABEL = "Indent Forward"
+private const val DEFAULT_INDENT_BACKWARD_LABEL = "Indent Backward"
+
 /**
  * User-facing strings for the CascadeEditor UI chrome.
  *
@@ -32,6 +35,10 @@ public data class CascadeEditorStrings(
     val slashCommand: String,
     /** Toolbar accessibility label for the Hide Keyboard button. */
     val hideKeyboard: String,
+    /** Toolbar accessibility label for the Indent Forward button. */
+    val indentForward: String = DEFAULT_INDENT_FORWARD_LABEL,
+    /** Toolbar accessibility label for the Indent Backward button. */
+    val indentBackward: String = DEFAULT_INDENT_BACKWARD_LABEL,
 ) {
     public companion object {
         /** Default [unsupportedBlock] lambda — extracted as a singleton for stable equality. */
@@ -51,6 +58,8 @@ public data class CascadeEditorStrings(
             highlight = "Highlight",
             slashCommand = "Slash Command",
             hideKeyboard = "Hide Keyboard",
+            indentForward = DEFAULT_INDENT_FORWARD_LABEL,
+            indentBackward = DEFAULT_INDENT_BACKWARD_LABEL,
         )
     }
 }

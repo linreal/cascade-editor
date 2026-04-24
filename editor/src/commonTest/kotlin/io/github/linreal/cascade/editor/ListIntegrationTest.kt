@@ -4,7 +4,9 @@ import io.github.linreal.cascade.editor.action.ConvertBlockType
 import io.github.linreal.cascade.editor.action.DeleteBlock
 import io.github.linreal.cascade.editor.action.MoveBlocks
 import io.github.linreal.cascade.editor.action.SplitBlock
+import io.github.linreal.cascade.editor.action.UpdateBlockContent
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
@@ -38,6 +40,10 @@ class ListIntegrationTest {
         id = BlockId(id),
         type = BlockType.Paragraph,
         content = BlockContent.Text(text),
+    )
+
+    private fun Block.atDepth(level: Int): Block = copy(
+        attributes = BlockAttributes(indentationLevel = level),
     )
 
     private fun assertNumberedAt(state: EditorState, index: Int, expectedNumber: Int) {
@@ -332,6 +338,27 @@ class ListIntegrationTest {
         assertEquals(BlockType.BulletList, state.blocks[1].type)
         assertEquals(BlockType.BulletList, state.blocks[2].type)
         assertEquals(BlockType.BulletList, state.blocks[3].type)
+    }
+
+    @Test
+    fun `auto-detect conversion preserves source paragraph indentation`() {
+        val blocks = listOf(
+            paragraphBlock("parent", "Parent"),
+            paragraphBlock("child", "- Item").atDepth(1),
+        )
+        var state = EditorState.withBlocks(blocks)
+
+        // Simulate the observer pipeline after detecting "- ": remove the trigger prefix,
+        // then convert the same block to a list type.
+        state = UpdateBlockContent(
+            blockId = BlockId("child"),
+            content = BlockContent.Text("Item"),
+        ).reduce(state)
+        state = ConvertBlockType(BlockId("child"), BlockType.BulletList).reduce(state)
+
+        assertEquals(BlockType.BulletList, state.blocks[1].type)
+        assertEquals(1, state.blocks[1].attributes.indentationLevel)
+        assertEquals("Item", (state.blocks[1].content as BlockContent.Text).text)
     }
 
     // --- Integration: combined multi-step scenario ---

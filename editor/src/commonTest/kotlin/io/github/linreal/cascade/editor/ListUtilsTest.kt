@@ -1,6 +1,7 @@
 package io.github.linreal.cascade.editor
 
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.renumberNumberedLists
 import kotlin.test.Test
@@ -8,6 +9,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertSame
 
 class ListUtilsTest {
+
+    private fun Block.atDepth(level: Int): Block = copy(
+        attributes = BlockAttributes(indentationLevel = level),
+    )
 
     @Test
     fun `empty list returns empty`() {
@@ -40,6 +45,109 @@ class ListUtilsTest {
         assertEquals(1, (result[0].type as BlockType.NumberedList).number)
         assertEquals(2, (result[1].type as BlockType.NumberedList).number)
         assertEquals(3, (result[2].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `parent numbered sequence continues across nested numbered descendants`() {
+        val blocks = listOf(
+            Block.numberedList("parent 1", number = 1).atDepth(0),
+            Block.numberedList("child 1", number = 1).atDepth(1),
+            Block.numberedList("child 2", number = 1).atDepth(1),
+            Block.numberedList("parent 2", number = 1).atDepth(0),
+        )
+
+        val result = renumberNumberedLists(blocks)
+
+        assertEquals(1, (result[0].type as BlockType.NumberedList).number)
+        assertEquals(1, (result[1].type as BlockType.NumberedList).number)
+        assertEquals(2, (result[2].type as BlockType.NumberedList).number)
+        assertEquals(2, (result[3].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `same depth numbered children under different parents start separate sequences`() {
+        val blocks = listOf(
+            Block.numberedList("parent 1", number = 1).atDepth(0),
+            Block.numberedList("child of parent 1", number = 1).atDepth(1),
+            Block.numberedList("parent 2", number = 2).atDepth(0),
+            Block.numberedList("child of parent 2", number = 2).atDepth(1),
+        )
+
+        val result = renumberNumberedLists(blocks)
+
+        assertEquals(1, (result[0].type as BlockType.NumberedList).number)
+        assertEquals(1, (result[1].type as BlockType.NumberedList).number)
+        assertEquals(2, (result[2].type as BlockType.NumberedList).number)
+        assertEquals(1, (result[3].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `same depth paragraph breaks numbered sequence at that depth`() {
+        val blocks = listOf(
+            Block.numberedList("parent 1", number = 1).atDepth(0),
+            Block.numberedList("child 1", number = 1).atDepth(1),
+            Block.paragraph("child separator").atDepth(1),
+            Block.numberedList("child restart", number = 2).atDepth(1),
+            Block.numberedList("parent 2", number = 1).atDepth(0),
+        )
+
+        val result = renumberNumberedLists(blocks)
+
+        assertEquals(1, (result[0].type as BlockType.NumberedList).number)
+        assertEquals(1, (result[1].type as BlockType.NumberedList).number)
+        assertSame(blocks[2], result[2])
+        assertEquals(1, (result[3].type as BlockType.NumberedList).number)
+        assertEquals(2, (result[4].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `deeper paragraph does not break parent depth numbered sequence`() {
+        val blocks = listOf(
+            Block.numberedList("parent 1", number = 1).atDepth(0),
+            Block.paragraph("nested paragraph").atDepth(1),
+            Block.numberedList("parent 2", number = 1).atDepth(0),
+        )
+
+        val result = renumberNumberedLists(blocks)
+
+        assertEquals(1, (result[0].type as BlockType.NumberedList).number)
+        assertSame(blocks[1], result[1])
+        assertEquals(2, (result[2].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `unsupported block resets outline numbering scope`() {
+        val blocks = listOf(
+            Block.numberedList("parent 1", number = 1),
+            Block.numberedList("child 1", number = 1).atDepth(1),
+            Block.heading(level = 2, text = "Boundary"),
+            Block.numberedList("parent restart", number = 2),
+            Block.numberedList("child restart", number = 2).atDepth(1),
+        )
+
+        val result = renumberNumberedLists(blocks)
+
+        assertEquals(1, (result[0].type as BlockType.NumberedList).number)
+        assertEquals(1, (result[1].type as BlockType.NumberedList).number)
+        assertSame(blocks[2], result[2])
+        assertEquals(1, (result[3].type as BlockType.NumberedList).number)
+        assertEquals(1, (result[4].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `already correct outline numbering preserves referential equality`() {
+        val blocks = listOf(
+            Block.numberedList("parent 1", number = 1).atDepth(0),
+            Block.numberedList("child 1", number = 1).atDepth(1),
+            Block.numberedList("child 2", number = 2).atDepth(1),
+            Block.numberedList("parent 2", number = 2).atDepth(0),
+        )
+
+        val result = renumberNumberedLists(blocks)
+
+        for (i in blocks.indices) {
+            assertSame(blocks[i], result[i])
+        }
     }
 
     @Test
@@ -145,5 +253,35 @@ class ListUtilsTest {
         assertEquals(3, (result[6].type as BlockType.NumberedList).number)
         // Paragraph unchanged
         assertSame(blocks[7], result[7])
+    }
+
+    @Test
+    fun `renumbering after indenting numbered sibling into child sequence restarts child number`() {
+        val blocksAfterIndent = listOf(
+            Block.numberedList("parent 1", number = 1).atDepth(0),
+            Block.numberedList("nested", number = 2).atDepth(1),
+            Block.numberedList("parent 2", number = 3).atDepth(0),
+        )
+
+        val result = renumberNumberedLists(blocksAfterIndent)
+
+        assertEquals(1, (result[0].type as BlockType.NumberedList).number)
+        assertEquals(1, (result[1].type as BlockType.NumberedList).number)
+        assertEquals(2, (result[2].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `renumbering after outdenting numbered child joins parent sequence`() {
+        val blocksAfterOutdent = listOf(
+            Block.numberedList("parent 1", number = 1).atDepth(0),
+            Block.numberedList("promoted child", number = 1).atDepth(0),
+            Block.numberedList("parent 2", number = 2).atDepth(0),
+        )
+
+        val result = renumberNumberedLists(blocksAfterOutdent)
+
+        assertEquals(1, (result[0].type as BlockType.NumberedList).number)
+        assertEquals(2, (result[1].type as BlockType.NumberedList).number)
+        assertEquals(3, (result[2].type as BlockType.NumberedList).number)
     }
 }

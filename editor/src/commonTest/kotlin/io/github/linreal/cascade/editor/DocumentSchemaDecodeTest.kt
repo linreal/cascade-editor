@@ -1,6 +1,7 @@
 package io.github.linreal.cascade.editor
 
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
@@ -37,7 +38,8 @@ class DocumentSchemaDecodeTest {
         id: String = "b1",
         type: BlockType = BlockType.Paragraph,
         content: BlockContent = BlockContent.Text(""),
-    ): Block = Block(id = BlockId(id), type = type, content = content)
+        attributes: BlockAttributes = BlockAttributes.Default,
+    ): Block = Block(id = BlockId(id), type = type, content = content, attributes = attributes)
 
     // Exhaustive built-in type round-trip
     // If you add a new BlockType variant, add it here. A missing entry means
@@ -165,11 +167,159 @@ class DocumentSchemaDecodeTest {
     }
 
     @Test
-    fun `version 2 throws`() {
-        val json = """{"version":2,"blocks":[]}"""
+    fun `future version throws`() {
+        val json = """{"version":3,"blocks":[]}"""
         assertFailsWith<IllegalArgumentException> {
             DocumentSchema.decodeFromString(json)
         }
+    }
+
+    @Test
+    fun `version 2 decodes`() {
+        val json = """{"version":2,"blocks":[]}"""
+        val result = DocumentSchema.decodeFromString(json)
+        assertEquals(0, result.size)
+    }
+
+    // Block attributes
+
+    @Test
+    fun `round-trip supported block attributes`() {
+        val original = listOf(
+            block(
+                id = "parent",
+                type = BlockType.NumberedList(1),
+                content = BlockContent.Text("Parent item"),
+            ),
+            block(
+                id = "child",
+                type = BlockType.NumberedList(1),
+                content = BlockContent.Text("Nested item"),
+                attributes = BlockAttributes(indentationLevel = 1),
+            )
+        )
+
+        val decoded = DocumentSchema.decode(DocumentSchema.encode(original))
+
+        assertEquals(1, decoded[1].attributes.indentationLevel)
+        assertIs<BlockType.NumberedList>(decoded[1].type)
+    }
+
+    @Test
+    fun `missing attributes default to indentation level 0`() {
+        val json = """{"version":1,"blocks":[{"id":"b1","type":{"typeId":"paragraph"},"content":{"kind":"text","version":1,"text":"","spans":[]}}]}"""
+
+        val decoded = DocumentSchema.decodeFromString(json)
+
+        assertEquals(0, decoded[0].attributes.indentationLevel)
+    }
+
+    @Test
+    fun `malformed attributes object falls back to 0 with warning`() {
+        val json = """{"version":2,"blocks":[{"id":"b1","type":{"typeId":"paragraph"},"attributes":"bad","content":{"kind":"text","version":1,"text":"","spans":[]}}]}"""
+
+        val result = DocumentSchema.decodeFromStringWithReport(json)
+
+        assertEquals(0, result.blocks[0].attributes.indentationLevel)
+        assertTrue(result.warnings.any { it is DocumentDecodeWarning.InvalidBlockAttributeParam })
+    }
+
+    @Test
+    fun `unsupported block indentation is cleared on decode`() {
+        val json = """{"version":2,"blocks":[{"id":"b1","type":{"typeId":"heading_2"},"attributes":{"indentationLevel":2},"content":{"kind":"text","version":1,"text":"Title","spans":[]}}]}"""
+
+        val decoded = DocumentSchema.decodeFromString(json)
+
+        assertIs<BlockType.Heading>(decoded[0].type)
+        assertEquals(0, decoded[0].attributes.indentationLevel)
+    }
+
+    @Test
+    fun `first supported block indentation is normalized on decode with warning`() {
+        val json = """{"version":2,"blocks":[{"id":"b1","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":1},"content":{"kind":"text","version":1,"text":"Orphan","spans":[]}}]}"""
+
+        val result = DocumentSchema.decodeFromStringWithReport(json)
+
+        assertEquals(0, result.blocks[0].attributes.indentationLevel)
+        val warning = assertIs<DocumentDecodeWarning.InvalidBlockAttributeParam>(
+            result.warnings.single { it is DocumentDecodeWarning.InvalidBlockAttributeParam }
+        )
+        assertEquals(0, warning.blockIndex)
+        assertEquals("indentationLevel=1", warning.param)
+        assertEquals("indentationLevel=0", warning.fallback)
+    }
+
+    @Test
+    fun `normalization warning reports source index after skipped block`() {
+        val json = """{"version":2,"blocks":[
+            "bad_entry",
+            {"id":"b1","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":1},"content":{"kind":"text","version":1,"text":"Orphan","spans":[]}}
+        ]}"""
+
+        val result = DocumentSchema.decodeFromStringWithReport(json)
+
+        assertEquals(1, result.blocks.size)
+        assertEquals(0, result.blocks[0].attributes.indentationLevel)
+
+        val malformedWarning = assertIs<DocumentDecodeWarning.MalformedBlockSkipped>(
+            result.warnings.single { it is DocumentDecodeWarning.MalformedBlockSkipped }
+        )
+        assertEquals(0, malformedWarning.blockIndex)
+
+        val attributeWarning = assertIs<DocumentDecodeWarning.InvalidBlockAttributeParam>(
+            result.warnings.single { it is DocumentDecodeWarning.InvalidBlockAttributeParam }
+        )
+        assertEquals(1, attributeWarning.blockIndex)
+        assertEquals("indentationLevel=1", attributeWarning.param)
+        assertEquals("indentationLevel=0", attributeWarning.fallback)
+    }
+
+    @Test
+    fun `supported block after unsupported boundary is normalized on decode`() {
+        val json = """{"version":2,"blocks":[
+            {"id":"p","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":0},"content":{"kind":"text","version":1,"text":"Parent","spans":[]}},
+            {"id":"h","type":{"typeId":"heading_2"},"attributes":{"indentationLevel":0},"content":{"kind":"text","version":1,"text":"Heading","spans":[]}},
+            {"id":"c","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":1},"content":{"kind":"text","version":1,"text":"Child","spans":[]}}
+        ]}"""
+
+        val result = DocumentSchema.decodeFromStringWithReport(json)
+
+        assertEquals(listOf(0, 0, 0), result.blocks.map { it.attributes.indentationLevel })
+        val warning = assertIs<DocumentDecodeWarning.InvalidBlockAttributeParam>(
+            result.warnings.single { it is DocumentDecodeWarning.InvalidBlockAttributeParam }
+        )
+        assertEquals(2, warning.blockIndex)
+        assertEquals("indentationLevel=1", warning.param)
+        assertEquals("indentationLevel=0", warning.fallback)
+    }
+
+    @Test
+    fun `out-of-range indentation falls back to 0 with warning`() {
+        val json = """{"version":2,"blocks":[{"id":"b1","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":99},"content":{"kind":"text","version":1,"text":"","spans":[]}}]}"""
+
+        val result = DocumentSchema.decodeFromStringWithReport(json)
+
+        assertEquals(0, result.blocks[0].attributes.indentationLevel)
+        val warning = assertIs<DocumentDecodeWarning.InvalidBlockAttributeParam>(
+            result.warnings.single { it is DocumentDecodeWarning.InvalidBlockAttributeParam }
+        )
+        assertEquals(0, warning.blockIndex)
+        assertEquals("indentationLevel=99", warning.param)
+        assertEquals("indentationLevel=0", warning.fallback)
+    }
+
+    @Test
+    fun `non-integer indentation falls back to 0 with warning`() {
+        val json = """{"version":2,"blocks":[{"id":"b1","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":"deep"},"content":{"kind":"text","version":1,"text":"","spans":[]}}]}"""
+
+        val result = DocumentSchema.decodeFromStringWithReport(json)
+
+        assertEquals(0, result.blocks[0].attributes.indentationLevel)
+        val warning = assertIs<DocumentDecodeWarning.InvalidBlockAttributeParam>(
+            result.warnings.single { it is DocumentDecodeWarning.InvalidBlockAttributeParam }
+        )
+        assertEquals("indentationLevel=deep", warning.param)
+        assertEquals("indentationLevel=0", warning.fallback)
     }
 
     // Empty / missing blocks
@@ -469,6 +619,25 @@ class DocumentSchemaDecodeTest {
         // renumberNumberedLists always starts runs from 1
         assertEquals(1, nl1.number)
         assertEquals(2, nl2.number)
+    }
+
+    @Test
+    fun `nested numbered lists are renumbered by decoded indentation attributes`() {
+        val json = """{"version":2,"blocks":[
+            {"id":"p1","type":{"typeId":"numbered_list","number":7},"attributes":{"indentationLevel":0},"content":{"kind":"text","version":1,"text":"parent 1","spans":[]}},
+            {"id":"c1","type":{"typeId":"numbered_list","number":7},"attributes":{"indentationLevel":1},"content":{"kind":"text","version":1,"text":"child 1","spans":[]}},
+            {"id":"c2","type":{"typeId":"numbered_list","number":7},"attributes":{"indentationLevel":1},"content":{"kind":"text","version":1,"text":"child 2","spans":[]}},
+            {"id":"p2","type":{"typeId":"numbered_list","number":7},"attributes":{"indentationLevel":0},"content":{"kind":"text","version":1,"text":"parent 2","spans":[]}}
+        ]}"""
+
+        val decoded = DocumentSchema.decodeFromString(json)
+
+        assertEquals(1, (decoded[0].type as BlockType.NumberedList).number)
+        assertEquals(1, (decoded[1].type as BlockType.NumberedList).number)
+        assertEquals(2, (decoded[2].type as BlockType.NumberedList).number)
+        assertEquals(2, (decoded[3].type as BlockType.NumberedList).number)
+        assertEquals(1, decoded[1].attributes.indentationLevel)
+        assertEquals(1, decoded[2].attributes.indentationLevel)
     }
 
     // Large document

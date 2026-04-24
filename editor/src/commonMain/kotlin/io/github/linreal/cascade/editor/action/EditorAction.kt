@@ -1,19 +1,24 @@
 package io.github.linreal.cascade.editor.action
 
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
+import io.github.linreal.cascade.editor.core.IndentationDirection
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
+import io.github.linreal.cascade.editor.core.moveDragPayload
+import io.github.linreal.cascade.editor.core.normalizeIndentationOutline
 import io.github.linreal.cascade.editor.core.renumberNumberedLists
+import io.github.linreal.cascade.editor.core.resolveDragPayload
+import io.github.linreal.cascade.editor.core.shiftIndentation
 import io.github.linreal.cascade.editor.richtext.SpanAlgorithms
 import io.github.linreal.cascade.editor.slash.SlashCommandId
 import io.github.linreal.cascade.editor.state.DragState
 import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.SlashCommandState
 import io.github.linreal.cascade.editor.state.SlashQueryRange
-import io.github.linreal.cascade.editor.ui.utils.convertVisualGapToMoveBlocksIndex
 import kotlin.math.max
 import kotlin.math.min
 
@@ -26,6 +31,29 @@ public sealed interface EditorAction {
      * Reduces the current state to a new state based on this action.
      */
     public fun reduce(state: EditorState): EditorState
+}
+
+private fun BlockAttributes.forType(type: BlockType): BlockAttributes {
+    return if (type.supportsIndentation) {
+        this
+    } else {
+        copy(indentationLevel = BlockAttributes.DEFAULT_INDENTATION_LEVEL)
+    }
+}
+
+private fun BlockAttributes.forSplitContinuation(
+    sourceType: BlockType,
+    newType: BlockType,
+): BlockAttributes {
+    return if (sourceType.supportsIndentation && newType.supportsIndentation) {
+        this
+    } else {
+        copy(indentationLevel = BlockAttributes.DEFAULT_INDENTATION_LEVEL)
+    }
+}
+
+private fun normalizeOutlineAndRenumber(blocks: List<Block>): List<Block> {
+    return renumberNumberedLists(normalizeIndentationOutline(blocks))
 }
 
 // Block Manipulation Actions
@@ -43,7 +71,7 @@ public data class InsertBlock(
         val newBlocks = state.blocks.toMutableList().apply {
             add(index, block)
         }
-        return state.copy(blocks = renumberNumberedLists(newBlocks))
+        return state.copy(blocks = normalizeOutlineAndRenumber(newBlocks))
     }
 }
 
@@ -65,7 +93,7 @@ public data class InsertBlockAfter(
         val newBlocks = state.blocks.toMutableList().apply {
             add(index, block)
         }
-        return state.copy(blocks = renumberNumberedLists(newBlocks))
+        return state.copy(blocks = normalizeOutlineAndRenumber(newBlocks))
     }
 }
 
@@ -87,7 +115,7 @@ public data class InsertBlockBefore(
         val newBlocks = state.blocks.toMutableList().apply {
             add(index, block)
         }
-        return state.copy(blocks = renumberNumberedLists(newBlocks))
+        return state.copy(blocks = normalizeOutlineAndRenumber(newBlocks))
     }
 }
 
@@ -102,7 +130,7 @@ public data class DeleteBlocks(
         val newFocusedId = if (state.focusedBlockId in blockIds) null else state.focusedBlockId
         val newSelectedIds = state.selectedBlockIds - blockIds
         return state.copy(
-            blocks = renumberNumberedLists(newBlocks),
+            blocks = normalizeOutlineAndRenumber(newBlocks),
             focusedBlockId = newFocusedId,
             selectedBlockIds = newSelectedIds
         )
@@ -161,9 +189,15 @@ public data class ConvertBlockType(
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val newBlocks = state.blocks.map { block ->
-            if (block.id == blockId) block.withType(newType) else block
+            if (block.id == blockId) {
+                block
+                    .withType(newType)
+                    .withAttributes(block.attributes.forType(newType))
+            } else {
+                block
+            }
         }
-        return state.copy(blocks = renumberNumberedLists(newBlocks))
+        return state.copy(blocks = normalizeOutlineAndRenumber(newBlocks))
     }
 }
 
@@ -181,7 +215,74 @@ public data class MoveBlocks(
         val newBlocks = remainingBlocks.toMutableList().apply {
             addAll(targetIndex, blocksToMove)
         }
-        return state.copy(blocks = renumberNumberedLists(newBlocks))
+        return state.copy(blocks = normalizeOutlineAndRenumber(newBlocks))
+    }
+}
+
+/**
+ * Moves a drag payload as one structural operation.
+ *
+ * Unlike [MoveBlocks], this action treats [dragState.payloadBlockIds] as a subtree-aware
+ * payload and rewrites indentation in the same reducer step. Keeping reorder and depth
+ * changes atomic prevents transient flattened outlines from entering editor state.
+ */
+internal data class MoveDragPayload(
+    val dragState: DragState,
+    val visualGap: Int,
+) : EditorAction {
+    override fun reduce(state: EditorState): EditorState {
+        val primaryRootId = dragState.primaryRootId
+        val movedBlocks = moveDragPayload(
+            blocks = state.blocks,
+            payloadBlockIds = dragState.payloadBlockIds,
+            primaryRootId = primaryRootId,
+            originalPrimaryRootDepth = primaryRootId?.let {
+                dragState.originalRootIndentationLevels[it]
+            },
+            futurePrimaryRootDepth = dragState.futureRootIndentationLevel,
+            visualGap = visualGap,
+        )
+        if (movedBlocks === state.blocks) return state
+        return state.copy(blocks = normalizeOutlineAndRenumber(movedBlocks))
+    }
+}
+
+/**
+ * Indents the current supported target roots and their supported descendants by one level.
+ *
+ * Selection takes precedence over focus. Unsupported selected blocks are ignored, and
+ * selected supported descendants of another selected supported root are shifted only once
+ * as part of the ancestor subtree.
+ */
+public data object IndentForward : EditorAction {
+    override fun reduce(state: EditorState): EditorState {
+        val shiftedBlocks = shiftIndentation(
+            blocks = state.blocks,
+            focusedBlockId = state.focusedBlockId,
+            selectedBlockIds = state.selectedBlockIds,
+            direction = IndentationDirection.Forward,
+        )
+        if (shiftedBlocks === state.blocks) return state
+        return state.copy(blocks = renumberNumberedLists(shiftedBlocks))
+    }
+}
+
+/**
+ * Outdents the current supported target roots and their supported descendants by one level.
+ *
+ * Root targets already at depth 0 are left unchanged; selected supported descendants of
+ * another selected supported root are shifted only once as part of the ancestor subtree.
+ */
+public data object IndentBackward : EditorAction {
+    override fun reduce(state: EditorState): EditorState {
+        val shiftedBlocks = shiftIndentation(
+            blocks = state.blocks,
+            focusedBlockId = state.focusedBlockId,
+            selectedBlockIds = state.selectedBlockIds,
+            direction = IndentationDirection.Backward,
+        )
+        if (shiftedBlocks === state.blocks) return state
+        return state.copy(blocks = renumberNumberedLists(shiftedBlocks))
     }
 }
 
@@ -219,7 +320,7 @@ public data class MergeBlocks(
             }
             .filterNot { it.id == sourceId }
         return state.copy(
-            blocks = renumberNumberedLists(newBlocks),
+            blocks = normalizeOutlineAndRenumber(newBlocks),
             focusedBlockId = targetId,
             selectedBlockIds = state.selectedBlockIds - sourceId
         )
@@ -244,7 +345,7 @@ public data class ReplaceBlock(
             state.selectedBlockIds
         }
         return state.copy(
-            blocks = renumberNumberedLists(newBlocks),
+            blocks = normalizeOutlineAndRenumber(newBlocks),
             focusedBlockId = newFocusedId,
             selectedBlockIds = newSelectedIds
         )
@@ -462,8 +563,8 @@ public data object ClearFocus : EditorAction {
  *        Stored in DragState for preview positioning.
  *
  * If block selection mode is active and [blockId] is part of that selection,
- * the full selected set becomes the drag payload while keeping [blockId] as
- * the primary preview anchor.
+ * selected roots are de-duplicated and expanded to their full subtrees. Otherwise
+ * [blockId] itself becomes the single root and its subtree becomes the payload.
  */
 public data class StartDrag(
     val blockId: BlockId,
@@ -473,20 +574,17 @@ public data class StartDrag(
         val originalIndex = state.indexOfBlock(blockId)
         if (originalIndex == -1) return state // Block not found
 
-        val draggingBlockIds = if (
-            state.selectedBlockIds.isNotEmpty() &&
-            blockId in state.selectedBlockIds
-        ) {
-            linkedSetOf<BlockId>().apply {
-                add(blockId)
-                state.selectedBlocks
-                    .asSequence()
-                    .map { it.id }
-                    .filter { it != blockId }
-                    .forEach(::add)
-            }
-        } else {
-            setOf(blockId)
+        val payload = resolveDragPayload(
+            blocks = state.blocks,
+            touchedBlockId = blockId,
+            selectedBlockIds = state.selectedBlockIds,
+        ) ?: return state
+
+        val draggingBlockIds = linkedSetOf<BlockId>().apply {
+            add(payload.primaryRootId)
+            payload.payloadBlockIds
+                .filter { it != payload.primaryRootId }
+                .forEach(::add)
         }
 
         return state.copy(
@@ -494,7 +592,21 @@ public data class StartDrag(
                 draggingBlockIds = draggingBlockIds,
                 targetIndex = null,
                 initialTouchOffsetY = touchOffsetY,
-                primaryBlockOriginalIndex = originalIndex
+                primaryBlockOriginalIndex = originalIndex,
+                dragRootIds = payload.dragRootIds,
+                payloadBlockIds = payload.payloadBlockIds,
+                payloadBlockIdSet = payload.payloadBlockIdSet,
+                payloadBlockIndices = payload.payloadBlockIndices,
+                payloadBlockIndexSet = payload.payloadBlockIndexSet,
+                payloadIndexRanges = payload.payloadIndexRanges,
+                primaryRootId = payload.primaryRootId,
+                primaryRootOriginalIndex = payload.primaryRootIndex,
+                primaryRootSupportsIndentation = payload.primaryRootSupportsIndentation,
+                originalRootIndentationLevels = payload.originalRootIndentationLevels,
+                payloadRelativeDepthOffsets = payload.payloadRelativeDepthOffsets,
+                payloadRootIdsByBlockId = payload.payloadRootIdsByBlockId,
+                futureRootIndentationLevel = payload.originalRootIndentationLevels
+                    .getValue(payload.primaryRootId),
             )
         )
     }
@@ -502,14 +614,24 @@ public data class StartDrag(
 
 /**
  * Updates the drop target during a drag operation.
+ *
+ * [targetIndex] is the visual gap in the full list. `null` represents an invalid
+ * hover target and prevents [CompleteDrag] from mutating blocks. When
+ * [futureRootIndentationLevel] is omitted, the previous candidate depth is
+ * preserved so legacy Y-only callers do not erase the current resolved lane.
  */
 public data class UpdateDragTarget(
-    val targetIndex: Int?
+    val targetIndex: Int?,
+    val futureRootIndentationLevel: Int? = null,
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val currentDrag = state.dragState ?: return state
         return state.copy(
-            dragState = currentDrag.copy(targetIndex = targetIndex)
+            dragState = currentDrag.copy(
+                targetIndex = targetIndex,
+                futureRootIndentationLevel =
+                    futureRootIndentationLevel ?: currentDrag.futureRootIndentationLevel,
+            )
         )
     }
 }
@@ -518,23 +640,15 @@ public data class UpdateDragTarget(
  * Completes a drag operation, moving blocks to the target.
  *
  * The [DragState.targetIndex] stores the visual gap position (where the drop indicator shows).
- * This is converted to the actual MoveBlocks index here, accounting for the fact that
- * the dragged item will be removed before insertion.
+ * Completion delegates to [MoveDragPayload] so payload removal, insertion, indentation
+ * rewrite, self-drop rejection, and ordered-list renumbering happen as one reducer step.
  */
 public data object CompleteDrag : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val dragState = state.dragState ?: return state
         val visualGap = dragState.targetIndex ?: return state.copy(dragState = null)
 
-        // Convert visual gap to MoveBlocks index
-        // Returns null if dropping at original position (no movement needed)
-        val moveBlocksIndex = convertVisualGapToMoveBlocksIndex(
-            visualGap = visualGap,
-            originalIndex = dragState.primaryBlockOriginalIndex,
-            totalItemCount = state.blocks.size
-        ) ?: return state.copy(dragState = null) // No movement needed
-
-        return MoveBlocks(dragState.draggingBlockIds, moveBlocksIndex)
+        return MoveDragPayload(dragState, visualGap)
             .reduce(state)
             .copy(dragState = null)
     }
@@ -708,7 +822,8 @@ public data class SplitBlock(
         val newBlock = Block(
             id = newBlockId ?: BlockId.generate(),
             type = newBlockType,
-            content = BlockContent.Text(afterText, resolvedAfterSpans)
+            content = BlockContent.Text(afterText, resolvedAfterSpans),
+            attributes = block.attributes.forSplitContinuation(block.type, newBlockType),
         )
 
         val newBlocks = state.blocks.toMutableList().apply {
@@ -718,7 +833,7 @@ public data class SplitBlock(
         }
 
         return state.copy(
-            blocks = renumberNumberedLists(newBlocks),
+            blocks = normalizeOutlineAndRenumber(newBlocks),
             focusedBlockId = newBlock.id
         )
     }

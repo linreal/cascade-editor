@@ -2,6 +2,7 @@ package io.github.linreal.cascade.editor
 
 import io.github.linreal.cascade.editor.action.*
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
@@ -20,6 +21,20 @@ class DragActionsTest {
             id = BlockId(id),
             type = BlockType.Paragraph,
             content = BlockContent.Text(text)
+        )
+    }
+
+    private fun createTestBlock(
+        id: String,
+        type: BlockType,
+        indentationLevel: Int,
+        text: String = id,
+    ): Block {
+        return Block(
+            id = BlockId(id),
+            type = type,
+            content = BlockContent.Text(text),
+            attributes = BlockAttributes(indentationLevel = indentationLevel),
         )
     }
 
@@ -112,6 +127,83 @@ class DragActionsTest {
         assertEquals(state.blocks, newState.blocks)
     }
 
+    @Test
+    fun `StartDrag on parent includes full subtree payload in document order`() {
+        val state = EditorState.withBlocks(
+            listOf(
+                createTestBlock("A", BlockType.Paragraph, indentationLevel = 0),
+                createTestBlock("B", BlockType.Paragraph, indentationLevel = 0),
+                createTestBlock("C", BlockType.Paragraph, indentationLevel = 1),
+                createTestBlock("D", BlockType.Paragraph, indentationLevel = 2),
+                createTestBlock("E", BlockType.Paragraph, indentationLevel = 0),
+            )
+        )
+
+        val newState = StartDrag(BlockId("B"), touchOffsetY = 0f).reduce(state)
+
+        val dragState = assertNotNull(newState.dragState)
+        assertEquals(listOf(BlockId("B")), dragState.dragRootIds)
+        assertEquals(listOf(BlockId("B"), BlockId("C"), BlockId("D")), dragState.payloadBlockIds)
+        assertEquals(setOf(BlockId("B"), BlockId("C"), BlockId("D")), dragState.payloadBlockIdSet)
+        assertEquals(listOf(1, 2, 3), dragState.payloadBlockIndices)
+        assertEquals(setOf(1, 2, 3), dragState.payloadBlockIndexSet)
+        assertEquals(listOf(1..3), dragState.payloadIndexRanges)
+        assertEquals(setOf(BlockId("B"), BlockId("C"), BlockId("D")), dragState.draggingBlockIds)
+        assertEquals(mapOf(BlockId("B") to 0), dragState.originalRootIndentationLevels)
+        assertEquals(
+            mapOf(
+                BlockId("B") to 0,
+                BlockId("C") to 1,
+                BlockId("D") to 2,
+            ),
+            dragState.payloadRelativeDepthOffsets,
+        )
+    }
+
+    @Test
+    fun `StartDrag on selected parent and child includes child only once`() {
+        val state = EditorState.withBlocks(
+            listOf(
+                createTestBlock("A", BlockType.Paragraph, indentationLevel = 0),
+                createTestBlock("B", BlockType.Paragraph, indentationLevel = 0),
+                createTestBlock("C", BlockType.Paragraph, indentationLevel = 1),
+                createTestBlock("D", BlockType.Paragraph, indentationLevel = 2),
+                createTestBlock("E", BlockType.Paragraph, indentationLevel = 0),
+            )
+        ).copy(
+            selectedBlockIds = setOf(BlockId("B"), BlockId("C")),
+        )
+
+        val newState = StartDrag(BlockId("B"), touchOffsetY = 0f).reduce(state)
+
+        val dragState = assertNotNull(newState.dragState)
+        assertEquals(listOf(BlockId("B")), dragState.dragRootIds)
+        assertEquals(listOf(BlockId("B"), BlockId("C"), BlockId("D")), dragState.payloadBlockIds)
+    }
+
+    @Test
+    fun `StartDrag with two selected roots preserves root and payload document order`() {
+        val state = EditorState.withBlocks(
+            listOf(
+                createTestBlock("A", BlockType.Paragraph, indentationLevel = 0),
+                createTestBlock("B", BlockType.Paragraph, indentationLevel = 0),
+                createTestBlock("C", BlockType.Paragraph, indentationLevel = 1),
+                createTestBlock("D", BlockType.Paragraph, indentationLevel = 0),
+                createTestBlock("E", BlockType.Paragraph, indentationLevel = 1),
+                createTestBlock("F", BlockType.Paragraph, indentationLevel = 0),
+            )
+        ).copy(
+            selectedBlockIds = setOf(BlockId("D"), BlockId("B")),
+        )
+
+        val newState = StartDrag(BlockId("D"), touchOffsetY = 0f).reduce(state)
+
+        val dragState = assertNotNull(newState.dragState)
+        assertEquals(listOf(BlockId("B"), BlockId("D")), dragState.dragRootIds)
+        assertEquals(listOf(BlockId("B"), BlockId("C"), BlockId("D"), BlockId("E")), dragState.payloadBlockIds)
+        assertEquals(BlockId("D"), dragState.primaryRootId)
+    }
+
     // =========================================================================
     // UpdateDragTarget
     // =========================================================================
@@ -167,6 +259,17 @@ class DragActionsTest {
         assertEquals(setOf(BlockId("C")), newState.dragState!!.draggingBlockIds)
         assertEquals(25f, newState.dragState!!.initialTouchOffsetY)
         assertEquals(2, newState.dragState!!.primaryBlockOriginalIndex)
+    }
+
+    @Test
+    fun `UpdateDragTarget updates future root indentation level`() {
+        val state = createFiveBlockState()
+        val dragging = StartDrag(BlockId("C"), touchOffsetY = 25f).reduce(state)
+
+        val newState = UpdateDragTarget(targetIndex = 4, futureRootIndentationLevel = 1).reduce(dragging)
+
+        assertEquals(4, newState.dragState!!.targetIndex)
+        assertEquals(1, newState.dragState!!.futureRootIndentationLevel)
     }
 
     // =========================================================================
@@ -257,6 +360,25 @@ class DragActionsTest {
     }
 
     @Test
+    fun `CompleteDrag at original position with future depth changes indentation`() {
+        val state = createFiveBlockState()
+        val dragging = StartDrag(BlockId("C"), touchOffsetY = 0f).reduce(state)
+        val targeted = UpdateDragTarget(
+            targetIndex = 2,
+            futureRootIndentationLevel = 1,
+        ).reduce(dragging)
+
+        val newState = CompleteDrag.reduce(targeted)
+
+        assertNull(newState.dragState)
+        assertEquals(
+            listOf("A", "B", "C", "D", "E"),
+            newState.blocks.map { it.id.value }
+        )
+        assertEquals(listOf(0, 0, 1, 0, 0), newState.blocks.map { it.attributes.indentationLevel })
+    }
+
+    @Test
     fun `CompleteDrag at gap after original does not reorder`() {
         // Gap 3 for original index 2 = immediately after → no movement
         val state = createFiveBlockState()
@@ -285,6 +407,27 @@ class DragActionsTest {
     }
 
     @Test
+    fun `CompleteDrag after invalid hover target does not mutate document`() {
+        val state = EditorState.withBlocks(
+            listOf(
+                createTestBlock("A", BlockType.Paragraph, indentationLevel = 0),
+                createTestBlock("B", BlockType.Paragraph, indentationLevel = 0),
+            )
+        )
+        val dragging = StartDrag(BlockId("B"), touchOffsetY = 0f).reduce(state)
+        val invalidTarget = UpdateDragTarget(
+            targetIndex = null,
+            futureRootIndentationLevel = 1,
+        ).reduce(dragging)
+
+        val newState = CompleteDrag.reduce(invalidTarget)
+
+        assertNull(newState.dragState)
+        assertEquals(listOf("A", "B"), newState.blocks.map { it.id.value })
+        assertEquals(listOf(0, 0), newState.blocks.map { it.attributes.indentationLevel })
+    }
+
+    @Test
     fun `CompleteDrag without active drag is no-op`() {
         val state = createFiveBlockState()
 
@@ -304,6 +447,57 @@ class DragActionsTest {
         val movedBlock = newState.blocks.find { it.id == BlockId("B") }
         assertNotNull(movedBlock)
         assertEquals("Beta", (movedBlock.content as BlockContent.Text).text)
+    }
+
+    @Test
+    fun `CompleteDrag rejects drop into payload gap`() {
+        val state = EditorState.withBlocks(
+            listOf(
+                createTestBlock("A", BlockType.Paragraph, indentationLevel = 0),
+                createTestBlock("B", BlockType.Paragraph, indentationLevel = 0),
+                createTestBlock("C", BlockType.Paragraph, indentationLevel = 1),
+                createTestBlock("D", BlockType.Paragraph, indentationLevel = 1),
+                createTestBlock("E", BlockType.Paragraph, indentationLevel = 0),
+            )
+        )
+        val dragging = StartDrag(BlockId("B"), touchOffsetY = 0f).reduce(state)
+        val targeted = UpdateDragTarget(targetIndex = 2).reduce(dragging)
+
+        val newState = CompleteDrag.reduce(targeted)
+
+        assertNull(newState.dragState)
+        assertEquals(listOf("A", "B", "C", "D", "E"), newState.blocks.map { it.id.value })
+        assertEquals(listOf(0, 0, 1, 1, 0), newState.blocks.map { it.attributes.indentationLevel })
+    }
+
+    @Test
+    fun `CompleteDrag moves subtree with future depth and renumbers lists`() {
+        val state = EditorState.withBlocks(
+            listOf(
+                createTestBlock("A", BlockType.NumberedList(9), indentationLevel = 0),
+                createTestBlock("B", BlockType.NumberedList(9), indentationLevel = 0),
+                createTestBlock("C", BlockType.Paragraph, indentationLevel = 0),
+                createTestBlock("D", BlockType.NumberedList(9), indentationLevel = 0),
+                createTestBlock("E", BlockType.NumberedList(9), indentationLevel = 1),
+            )
+        )
+        val dragging = StartDrag(BlockId("D"), touchOffsetY = 0f).reduce(state)
+        val targeted = UpdateDragTarget(targetIndex = 2, futureRootIndentationLevel = 1).reduce(dragging)
+
+        val newState = CompleteDrag.reduce(targeted)
+
+        assertEquals(listOf("A", "B", "D", "E", "C"), newState.blocks.map { it.id.value })
+        assertEquals(listOf(0, 0, 1, 2, 0), newState.blocks.map { it.attributes.indentationLevel })
+        assertEquals(
+            listOf(
+                BlockType.NumberedList(1),
+                BlockType.NumberedList(2),
+                BlockType.NumberedList(1),
+                BlockType.NumberedList(1),
+                BlockType.Paragraph,
+            ),
+            newState.blocks.map { it.type },
+        )
     }
 
     // =========================================================================

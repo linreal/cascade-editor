@@ -5,7 +5,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import io.github.linreal.cascade.editor.ui.utils.calculateDropTargetIndex
+import io.github.linreal.cascade.editor.state.EditorState
+import io.github.linreal.cascade.editor.ui.utils.DragHoverOutlineIndex
+import io.github.linreal.cascade.editor.ui.utils.DragHoverTarget
+import io.github.linreal.cascade.editor.ui.utils.recomputeDepthAwareDragHoverTarget
 import kotlinx.coroutines.delay
 
 /**
@@ -79,23 +82,30 @@ internal fun calculateAutoScrollAmount(
  * 1. Reads the current [dragOffsetY]
  * 2. Calculates scroll amount via [calculateAutoScrollAmount]
  * 3. Scrolls the list by that amount
- * 4. Recalculates the drop target (items have shifted) and dispatches [UpdateDragTarget]
+ * 4. Recalculates the depth-aware drop target because items have shifted
  *
  * The loop cancels automatically when [isDragging] becomes false.
  *
  * @param lazyListState The scroll state of the LazyColumn
  * @param dragOffsetY Lambda returning the current drag Y position (viewport-relative)
+ * @param dragDeltaX Lambda returning horizontal movement since drag start
  * @param isDragging Whether a drag operation is currently active
- * @param blockCount Total number of blocks in the list
- * @param onDropTargetChanged Callback to dispatch [UpdateDragTarget] with the new target index
+ * @param stateProvider Provides current blocks and drag state for hover resolution
+ * @param outlineIndexProvider Provides cached block lookup data keyed by the
+ *        current block list.
+ * @param indentUnitPx Width of one outline indentation step in pixels
+ * @param onDropTargetChanged Callback to dispatch the resolved hover target
  */
 @Composable
 internal fun AutoScrollDuringDrag(
     lazyListState: LazyListState,
     dragOffsetY: () -> Float,
+    dragDeltaX: () -> Float,
     isDragging: Boolean,
-    blockCount: Int,
-    onDropTargetChanged: (Int?) -> Unit
+    stateProvider: () -> EditorState,
+    outlineIndexProvider: () -> DragHoverOutlineIndex,
+    indentUnitPx: Float,
+    onDropTargetChanged: (DragHoverTarget?) -> Unit
 ) {
     val density = LocalDensity.current
     val hotZonePx = with(density) { HOT_ZONE_DP.toPx() }
@@ -130,13 +140,18 @@ internal fun AutoScrollDuringDrag(
                 // convention (positive = forward/down).
                 lazyListState.dispatchRawDelta(scrollAmount)
 
-                // After scrolling, items have shifted — recalculate drop target
-                val newTarget = calculateDropTargetIndex(
-                    lazyListState.layoutInfo,
-                    currentDragY,
-                    blockCount
+                // After scrolling, items have shifted — recalculate the same
+                // semantic hover target used by direct pointer movement.
+                val currentState = stateProvider()
+                val hoverTarget = recomputeDepthAwareDragHoverTarget(
+                    layoutInfo = lazyListState.layoutInfo,
+                    dragY = currentDragY,
+                    outlineIndex = outlineIndexProvider(),
+                    dragState = currentState.dragState,
+                    horizontalDragDeltaPx = dragDeltaX(),
+                    indentUnitPx = indentUnitPx,
                 )
-                onDropTargetChanged(newTarget)
+                onDropTargetChanged(hoverTarget)
             }
         }
     }

@@ -75,7 +75,7 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
                     block = block,
                     isFocused = isFocused,
                     textStyle = textStyle,
-                    modifier = modifier,
+                    modifier = modifier.withBlockIndentation(block),
                     callbacks = callbacks,
                 )
             }
@@ -93,7 +93,7 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
                     block = block,
                     isFocused = isFocused,
                     textStyle = textStyle,
-                    modifier = modifier,
+                    modifier = modifier.withBlockIndentation(block),
                     callbacks = callbacks,
                 )
             }
@@ -166,7 +166,10 @@ private fun ListPrefixRow(
 ) {
     val prefixText = when (val type = block.type) {
         is BlockType.BulletList -> "\u2022"
-        is BlockType.NumberedList -> "${type.number}."
+        is BlockType.NumberedList -> formatOrderedListPrefix(
+            number = type.number,
+            depth = block.attributes.indentationLevel,
+        )
         else -> return // should not happen
     }
 
