@@ -5,16 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2026-04-26
 
 ### Added
-
-- Desktop target support for the shared `editor` module and the Compose Multiplatform sample app
-- Desktop sample entrypoint, window configuration, and local document persistence
+- Flat-outline block indentation for paragraphs, todos, bullet lists, and numbered lists
+- Public indentation state/actions for custom editor chrome, plus default toolbar indent/outdent controls
+- Depth-aware drag-and-drop, nested numbered-list formatting, and indentation-aware Enter/Backspace editing behavior
+- Editor now supports Desktop target as well
 
 ### Changed
 
-- Public docs and platform matrix now describe Android, iOS, and desktop support
+- Document serialization now preserves supported indentation attributes and normalizes invalid outlines on decode
+- Undo/redo history now captures indentation and drag reindentation as semantic structural transactions
+- Sample landing page layout now adapts better to widescreen displays
 
 ## [1.1.0] - 2026-04-09
 
