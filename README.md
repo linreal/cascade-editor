@@ -13,6 +13,8 @@ Shared `commonMain` editor core | Android + iOS + Desktop | 950+ tests | No WebV
 [![iOS](https://img.shields.io/badge/iOS-16+-000000?logo=apple)](https://developer.apple.com/)
 [![Android Weekly](https://androidweekly.net/issues/issue-721/badge)](https://androidweekly.net/issues/issue-721)
 
+**Try the live web demo:** [linreal.github.io/cascade-editor](https://linreal.github.io/cascade-editor/)
+
 ![Demo](assets/demo.gif)
 
 ## Why CascadeEditor?
