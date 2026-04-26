@@ -2,7 +2,7 @@
 
 The first native block-based editor for Compose Multiplatform.
 
-Notion/Craft-style editing, implemented as a shared Kotlin editor core for Android, iOS, and desktop: draggable blocks, slash commands, undo/redo, rich-text spans, custom block types, and versioned document serialization, all without WebView, HTML/contentEditable, or embedded JavaScript editors.
+Notion/Craft-style editing, implemented as a shared Kotlin editor core for Android, iOS, and desktop: draggable blocks, outline indentation, slash commands, undo/redo, rich-text spans, custom block types, and versioned document serialization, all without WebView, HTML/contentEditable, or embedded JavaScript editors.
 
 Shared `commonMain` editor core | Android + iOS + Desktop | 950+ tests | No WebView | Extensible block registry
 
@@ -26,6 +26,7 @@ CascadeEditor brings that model to Compose Multiplatform natively. Each block ha
 | Document model | Ordered block document | Single styled text buffer |
 | Independent block state/lifecycle | Yes | No |
 | Block split / merge / convert | Yes | Limited / manual |
+| Outline indentation | Yes | Limited / manual |
 | Drag-and-drop reorder | Yes | No |
 | Slash-command insertion | Yes | Rare / custom |
 | Custom block renderers | Yes | Limited |
@@ -36,8 +37,8 @@ If you only need a formatted text area, a single-buffer editor is simpler. Casca
 
 ## Features
 
-- **Structured document editing** — paragraphs, headings (H1-H6), todos, bullet lists, numbered lists, quotes, and dividers as independent blocks that can be inserted, split, merged, converted, reordered, and deleted
-- **Notion-style editing workflows** — native drag-and-drop block reordering, slash-command insertion, undo/redo, list continuation, and structural editing behaviors without WebView
+- **Structured document editing** — paragraphs, headings (H1-H6), todos, bullet lists, numbered lists, quotes, and dividers as independent blocks that can be inserted, split, merged, converted, indented, reordered, and deleted
+- **Notion-style editing workflows** — native drag-and-drop block reordering, outline indentation, slash-command insertion, undo/redo, list continuation, and structural editing behaviors without WebView
 - **Rich-text spans inside blocks** — bold, italic, underline, strikethrough, inline code, highlight, and custom styles with span preservation across split, merge, and replace operations
 - **Versioned document serialization** — `toJson()` / `loadFromJson()` with explicit schemas, codec hooks, and support for custom block types
 - **Custom block system** — extend the editor with your own `CustomBlockType`, `BlockRenderer`, slash commands, and block-specific behavior
@@ -206,17 +207,52 @@ Hardware keyboard shortcuts are built in: `Cmd/Ctrl+Z` for undo, `Shift+Cmd/Ctrl
 
 See [Undo/Redo Feature Context](docs/UndoRedoFeatureContext.md) for the hybrid history model, replay behavior, and integration details.
 
+## Indentation
+
+CascadeEditor supports flat-outline indentation for paragraphs, todos, bullet lists, and numbered lists. The document remains an ordered `List<Block>`: depth is stored in `BlockAttributes.indentationLevel`, rendered as an animated leading inset, and preserved through split/merge, undo/redo, drag-and-drop, and save/load.
+
+The default toolbar includes indent/outdent buttons when `RichTextToolbarConfig.showIndentation` is enabled, which it is by default. Commands shift the focused supported block or selected supported root blocks together with their descendants. Indentation is bounded to levels `0..3`; invalid outline moves no-op instead of producing orphaned nested blocks.
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    toolbar = ToolbarSlot.Default(
+        config = RichTextToolbarConfig.Default.copy(
+            showIndentation = true,
+        ),
+    ),
+)
+```
+
+Custom editor chrome can read the same state and actions from inside `CascadeEditor`:
+
+```kotlin
+val indentationState = LocalIndentationState.current?.value
+val indentationActions = LocalIndentationActions.current
+
+IconButton(
+    enabled = indentationState?.canIndentForward == true,
+    onClick = { indentationActions?.indentForward() },
+) {
+    Text("Indent")
+}
+```
+
+Enter and Backspace understand nested list/todo behavior, and dragging can change block depth horizontally.
+
+See [Indentation](docs/Indentation.md) for the flat-outline model, public API, serialization rules, and drag behavior.
+
 ## Block Types
 
-| Type | Supports Text | Notes |
-|------|:---:|-------|
-| `Paragraph` | Yes | Default block type |
-| `Heading(level)` | Yes | H1–H6 |
-| `Todo(checked)` | Yes | Checkbox with toggle action |
-| `BulletList` | Yes | Auto-detected from `- ` prefix |
-| `NumberedList(number)` | Yes | Auto-renumbering on insert/delete/move |
-| `Quote` | Yes | Left border stripe + background tint |
-| `Divider` | No | Horizontal rule |
+| Type | Supports Text | Supports Indentation | Notes |
+|------|:---:|:---:|-------|
+| `Paragraph` | Yes | Yes | Default block type |
+| `Heading(level)` | Yes | No | H1–H6 |
+| `Todo(checked)` | Yes | Yes | Checkbox with toggle action |
+| `BulletList` | Yes | Yes | Auto-detected from `- ` prefix |
+| `NumberedList(number)` | Yes | Yes | Auto-renumbering on insert/delete/move, including nested outlines |
+| `Quote` | Yes | No | Left border stripe + background tint |
+| `Divider` | No | No | Horizontal rule |
 
 Extend with custom types via the `CustomBlockType` interface (see [Custom Block Types](#custom-block-types)).
 
@@ -261,7 +297,7 @@ val json = stateHolder.toJson(textStates, spanStates)
 val result = stateHolder.loadFromJson(json, textStates, spanStates)
 ```
 
-All block types, text content, and rich text formatting (bold, italic, etc.) are preserved through the round-trip. Unknown block types from newer editor versions are kept as-is — no silent data loss on re-save.
+All block types, text content, rich text formatting (bold, italic, etc.), and supported indentation attributes are preserved through the round-trip. Unknown block types from newer editor versions are kept as-is — no silent data loss on re-save.
 
 For custom block types, plug in `BlockTypeCodec` and `BlockContentCodec` to control how your types are serialized.
 
@@ -296,6 +332,8 @@ This is not a styled text field. CascadeEditor combines block-structured documen
 **Rich-text formatting has to survive split, merge, replace, and typing workflows.** Formatting is represented as `TextSpan` ranges in visible-text coordinates, not raw buffer coordinates. `SpanAlgorithms` handles normalization, edit adjustment, split, merge, apply/remove/toggle, and style queries, and the same algorithms are reused by runtime holders and snapshot reducers. If those paths diverge, formatting silently corrupts on the next operation. The pure algorithm suite in `SpanAlgorithmsTest.kt` currently covers this surface with 100 tests, with additional reducer and integration tests covering split/merge handoff.
 
 **Undo/redo has to replay both history checkpoints and live editing state.** The history model is hybrid and linear: typing, deletion, and eligible one-block formatting edits use compact block-local entries, while split, merge, drag reorder, slash commands, and other semantic document changes use full-document checkpoints. Replay restores the focused block, exact visible-text selection, and pending styles, and reuses existing `TextFieldState` instances where possible to avoid unnecessary IME reconnection during undo/redo.
+
+**Indentation has to behave like hierarchy without replacing the flat document model.** Supported blocks carry a bounded `BlockAttributes.indentationLevel`, and reducers treat a target root plus following deeper supported blocks as a semantic subtree. That keeps selection indentation, depth-aware numbered lists, serialization, undo/redo, and drag reindentation aligned while preserving the simple ordered block list.
 
 **The editor owns text buffers directly instead of reconstructing them from composition side effects.** `BlockTextStates` keeps one `TextFieldState` per block across recompositions. That enables direct buffer edits for merge, split, slash replacement, and list auto-detection without recreating text state from snapshot data or re-deriving cursor position after every structural change. This is an architectural choice that simplifies block-local editing invariants.
 
