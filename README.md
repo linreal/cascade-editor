@@ -4,7 +4,7 @@ The first native block-based editor for Compose Multiplatform.
 
 Notion/Craft-style editing, implemented as a shared Kotlin editor core for Android, iOS, and desktop: draggable blocks, outline indentation, slash commands, undo/redo, rich-text spans, custom block types, and versioned document serialization, all without WebView, HTML/contentEditable, or embedded JavaScript editors.
 
-Shared `commonMain` editor core | Android + iOS + Desktop | 950+ tests | No WebView | Extensible block registry
+Shared `commonMain` editor core | Android + iOS + Desktop | 1000+ tests | Extensible block registry
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
 [![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.10-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
