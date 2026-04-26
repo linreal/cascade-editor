@@ -1,6 +1,7 @@
 package io.github.linreal.cascade.editor
 
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
@@ -33,28 +34,29 @@ class DocumentSchemaEncodeTest {
         id: String = "b1",
         type: BlockType = BlockType.Paragraph,
         content: BlockContent = BlockContent.Text(""),
-    ): Block = Block(id = BlockId(id), type = type, content = content)
+        attributes: BlockAttributes = BlockAttributes.Default,
+    ): Block = Block(id = BlockId(id), type = type, content = content, attributes = attributes)
 
     // Envelope
 
     @Test
     fun `encode empty document`() {
         val json = DocumentSchema.encode(emptyList())
-        assertEquals(1, json["version"]?.jsonPrimitive?.int)
+        assertEquals(2, json["version"]?.jsonPrimitive?.int)
         assertEquals(0, json["blocks"]?.jsonArray?.size)
     }
 
     @Test
-    fun `version field is 1`() {
+    fun `version field is current schema version`() {
         val json = DocumentSchema.encode(listOf(block()))
-        assertEquals(1, json["version"]?.jsonPrimitive?.int)
+        assertEquals(2, json["version"]?.jsonPrimitive?.int)
     }
 
     @Test
     fun `encodeToString returns valid JSON`() {
         val str = DocumentSchema.encodeToString(listOf(block()))
         val reparsed = Json.parseToJsonElement(str).jsonObject
-        assertEquals(1, reparsed["version"]?.jsonPrimitive?.int)
+        assertEquals(2, reparsed["version"]?.jsonPrimitive?.int)
         assertEquals(1, reparsed["blocks"]?.jsonArray?.size)
     }
 
@@ -105,6 +107,46 @@ class DocumentSchemaEncodeTest {
         val typeObj = json["blocks"]!!.jsonArray[0].jsonObject["type"]!!.jsonObject
         assertEquals("numbered_list", typeObj["typeId"]?.jsonPrimitive?.content)
         assertEquals(3, typeObj["number"]?.jsonPrimitive?.int)
+    }
+
+    @Test
+    fun `encode block attributes with indentation level`() {
+        val json = DocumentSchema.encode(
+            listOf(
+                block(
+                    type = BlockType.NumberedList(number = 1),
+                    attributes = BlockAttributes(indentationLevel = 1),
+                )
+            )
+        )
+        val blockObj = json["blocks"]!!.jsonArray[0].jsonObject
+        val attributesObj = blockObj["attributes"]!!.jsonObject
+        assertEquals(1, attributesObj["indentationLevel"]?.jsonPrimitive?.int)
+    }
+
+    @Test
+    fun `encode omits default block attributes`() {
+        val json = DocumentSchema.encode(listOf(block(type = BlockType.Paragraph)))
+
+        val blockObj = json["blocks"]!!.jsonArray[0].jsonObject
+
+        assertFalse(blockObj.containsKey("attributes"))
+    }
+
+    @Test
+    fun `encode omits unsupported block indentation attributes`() {
+        val json = DocumentSchema.encode(
+            listOf(
+                block(
+                    type = BlockType.Heading(1),
+                    attributes = BlockAttributes(indentationLevel = 2),
+                )
+            )
+        )
+
+        val blockObj = json["blocks"]!!.jsonArray[0].jsonObject
+
+        assertFalse(blockObj.containsKey("attributes"))
     }
 
     @Test

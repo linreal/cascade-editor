@@ -2,6 +2,94 @@ package io.github.linreal.cascade.editor.ui.utils
 
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
+import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
+import io.github.linreal.cascade.editor.core.BlockId
+import io.github.linreal.cascade.editor.core.isInsidePayloadRanges
+import io.github.linreal.cascade.editor.core.toContiguousRanges
+import io.github.linreal.cascade.editor.state.DragState
+import kotlin.math.max
+import kotlin.math.min
+
+/**
+ * Stable semantic drag-hover target derived from pointer position.
+ *
+ * Pointer X/Y values are intentionally excluded: callers dispatch only this resolved
+ * structure into editor state so frame-rate pointer movement does not recompose the
+ * document tree unless the visual gap or future indentation lane actually changes.
+ */
+internal data class DragHoverTarget(
+    val visualGap: Int,
+    val futureRootIndentationLevel: Int,
+)
+
+private data class PayloadDepthOffsetRange(
+    val shallowestOffset: Int,
+    val deepestOffset: Int,
+)
+
+/**
+ * Cached block lookup data for drag-hover resolution.
+ *
+ * Build one instance per [blocks] list and reuse it while pointer movement updates the
+ * hover target. This keeps the 60fps hover path from rebuilding full-document maps.
+ */
+internal class DragHoverOutlineIndex(
+    internal val blocks: List<Block>,
+) {
+    private val indexByBlockId: Map<BlockId, Int> = blocks
+        .mapIndexed { index, block -> block.id to index }
+        .toMap()
+
+    fun blockAt(index: Int): Block? = blocks.getOrNull(index)
+
+    fun blockById(id: BlockId): Block? {
+        return indexByBlockId[id]?.let { index -> blocks[index] }
+    }
+
+    fun payloadIndicesFor(payloadIds: Set<BlockId>): List<Int>? {
+        if (payloadIds.isEmpty()) return null
+
+        val indices = ArrayList<Int>(payloadIds.size)
+        for (id in payloadIds) {
+            indices += indexByBlockId[id] ?: return null
+        }
+        return indices.sorted()
+    }
+
+    fun matchesPayloadIndices(
+        payloadIndices: List<Int>,
+        payloadIds: Set<BlockId>,
+    ): Boolean {
+        if (payloadIndices.size != payloadIds.size || payloadIndices.isEmpty()) return false
+        return payloadIndices.all { index ->
+            val block = blockAt(index) ?: return@all false
+            block.id in payloadIds
+        }
+    }
+
+    fun previousNonPayloadBlock(
+        visualGap: Int,
+        payloadIndexSet: Set<Int>,
+    ): Block? {
+        var index = visualGap - 1
+        while (index >= 0 && index in payloadIndexSet) {
+            index--
+        }
+        return blockAt(index)
+    }
+
+    fun nextNonPayloadBlock(
+        visualGap: Int,
+        payloadIndexSet: Set<Int>,
+    ): Block? {
+        var index = visualGap
+        while (index < blocks.size && index in payloadIndexSet) {
+            index++
+        }
+        return blockAt(index)
+    }
+}
 
 /**
  * Finds the LazyList item at the given Y position within the viewport.
@@ -40,8 +128,9 @@ internal fun findItemAtPosition(
  * 2. For each item, check if dragY is above its midpoint
  * 3. Return the visual gap position
  *
- * Use [convertVisualGapToMoveBlocksIndex] in CompleteDrag to get the actual
- * index for the MoveBlocks action.
+ * Drag completion now consumes this visual gap directly through the subtree-aware
+ * reducer. [convertVisualGapToMoveBlocksIndex] remains for legacy flat-reorder
+ * callers and focused utility tests.
  *
  * @param layoutInfo The layout info from LazyListState
  * @param dragY Current Y position of the drag gesture (relative to the list)
@@ -57,6 +146,191 @@ public fun calculateDropTargetIndex(
     if (visibleItems.isEmpty()) return null
 
     return findVisualGapPosition(visibleItems, dragY, totalItemCount)
+}
+
+/**
+ * Resolves a drag hover into a visual gap and a legal future root depth.
+ *
+ * Y selects [visualGap]. Horizontal movement selects a raw depth in whole indent-unit
+ * steps from the primary root's original depth. Surrounding non-payload blocks and
+ * payload depth range then clamp that raw value so the eventual move cannot create
+ * outline gaps, exceed the persisted depth range, or make following non-dragged blocks
+ * become accidental descendants of the moved payload.
+ *
+ * Returns `null` when the visual gap is inside the dragged payload or when no depth can
+ * satisfy the surrounding outline constraints.
+ */
+internal fun resolveDepthAwareDragHoverTarget(
+    blocks: List<Block>,
+    dragState: DragState?,
+    visualGap: Int?,
+    horizontalDragDeltaPx: Float,
+    indentUnitPx: Float,
+): DragHoverTarget? {
+    return resolveDepthAwareDragHoverTarget(
+        outlineIndex = DragHoverOutlineIndex(blocks),
+        dragState = dragState,
+        visualGap = visualGap,
+        horizontalDragDeltaPx = horizontalDragDeltaPx,
+        indentUnitPx = indentUnitPx,
+    )
+}
+
+internal fun resolveDepthAwareDragHoverTarget(
+    outlineIndex: DragHoverOutlineIndex,
+    dragState: DragState?,
+    visualGap: Int?,
+    horizontalDragDeltaPx: Float,
+    indentUnitPx: Float,
+): DragHoverTarget? {
+    val currentDragState = dragState ?: return null
+    val blocks = outlineIndex.blocks
+    val gap = visualGap?.takeIf { it in 0..blocks.size } ?: return null
+    val payloadIds = currentDragState.payloadBlockIds
+    if (blocks.isEmpty() || payloadIds.isEmpty()) return null
+
+    val payloadIdSet = currentDragState.payloadBlockIdSet
+        .takeIf { it.size == payloadIds.size && it.containsAll(payloadIds) }
+        ?: payloadIds.toSet()
+    val cachedPayloadIndices = currentDragState.payloadBlockIndices
+        .takeIf { outlineIndex.matchesPayloadIndices(it, payloadIdSet) }
+    val payloadIndices = cachedPayloadIndices
+        ?: outlineIndex.payloadIndicesFor(payloadIdSet)
+        ?: return null
+    val payloadIndexSet = currentDragState.payloadBlockIndexSet
+        .takeIf { it.size == payloadIndices.size && it.containsAll(payloadIndices) }
+        ?: payloadIndices.toSet()
+    val payloadIndexRanges = if (cachedPayloadIndices != null) {
+        currentDragState.payloadIndexRanges
+            .takeIf { it.matchesPayloadIndices(payloadIndices) }
+    } else {
+        null
+    } ?: payloadIndices.toContiguousRanges()
+    if (gap.isInsidePayloadRanges(payloadIndexRanges)) return null
+
+    val previousBlock = outlineIndex.previousNonPayloadBlock(gap, payloadIndexSet)
+    val nextBlock = outlineIndex.nextNonPayloadBlock(gap, payloadIndexSet)
+
+    val primaryRootId = currentDragState.primaryRootId ?: return null
+    val primaryRoot = outlineIndex.blockById(primaryRootId) ?: return null
+    val originalPrimaryDepth = currentDragState.originalRootIndentationLevels[primaryRootId]
+        ?: primaryRoot.attributes.indentationLevel
+    val primarySupportsIndentation =
+        currentDragState.primaryRootSupportsIndentation ?: primaryRoot.type.supportsIndentation
+    val requestedDepth = if (primarySupportsIndentation) {
+        originalPrimaryDepth + horizontalIndentSteps(horizontalDragDeltaPx, indentUnitPx)
+    } else {
+        BlockAttributes.MIN_INDENTATION_LEVEL
+    }
+
+    val payloadDepthOffsetRange =
+        currentDragState.payloadDepthOffsetRangeFromPrimary(originalPrimaryDepth)
+            ?: blocks.payloadDepthOffsetRangeFromPrimary(
+                payloadIds = payloadIdSet,
+                originalPrimaryDepth = originalPrimaryDepth,
+            )
+            ?: return null
+    val shallowestPayloadOffset = payloadDepthOffsetRange.shallowestOffset
+    val deepestPayloadOffset = payloadDepthOffsetRange.deepestOffset
+
+    var minDepth = max(
+        BlockAttributes.MIN_INDENTATION_LEVEL,
+        BlockAttributes.MIN_INDENTATION_LEVEL - shallowestPayloadOffset,
+    )
+    var maxDepth = min(
+        BlockAttributes.MAX_INDENTATION_LEVEL,
+        BlockAttributes.MAX_INDENTATION_LEVEL - deepestPayloadOffset,
+    )
+
+    if (previousBlock == null) {
+        // At the document start the moved root must remain a root. This also covers
+        // the "dragging the entire document" case where there is no next block.
+        minDepth = max(minDepth, BlockAttributes.MIN_INDENTATION_LEVEL)
+        maxDepth = min(maxDepth, BlockAttributes.MIN_INDENTATION_LEVEL)
+    } else if (!previousBlock.type.supportsIndentation) {
+        // Unsupported blocks are hard outline boundaries, not parents.
+        maxDepth = min(maxDepth, BlockAttributes.MIN_INDENTATION_LEVEL)
+    } else {
+        maxDepth = min(maxDepth, previousBlock.attributes.indentationLevel + 1)
+    }
+
+    if (!primarySupportsIndentation) {
+        minDepth = max(minDepth, BlockAttributes.MIN_INDENTATION_LEVEL)
+        maxDepth = min(maxDepth, BlockAttributes.MIN_INDENTATION_LEVEL)
+    } else if (nextBlock != null) {
+        // A following block deeper than the moved root would become part of the moved
+        // subtree. Clamp against the shallowest moved block, not just the primary root,
+        // so multi-root drags cannot make a shallower secondary root adopt the next block.
+        minDepth = max(minDepth, nextBlock.attributes.indentationLevel - shallowestPayloadOffset)
+    }
+
+    if (minDepth > maxDepth) return null
+
+    return DragHoverTarget(
+        visualGap = gap,
+        futureRootIndentationLevel = requestedDepth.coerceIn(minDepth, maxDepth),
+    )
+}
+
+/**
+ * Recomputes the depth-aware hover target from current list layout.
+ *
+ * Both direct pointer drag and auto-scroll use this helper so visual-gap and future-depth
+ * semantics do not diverge as the list scrolls under an active drag.
+ */
+internal fun recomputeDepthAwareDragHoverTarget(
+    layoutInfo: LazyListLayoutInfo,
+    dragY: Float,
+    blocks: List<Block>,
+    dragState: DragState?,
+    horizontalDragDeltaPx: Float,
+    indentUnitPx: Float,
+): DragHoverTarget? {
+    return recomputeDepthAwareDragHoverTarget(
+        layoutInfo = layoutInfo,
+        dragY = dragY,
+        outlineIndex = DragHoverOutlineIndex(blocks),
+        dragState = dragState,
+        horizontalDragDeltaPx = horizontalDragDeltaPx,
+        indentUnitPx = indentUnitPx,
+    )
+}
+
+internal fun recomputeDepthAwareDragHoverTarget(
+    layoutInfo: LazyListLayoutInfo,
+    dragY: Float,
+    outlineIndex: DragHoverOutlineIndex,
+    dragState: DragState?,
+    horizontalDragDeltaPx: Float,
+    indentUnitPx: Float,
+): DragHoverTarget? {
+    val visualGap = calculateDropTargetIndex(
+        layoutInfo = layoutInfo,
+        dragY = dragY,
+        totalItemCount = outlineIndex.blocks.size,
+    )
+    return resolveDepthAwareDragHoverTarget(
+        outlineIndex = outlineIndex,
+        dragState = dragState,
+        visualGap = visualGap,
+        horizontalDragDeltaPx = horizontalDragDeltaPx,
+        indentUnitPx = indentUnitPx,
+    )
+}
+
+private fun List<IntRange>.matchesPayloadIndices(payloadIndices: List<Int>): Boolean {
+    if (isEmpty() || payloadIndices.isEmpty()) return false
+
+    var cursor = 0
+    for (range in this) {
+        for (index in range) {
+            if (cursor >= payloadIndices.size || payloadIndices[cursor] != index) {
+                return false
+            }
+            cursor++
+        }
+    }
+    return cursor == payloadIndices.size
 }
 
 /**
@@ -105,18 +379,77 @@ private fun findVisualGapPosition(
 }
 
 /**
- * Converts a visual gap position to the index expected by MoveBlocks action.
+ * Converts horizontal drag delta into whole outline steps, preserving the starting
+ * depth until the pointer crosses at least one full indent unit.
+ */
+private fun horizontalIndentSteps(
+    horizontalDragDeltaPx: Float,
+    indentUnitPx: Float,
+): Int {
+    if (indentUnitPx <= 0f) return 0
+    return (horizontalDragDeltaPx / indentUnitPx).toInt()
+}
+
+private fun DragState.payloadDepthOffsetRangeFromPrimary(
+    originalPrimaryDepth: Int,
+): PayloadDepthOffsetRange? {
+    if (payloadBlockIds.isEmpty()) return null
+
+    var shallowestOffset: Int? = null
+    var deepestOffset: Int? = null
+    for (blockId in payloadBlockIds) {
+        val rootId = payloadRootIdsByBlockId[blockId] ?: return null
+        val rootDepth = originalRootIndentationLevels[rootId] ?: return null
+        val relativeOffset = payloadRelativeDepthOffsets[blockId] ?: return null
+        val offsetFromPrimary = rootDepth + relativeOffset - originalPrimaryDepth
+        shallowestOffset = min(shallowestOffset ?: offsetFromPrimary, offsetFromPrimary)
+        deepestOffset = max(deepestOffset ?: offsetFromPrimary, offsetFromPrimary)
+    }
+
+    return PayloadDepthOffsetRange(
+        shallowestOffset = shallowestOffset ?: return null,
+        deepestOffset = deepestOffset ?: return null,
+    )
+}
+
+private fun List<Block>.payloadDepthOffsetRangeFromPrimary(
+    payloadIds: Set<BlockId>,
+    originalPrimaryDepth: Int,
+): PayloadDepthOffsetRange? {
+    var shallowestOffset: Int? = null
+    var deepestOffset: Int? = null
+    for (block in this) {
+        if (block.id !in payloadIds) continue
+        val offsetFromPrimary = block.attributes.indentationLevel - originalPrimaryDepth
+        shallowestOffset = min(shallowestOffset ?: offsetFromPrimary, offsetFromPrimary)
+        deepestOffset = max(deepestOffset ?: offsetFromPrimary, offsetFromPrimary)
+    }
+
+    return PayloadDepthOffsetRange(
+        shallowestOffset = shallowestOffset ?: return null,
+        deepestOffset = deepestOffset ?: return null,
+    )
+}
+
+/**
+ * Converts a visual gap position to the index expected by the flat `MoveBlocks` action.
  *
- * MoveBlocks operates on the list AFTER removing the dragged item,
- * so we need to adjust the index accordingly.
+ * `MoveBlocks` operates on the list AFTER removing the dragged item, so callers need
+ * to adjust the index accordingly. The subtree drag reducer does not use this helper
+ * because it has to reject gaps inside a multi-block payload and rewrite indentation
+ * atomically.
  *
- * Call this in CompleteDrag when actually performing the move operation.
+ * Prefer the subtree-aware drag reducer for editor drag completion. Keep this helper
+ * only for flat reorder use cases.
  *
  * @param visualGap The visual gap position (0 to totalItemCount) from [calculateDropTargetIndex]
  * @param originalIndex The original index of the dragged item
  * @param totalItemCount Total number of items
  * @return The adjusted index for MoveBlocks, or null if the drop would result in no movement
  */
+@Deprecated(
+    message = "Use visual-gap drag completion for CascadeEditor. This helper is kept only for legacy flat MoveBlocks integrations.",
+)
 public fun convertVisualGapToMoveBlocksIndex(
     visualGap: Int,
     originalIndex: Int,

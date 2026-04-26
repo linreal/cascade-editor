@@ -1,6 +1,5 @@
 package io.github.linreal.cascade.editor.ui
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -24,8 +23,34 @@ import io.github.linreal.cascade.editor.ui.utils.calculateDropIndicatorY
  */
 internal object DropIndicatorDefaults {
     val StrokeWidth: Dp = 2.dp
-    val HorizontalPadding: Dp = 16.dp
-    const val AnimationDurationMs: Int = 150
+}
+
+internal data class DropIndicatorGeometry(
+    val startX: Float,
+    val endX: Float,
+)
+
+/**
+ * Calculates horizontal indicator bounds for a resolved future indentation lane.
+ *
+ * The start edge follows normal block content geometry: base editor padding plus one
+ * indent unit per future root level. The end edge stays pinned to the editor's base
+ * trailing padding so the visible line shortens as depth increases.
+ */
+internal fun calculateDropIndicatorGeometry(
+    viewportWidthPx: Float,
+    futureRootIndentationLevel: Float,
+    blockHorizontalPaddingPx: Float,
+    indentUnitPx: Float,
+): DropIndicatorGeometry? {
+    if (viewportWidthPx <= 0f || blockHorizontalPaddingPx < 0f || indentUnitPx < 0f) return null
+
+    val startX = blockHorizontalPaddingPx +
+        indentUnitPx * futureRootIndentationLevel.coerceAtLeast(0f)
+    val endX = viewportWidthPx - blockHorizontalPaddingPx
+    if (startX >= endX) return null
+
+    return DropIndicatorGeometry(startX = startX, endX = endX)
 }
 
 /**
@@ -46,23 +71,25 @@ internal object DropIndicatorDefaults {
  *
  * @param targetIndex The visual gap position (0 to itemCount) from [DragState.targetIndex].
  *        Null means no valid drop target - the indicator is not rendered.
+ * @param futureRootIndentationLevel Resolved future depth for the primary dragged root.
  * @param lazyListState The LazyListState of the block list, used to get item positions.
  * @param modifier Modifier for the Canvas.
  * @param color Color of the indicator line.
  * @param strokeWidth Thickness of the indicator line.
- * @param horizontalPadding Horizontal inset from the edges (matches block padding).
  */
 @Composable
 internal fun DropIndicator(
     targetIndex: Int?,
+    futureRootIndentationLevel: Int,
     lazyListState: LazyListState,
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
-    strokeWidth: Dp = DropIndicatorDefaults.StrokeWidth,
-    horizontalPadding: Dp = DropIndicatorDefaults.HorizontalPadding
+    strokeWidth: Dp = DropIndicatorDefaults.StrokeWidth
 ) {
     if (targetIndex == null) return
-    val resolvedColor = if (color == Color.Unspecified) LocalCascadeTheme.current.colors.primary else color
+    val theme = LocalCascadeTheme.current
+    val resolvedColor = if (color == Color.Unspecified) theme.colors.primary else color
+    val dimensions = theme.dimensions
 
     // derivedStateOf ensures we only recompose when the computed Y actually changes,
     // filtering out layoutInfo updates that don't affect the indicator position.
@@ -85,19 +112,32 @@ internal fun DropIndicator(
     val animatedY by animateFloatAsState(
         targetValue = currentY,
         animationSpec = tween(
-            durationMillis = DropIndicatorDefaults.AnimationDurationMs,
-            easing = FastOutSlowInEasing
+            durationMillis = IndentationAnimation.DurationMillis,
+            easing = IndentationAnimation.Easing
         )
+    )
+    val animatedFutureDepth by animateFloatAsState(
+        targetValue = futureRootIndentationLevel.toFloat(),
+        animationSpec = tween(
+            durationMillis = IndentationAnimation.DurationMillis,
+            easing = IndentationAnimation.Easing
+        ),
+        label = "DropIndicatorFutureDepth",
     )
 
     Canvas(modifier = modifier.fillMaxSize()) {
         val strokePx = strokeWidth.toPx()
-        val paddingPx = horizontalPadding.toPx()
+        val geometry = calculateDropIndicatorGeometry(
+            viewportWidthPx = size.width,
+            futureRootIndentationLevel = animatedFutureDepth,
+            blockHorizontalPaddingPx = dimensions.blockHorizontalPadding.toPx(),
+            indentUnitPx = dimensions.indentUnit.toPx(),
+        ) ?: return@Canvas
 
         drawLine(
             color = resolvedColor,
-            start = Offset(paddingPx, animatedY),
-            end = Offset(size.width - paddingPx, animatedY),
+            start = Offset(geometry.startX, animatedY),
+            end = Offset(geometry.endX, animatedY),
             strokeWidth = strokePx,
             cap = StrokeCap.Round
         )

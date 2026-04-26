@@ -28,12 +28,18 @@ public sealed interface BlockType {
     public val isConvertible: Boolean get() = supportsText
 
     /**
+     * Whether this block type participates in v1 document indentation semantics.
+     */
+    public val supportsIndentation: Boolean get() = false
+
+    /**
      * Standard paragraph block.
      */
     public data object Paragraph : BlockType {
         override val typeId: String = "paragraph"
         override val displayName: String = "Paragraph"
         override val supportsText: Boolean = true
+        override val supportsIndentation: Boolean = true
     }
 
     /**
@@ -56,6 +62,7 @@ public sealed interface BlockType {
         override val typeId: String = "todo"
         override val displayName: String = "To-do"
         override val supportsText: Boolean = true
+        override val supportsIndentation: Boolean = true
     }
 
     /**
@@ -65,6 +72,7 @@ public sealed interface BlockType {
         override val typeId: String = "bullet_list"
         override val displayName: String = "Bullet List"
         override val supportsText: Boolean = true
+        override val supportsIndentation: Boolean = true
     }
 
     /**
@@ -78,6 +86,7 @@ public sealed interface BlockType {
         override val typeId: String = "numbered_list"
         override val displayName: String = "Numbered List"
         override val supportsText: Boolean = true
+        override val supportsIndentation: Boolean = true
     }
 
     /**

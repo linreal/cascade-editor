@@ -1,20 +1,15 @@
 # Document Save/Load Serialization — Technical Context
 
-**Branch:** `T-011-save-restore`
-**Commits:** 8 (from `T-011 tasks decomposition` through `T-011 review fixes`)
-**Files changed:** 34 (+3699 / -196 lines)
-
----
-
 ## 1. Feature Overview
 
-CascadeEditor stores documents as an in-memory `List<Block>`, but has no way to persist or restore them. This feature adds a versioned JSON serialization layer that converts the live block list to JSON and back, with policy-driven handling of IDs, unknown block types, and malformed data.
+CascadeEditor stores documents as an in-memory `List<Block>`. The serialization layer converts that block list to JSON and back, with policy-driven handling of IDs, unknown block types, malformed data, rich text spans, and block-level attributes such as indentation depth.
 
-The implementation solves three problems:
+The implementation solves four problems:
 
 1. **Save** — Snapshot the current document, merging live runtime text/spans (from on-screen blocks) with snapshot content (from off-screen blocks) into a single canonical JSON string.
 2. **Load** — Deserialize JSON back into blocks, clear stale runtime state, and set the editor to the loaded content.
 3. **Forward compatibility** — Unknown block types encountered during decode are preserved as opaque `UnknownBlockType` objects and rendered with a placeholder UI, preventing silent data loss on round-trip.
+4. **Outline persistence** — Supported block indentation is stored in version 2 documents through a block-level `attributes` object while older version 1 documents still load with default depth. Decode also normalizes structurally invalid outline depths so loaded documents cannot start with an indented block or keep children under unsupported blocks.
 
 ---
 
@@ -29,7 +24,7 @@ The implementation solves three problems:
 | `UnknownBlockRenderer.kt` | `internal object UnknownBlockRenderer` | Compose placeholder for unknown blocks |
 | `BlockTypeCodec.kt` | `interface BlockTypeCodec` | Consumer hook for custom type encode/decode |
 | `BlockContentCodec.kt` | `interface BlockContentCodec` | Consumer hook for custom content encode/decode |
-| `DocumentDecodeWarning.kt` | `sealed class DocumentDecodeWarning` | Non-fatal decode issue hierarchy (7 subclasses) |
+| `DocumentDecodeWarning.kt` | `sealed class DocumentDecodeWarning` | Non-fatal decode issue hierarchy (8 subclasses) |
 | `DocumentDecodeResult.kt` | `data class DocumentDecodeResult` | Decode output: blocks + warnings |
 | `DocumentSerializationExt.kt` | Extension functions | `EditorStateHolder.toJson()` and `.loadFromJson()` |
 | `BlockIdMode.kt` | `enum class BlockIdMode` | `Preserve` or `Regenerate` IDs on decode |
@@ -77,10 +72,11 @@ EditorStateHolder.toJson(textStates, spanStates)
   |
   +-- DocumentSchema.encodeToString(resolvedBlocks)
         |
-        +-- Build envelope: { "version": 1, "blocks": [...] }
+        +-- Build envelope: { "version": 2, "blocks": [...] }
         |
         +-- For each block:
               +-- encodeBlockType(): built-in -> codec -> UnknownBlockType raw -> fallback
+              +-- encodeBlockAttributes(): omit default depth 0; write supported non-zero indentation
               +-- encodeBlockContent(): built-in -> codec -> Custom fallback
                     +-- Text content delegates to RichTextSchema.encode()
 ```
@@ -97,10 +93,16 @@ EditorStateHolder.loadFromJson(jsonString, textStates, spanStates)
   |     |     +-- Validate type object + typeId (skip if malformed)
   |     |     +-- decodeBlockType(): built-in -> codec -> UnknownBlockType
   |     |     +-- decodeBlockContent(): built-in kinds -> codec -> Custom fallback
+  |     |     +-- decodeBlockAttributes(): missing -> depth 0; invalid -> warning + depth 0
+  |     |     +-- unsupported block types clear indentation to depth 0
   |     |     +-- resolveBlockId(): Regenerate mode / Preserve with dedup
-  |     |     +-- Assemble Block(id, type, content)
+  |     |     +-- Assemble Block(id, type, content, attributes)
   |     |
-  |     +-- renumberNumberedLists(blocks)
+  |     +-- normalizeIndentationOutlineWithReport(blocks)
+  |     |     +-- first supported block and post-boundary supported blocks normalize to root depth
+  |     |     +-- depth jumps greater than one level normalize to the nearest legal depth
+  |     |     +-- structural depth changes emit InvalidBlockAttributeParam warnings
+  |     +-- renumberNumberedLists(normalizedBlocks)
   |     +-- Return DocumentDecodeResult(blocks, warnings)
   |
   +-- textStates.clear()     // Purge stale runtime text
@@ -121,7 +123,7 @@ EditorStateHolder.loadFromJson(jsonString, textStates, spanStates)
 // Package: io.github.linreal.cascade.editor.serialization
 
 public object DocumentSchema {
-    public const val CURRENT_VERSION: Int = 1
+    public const val CURRENT_VERSION: Int = 2
 
     // Encode
     public fun encode(blocks, options?, typeCodec?, contentCodec?): JsonObject
@@ -212,7 +214,9 @@ public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>)   // NEW
 
 ### 5.4 Core Model
 
-`UnknownBlockType` implements `CustomBlockType` (existing interface), with `supportsText = false` and `isConvertible = false`. It lives in the `core` package alongside other block type definitions.
+`UnknownBlockType` implements `CustomBlockType` (existing interface), with `supportsText = false`, `supportsIndentation = false`, and `isConvertible = false`. It lives in the `core` package alongside other block type definitions.
+
+`BlockAttributes` stores block-level document metadata. Version 2 serialization persists non-default `indentationLevel` values for block types that support indentation (`Paragraph`, `Todo`, `BulletList`, `NumberedList`). Unsupported block types are encoded and decoded at depth `0` so hidden indentation cannot round-trip through headings, quotes, dividers, unknown blocks, or custom types that do not opt into indentation. Unsupported blocks are hard outline boundaries, so a supported block following one must start a new valid segment unless a later supported predecessor allows deeper indentation.
 
 ### 5.5 Renamed Local Variables (TextBlockField)
 
@@ -227,12 +231,23 @@ public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>)   // NEW
 - **Empty or missing IDs** in Preserve mode are regenerated with a `MissingIdRegenerated` warning.
 - **Duplicate IDs** default to regenerating later occurrences. `FailFast` mode throws immediately.
 - **Skipped (malformed) blocks never register their ID** in the seen-set, preventing false duplicate warnings on later valid blocks with the same ID.
+- All `DocumentDecodeWarning.blockIndex` values refer to the original JSON `blocks` array index, even when earlier malformed entries were skipped before outline normalization.
 - IDs are validated only as non-empty strings; UUID format is not enforced.
 
 ### Version Guard
 
 - Missing `version` field defaults to `1`.
+- Version `1` documents decode as unindented unless individual block entries already contain a compatible `attributes.indentationLevel` field.
 - `version > CURRENT_VERSION` throws `IllegalArgumentException` — there is no graceful degradation for future major versions.
+
+### Block Attributes
+
+- `attributes` is optional on every block entry. Missing `attributes` and missing `attributes.indentationLevel` both decode as depth `0`.
+- `attributes` must be a JSON object. Non-object values emit `InvalidBlockAttributeParam` and fall back to depth `0`.
+- `indentationLevel` must be a non-string integer in the supported range `0..3`. Strings, malformed values, and out-of-range values emit `InvalidBlockAttributeParam` and fall back to depth `0`.
+- Structurally invalid but in-range indentation is normalized after decode. Examples: the first supported block at depth `1`, a supported block after an unsupported boundary at depth `1`, or a jump from depth `0` to depth `2`. These emit `InvalidBlockAttributeParam` with the normalized fallback depth.
+- Encode omits `attributes` when the effective indentation level is `0`, keeping root-level documents compact.
+- Decode runs outline normalization before `renumberNumberedLists()`, so loaded nested ordered lists use valid outline-aware sequence numbers.
 
 ### Content Fallbacks
 
@@ -261,7 +276,8 @@ public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>)   // NEW
 
 | Term | Definition |
 |---|---|
-| **Block** | The fundamental content unit in CascadeEditor. Has an `id`, `type`, and `content`. |
+| **Block** | The fundamental content unit in CascadeEditor. Has an `id`, `type`, `content`, and `attributes`. |
+| **BlockAttributes** | Block-level document metadata. Currently stores `indentationLevel` for supported outline blocks. |
 | **BlockType** | Sealed interface describing the semantic type of a block (Paragraph, Heading, Todo, etc.). |
 | **BlockContent** | Sealed interface for block payload: `Text` (with spans), `Image`, `Empty`, or `Custom`. |
 | **BlockId** | Value class wrapping a `String` identifier for a block. |
@@ -272,7 +288,7 @@ public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>)   // NEW
 | **BlockTextStates** | Runtime holder mapping `BlockId` to Compose `TextFieldState` for on-screen blocks. |
 | **BlockSpanStates** | Runtime holder mapping `BlockId` to live span state for on-screen blocks. |
 | **Codec** | Consumer-provided `BlockTypeCodec` or `BlockContentCodec` that hooks into encode/decode for custom types. |
-| **DocumentDecodeWarning** | Sealed class hierarchy representing non-fatal decode issues (unknown types, duplicate IDs, malformed blocks, etc.). |
+| **DocumentDecodeWarning** | Sealed class hierarchy representing non-fatal decode issues (unknown types, duplicate IDs, malformed blocks, invalid attributes, etc.). |
 | **Snapshot content** | The `BlockContent` stored in the `Block` data class — may be stale if the block is currently being edited on-screen. |
 | **Runtime content** | The live `TextFieldState` text and span state maintained by Compose — authoritative for on-screen blocks. |
 | **Round-trip guarantee** | A document with unknown blocks, loaded and re-saved without modification, preserves all unknown block data. Semantic equivalence, not byte-for-byte. |

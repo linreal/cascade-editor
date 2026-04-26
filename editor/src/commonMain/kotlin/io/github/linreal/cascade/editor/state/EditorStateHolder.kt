@@ -363,6 +363,7 @@ public class EditorStateHolder(initialState: EditorState = EditorState.Empty) {
                         replaceStateForReplay(
                             EditorState.withBlocks(blocks).copy(
                                 focusedBlockId = resolvedUi.focusedBlockId,
+                                selectedBlockIds = resolvedUi.replaySelectedBlockIds(blocks),
                             )
                         )
                     }

@@ -85,7 +85,7 @@ internal fun EditorStateHolder.applyBlockTextEntry(
     val replayState = state.patchBlockTextReplayState(
         blockId = blockId,
         content = content,
-        focusedBlockId = ui.focusedBlockId,
+        ui = ui,
     )
     replaceStateForReplay(replayState)
 
@@ -127,15 +127,16 @@ internal fun EditorStateHolder.applyBlockTextEntry(
 private fun EditorState.patchBlockTextReplayState(
     blockId: BlockId,
     content: BlockContent.Text,
-    focusedBlockId: BlockId?,
+    ui: EditingUiState,
 ): EditorState {
+    val replayBlocks = blocks.replaceTextBlockContent(
+        blockId = blockId,
+        content = content,
+    )
     return copy(
-        blocks = blocks.replaceTextBlockContent(
-            blockId = blockId,
-            content = content,
-        ),
-        focusedBlockId = focusedBlockId,
-        selectedBlockIds = if (focusedBlockId != null) emptySet() else selectedBlockIds,
+        blocks = replayBlocks,
+        focusedBlockId = ui.focusedBlockId,
+        selectedBlockIds = ui.replaySelectedBlockIds(replayBlocks),
     )
 }
 

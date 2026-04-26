@@ -2,12 +2,14 @@ package io.github.linreal.cascade.editor
 
 import io.github.linreal.cascade.editor.action.*
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
 import io.github.linreal.cascade.editor.state.EditorState
+import io.github.linreal.cascade.editor.state.EditorStateHolder
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -23,6 +25,10 @@ class EditorStateTest {
             content = BlockContent.Text(text)
         )
     }
+
+    private fun Block.atDepth(level: Int): Block = copy(
+        attributes = BlockAttributes(indentationLevel = level),
+    )
 
     @Test
     fun `insert block at end`() {
@@ -69,6 +75,38 @@ class EditorStateTest {
         assertEquals(block3, newState.blocks[0])
         assertNull(newState.focusedBlockId)
         assertTrue(newState.selectedBlockIds.isEmpty())
+    }
+
+    @Test
+    fun `DeleteBlocks normalizes remaining subtree when parent is removed`() {
+        val blocks = listOf(
+            createTestBlock("parent"),
+            createTestBlock("child").atDepth(1),
+            createTestBlock("grandchild").atDepth(2),
+            createTestBlock("sibling"),
+        )
+        val state = EditorState.withBlocks(blocks)
+
+        val newState = DeleteBlocks(setOf(BlockId("parent"))).reduce(state)
+
+        assertEquals(listOf("child", "grandchild", "sibling"), newState.blocks.map { it.id.value })
+        assertEquals(listOf(0, 1, 0), newState.blocks.map { it.attributes.indentationLevel })
+    }
+
+    @Test
+    fun `EditorStateHolder setState normalizes loaded outline`() {
+        val holder = EditorStateHolder()
+
+        holder.setState(
+            EditorState.withBlocks(
+                listOf(
+                    createTestBlock("orphan").atDepth(1),
+                    createTestBlock("child").atDepth(2),
+                )
+            )
+        )
+
+        assertEquals(listOf(0, 1), holder.state.blocks.map { it.attributes.indentationLevel })
     }
 
     @Test
@@ -808,6 +846,274 @@ class EditorStateTest {
         assertEquals(2, newState.blocks.size)
         assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
         assertEquals(2, (newState.blocks[1].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `SplitBlock on indented supported block preserves indentation on both blocks`() {
+        val block = createTestBlock("a", "HelloWorld").atDepth(2)
+        val state = EditorState.withBlocks(
+            listOf(
+                createTestBlock("parent"),
+                createTestBlock("child").atDepth(1),
+                block,
+            )
+        )
+
+        val newState = SplitBlock(
+            blockId = BlockId("a"),
+            atPosition = 5,
+            newBlockText = "World",
+            newBlockId = BlockId("new"),
+        ).reduce(state)
+
+        assertEquals(2, newState.blocks[2].attributes.indentationLevel)
+        assertEquals(2, newState.blocks[3].attributes.indentationLevel)
+    }
+
+    @Test
+    fun `ConvertBlockType preserves indentation when new type supports indentation`() {
+        val block = createTestBlock("a", "Item").atDepth(2)
+        val state = EditorState.withBlocks(
+            listOf(
+                createTestBlock("parent"),
+                createTestBlock("child").atDepth(1),
+                block,
+            )
+        )
+
+        val newState = ConvertBlockType(BlockId("a"), BlockType.NumberedList()).reduce(state)
+
+        assertEquals(BlockType.NumberedList(1), newState.blocks[2].type)
+        assertEquals(2, newState.blocks[2].attributes.indentationLevel)
+    }
+
+    @Test
+    fun `ConvertBlockType clears indentation when new type does not support indentation`() {
+        val block = createNumberedBlock("a", "Heading", number = 1).atDepth(2)
+        val state = EditorState.withBlocks(
+            listOf(
+                createTestBlock("parent"),
+                createTestBlock("child").atDepth(1),
+                block,
+            )
+        )
+
+        val newState = ConvertBlockType(BlockId("a"), BlockType.Heading(2)).reduce(state)
+
+        assertEquals(BlockType.Heading(2), newState.blocks[2].type)
+        assertEquals(0, newState.blocks[2].attributes.indentationLevel)
+    }
+
+    @Test
+    fun `ConvertBlockType to unsupported normalizes former descendants`() {
+        val blocks = listOf(
+            createTestBlock("parent"),
+            createTestBlock("child").atDepth(1),
+            createTestBlock("grandchild").atDepth(2),
+        )
+        val state = EditorState.withBlocks(blocks)
+
+        val newState = ConvertBlockType(BlockId("parent"), BlockType.Heading(1)).reduce(state)
+
+        assertEquals(BlockType.Heading(1), newState.blocks[0].type)
+        assertEquals(listOf(0, 0, 1), newState.blocks.map { it.attributes.indentationLevel })
+    }
+
+    @Test
+    fun `MergeBlocks keeps target indentation authoritative`() {
+        val target = createTestBlock("target", "Hello ").atDepth(1)
+        val source = createTestBlock("source", "World").atDepth(2)
+        val state = EditorState.withBlocks(
+            listOf(
+                createTestBlock("parent"),
+                target,
+                source,
+            )
+        )
+
+        val newState = MergeBlocks(sourceId = source.id, targetId = target.id).reduce(state)
+
+        assertEquals(2, newState.blocks.size)
+        assertEquals(target.id, newState.blocks[1].id)
+        assertEquals(1, newState.blocks[1].attributes.indentationLevel)
+        assertEquals("Hello World", (newState.blocks[1].content as BlockContent.Text).text)
+    }
+
+    @Test
+    fun `InsertBlock preserves block payload attributes`() {
+        val block = createTestBlock("inserted", "Indented").atDepth(2)
+        val state = EditorState.withBlocks(
+            listOf(
+                createTestBlock("parent"),
+                createTestBlock("child").atDepth(1),
+            )
+        )
+
+        val newState = InsertBlock(block).reduce(state)
+
+        assertEquals(block.id, newState.blocks[2].id)
+        assertEquals(2, newState.blocks[2].attributes.indentationLevel)
+    }
+
+    @Test
+    fun `ReplaceBlock preserves replacement payload attributes`() {
+        val existing = createTestBlock("existing", "Old").atDepth(2)
+        val replacement = createTestBlock("replacement", "New").atDepth(2)
+        val state = EditorState.withBlocks(
+            listOf(
+                createTestBlock("parent"),
+                createTestBlock("child").atDepth(1),
+                existing,
+            )
+        )
+
+        val newState = ReplaceBlock(existing.id, replacement).reduce(state)
+
+        assertEquals(replacement.id, newState.blocks[2].id)
+        assertEquals(2, newState.blocks[2].attributes.indentationLevel)
+    }
+
+    @Test
+    fun `IndentForward indents focused supported block after a top level block`() {
+        val blocks = listOf(
+            createTestBlock("a", "Parent"),
+            createTestBlock("b", "Child"),
+        )
+        val state = EditorState.withBlocks(blocks).copy(focusedBlockId = BlockId("b"))
+
+        val newState = IndentForward.reduce(state)
+
+        assertEquals(0, newState.blocks[0].attributes.indentationLevel)
+        assertEquals(1, newState.blocks[1].attributes.indentationLevel)
+        assertEquals(BlockId("b"), newState.focusedBlockId)
+    }
+
+    @Test
+    fun `IndentBackward outdents focused subtree by one level`() {
+        val blocks = listOf(
+            createTestBlock("a", "Parent"),
+            createTestBlock("b", "Root").atDepth(1),
+            createTestBlock("c", "Child").atDepth(2),
+            createTestBlock("d", "Grandchild").atDepth(3),
+            createTestBlock("e", "Sibling").atDepth(1),
+        )
+        val state = EditorState.withBlocks(blocks).copy(focusedBlockId = BlockId("b"))
+
+        val newState = IndentBackward.reduce(state)
+
+        assertEquals(listOf(0, 0, 1, 2, 1), newState.blocks.map { it.attributes.indentationLevel })
+    }
+
+    @Test
+    fun `IndentForward is no-op for the first block`() {
+        val block = createTestBlock("a", "First")
+        val state = EditorState.withBlocks(listOf(block)).copy(focusedBlockId = block.id)
+
+        val newState = IndentForward.reduce(state)
+
+        assertEquals(state, newState)
+    }
+
+    @Test
+    fun `IndentForward is no-op when any affected block would exceed max depth`() {
+        val blocks = listOf(
+            createTestBlock("a", "Root"),
+            createTestBlock("b", "Child").atDepth(1),
+            createTestBlock("c", "Grandchild").atDepth(2),
+            createTestBlock("d", "Max depth target").atDepth(3),
+        )
+        val state = EditorState.withBlocks(blocks).copy(focusedBlockId = BlockId("d"))
+
+        val newState = IndentForward.reduce(state)
+
+        assertEquals(state, newState)
+    }
+
+    @Test
+    fun `IndentForward shifts selected parent subtree once when child is also selected`() {
+        val blocks = listOf(
+            createTestBlock("a", "Before"),
+            createTestBlock("b", "Parent"),
+            createTestBlock("c", "Child").atDepth(1),
+        )
+        val state = EditorState.withBlocks(blocks).copy(
+            selectedBlockIds = setOf(BlockId("b"), BlockId("c")),
+        )
+
+        val newState = IndentForward.reduce(state)
+
+        assertEquals(listOf(0, 1, 2), newState.blocks.map { it.attributes.indentationLevel })
+        assertEquals(setOf(BlockId("b"), BlockId("c")), newState.selectedBlockIds)
+    }
+
+    @Test
+    fun `IndentForward and IndentBackward are no-op for unsupported selected blocks only`() {
+        val heading = Block(
+            id = BlockId("heading"),
+            type = BlockType.Heading(1),
+            content = BlockContent.Text("Heading"),
+        )
+        val state = EditorState.withBlocks(listOf(heading)).copy(
+            selectedBlockIds = setOf(heading.id),
+        )
+
+        assertEquals(state, IndentForward.reduce(state))
+        assertEquals(state, IndentBackward.reduce(state))
+    }
+
+    @Test
+    fun `IndentForward ignores selected unsupported block while moving selected supported block`() {
+        val blocks = listOf(
+            createTestBlock("parent", "Parent"),
+            Block(
+                id = BlockId("heading"),
+                type = BlockType.Heading(1),
+                content = BlockContent.Text("Heading"),
+            ),
+            createTestBlock("anchor", "Anchor"),
+            createTestBlock("child", "Child"),
+        )
+        val state = EditorState.withBlocks(blocks).copy(
+            selectedBlockIds = setOf(BlockId("heading"), BlockId("child")),
+        )
+
+        val newState = IndentForward.reduce(state)
+
+        assertEquals(0, newState.blocks[1].attributes.indentationLevel)
+        assertEquals(0, newState.blocks[2].attributes.indentationLevel)
+        assertEquals(1, newState.blocks[3].attributes.indentationLevel)
+    }
+
+    @Test
+    fun `IndentForward renumbers numbered lists after nesting a sibling`() {
+        val blocks = listOf(
+            createNumberedBlock("a", "Parent 1", 1),
+            createNumberedBlock("b", "Nested", 2),
+            createNumberedBlock("c", "Parent 2", 3),
+        )
+        val state = EditorState.withBlocks(blocks).copy(focusedBlockId = BlockId("b"))
+
+        val newState = IndentForward.reduce(state)
+
+        assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
+        assertEquals(1, (newState.blocks[1].type as BlockType.NumberedList).number)
+        assertEquals(2, (newState.blocks[2].type as BlockType.NumberedList).number)
+    }
+
+    @Test
+    fun `IndentBackward renumbers numbered lists after promoting a nested item`() {
+        val blocks = listOf(
+            createNumberedBlock("a", "Parent 1", 1),
+            createNumberedBlock("b", "Nested", 1).atDepth(1),
+            createNumberedBlock("c", "Parent 2", 2),
+        )
+        val state = EditorState.withBlocks(blocks).copy(focusedBlockId = BlockId("b"))
+
+        val newState = IndentBackward.reduce(state)
+
+        assertEquals(1, (newState.blocks[0].type as BlockType.NumberedList).number)
+        assertEquals(2, (newState.blocks[1].type as BlockType.NumberedList).number)
+        assertEquals(3, (newState.blocks[2].type as BlockType.NumberedList).number)
     }
 
     @Test

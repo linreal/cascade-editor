@@ -1,11 +1,13 @@
 package io.github.linreal.cascade.editor.serialization
 
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.CustomBlockType
 import io.github.linreal.cascade.editor.core.UnknownBlockType
+import io.github.linreal.cascade.editor.core.normalizeIndentationOutlineWithReport
 import io.github.linreal.cascade.editor.core.renumberNumberedLists
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -24,14 +26,15 @@ import kotlinx.serialization.json.longOrNull
 /**
  * Canonical JSON serialization for a list of [Block]s.
  *
- * JSON shape (version 1):
+ * JSON shape (version 2):
  * ```json
  * {
- *   "version": 1,
+ *   "version": 2,
  *   "blocks": [
  *     {
  *       "id": "...",
  *       "type": { "typeId": "paragraph" },
+ *       "attributes": { "indentationLevel": 0 },
  *       "content": { "kind": "text", "version": 1, "text": "...", "spans": [...] }
  *     }
  *   ]
@@ -40,7 +43,7 @@ import kotlinx.serialization.json.longOrNull
  */
 public object DocumentSchema {
 
-    public const val CURRENT_VERSION: Int = 1
+    public const val CURRENT_VERSION: Int = 2
 
     // Encode
 
@@ -113,6 +116,7 @@ public object DocumentSchema {
         val warnings = mutableListOf<DocumentDecodeWarning>()
         val seenIds = mutableSetOf<String>()
         val blocks = mutableListOf<Block>()
+        val blockSourceIndices = mutableListOf<Int>()
 
         for ((index, element) in blocksArray.withIndex()) {
             val blockJson = element as? JsonObject
@@ -123,10 +127,23 @@ public object DocumentSchema {
             val block = decodeBlock(blockJson, index, options, typeCodec, contentCodec, seenIds, warnings)
             if (block != null) {
                 blocks.add(block)
+                blockSourceIndices.add(index)
             }
         }
 
-        val renumbered = renumberNumberedLists(blocks)
+        val normalization = normalizeIndentationOutlineWithReport(blocks)
+        for (blockIndex in normalization.changedBlockIndices) {
+            val sourceBlockIndex = blockSourceIndices[blockIndex]
+            warnings.add(
+                DocumentDecodeWarning.InvalidBlockAttributeParam(
+                    blockIndex = sourceBlockIndex,
+                    param = "indentationLevel=${blocks[blockIndex].attributes.indentationLevel}",
+                    fallback = "indentationLevel=${normalization.blocks[blockIndex].attributes.indentationLevel}",
+                )
+            )
+        }
+
+        val renumbered = renumberNumberedLists(normalization.blocks)
         return DocumentDecodeResult(renumbered, warnings)
     }
 
@@ -150,7 +167,23 @@ public object DocumentSchema {
     ): JsonObject = buildJsonObject {
         put("id", JsonPrimitive(block.id.value))
         put("type", encodeBlockType(block.type, typeCodec))
+        encodeBlockAttributes(block)?.let { attributes ->
+            put("attributes", attributes)
+        }
         put("content", encodeBlockContent(block.content, options, contentCodec))
+    }
+
+    private fun encodeBlockAttributes(block: Block): JsonObject? {
+        val indentationLevel = if (block.type.supportsIndentation) {
+            block.attributes.indentationLevel
+        } else {
+            BlockAttributes.DEFAULT_INDENTATION_LEVEL
+        }
+        if (indentationLevel == BlockAttributes.DEFAULT_INDENTATION_LEVEL) return null
+
+        return buildJsonObject {
+            put("indentationLevel", JsonPrimitive(indentationLevel))
+        }
     }
 
     private fun encodeBlockType(
@@ -330,6 +363,7 @@ public object DocumentSchema {
             return null
         }
         val blockType = decodeBlockType(typeId, typeJson, blockIndex, typeCodec, warnings)
+        val attributes = decodeBlockAttributes(json, blockIndex, blockType, warnings)
 
         // Decode content (before ID, so content failures don't pollute seenIds either)
         val contentJson = json["content"] as? JsonObject
@@ -342,7 +376,68 @@ public object DocumentSchema {
         // Resolve ID only after type+content validation succeeds
         val id = resolveBlockId(json, blockIndex, options, seenIds, warnings) ?: return null
 
-        return Block(id = id, type = blockType, content = content)
+        return Block(id = id, type = blockType, content = content, attributes = attributes)
+    }
+
+    private fun decodeBlockAttributes(
+        json: JsonObject,
+        blockIndex: Int,
+        blockType: BlockType,
+        warnings: MutableList<DocumentDecodeWarning>,
+    ): BlockAttributes {
+        val indentationLevel = decodeIndentationLevel(
+            attributesElement = json["attributes"],
+            blockIndex = blockIndex,
+            warnings = warnings,
+        )
+        if (!blockType.supportsIndentation) {
+            return BlockAttributes.Default
+        }
+        return BlockAttributes(indentationLevel = indentationLevel)
+    }
+
+    private fun decodeIndentationLevel(
+        attributesElement: JsonElement?,
+        blockIndex: Int,
+        warnings: MutableList<DocumentDecodeWarning>,
+    ): Int {
+        if (attributesElement == null) return BlockAttributes.DEFAULT_INDENTATION_LEVEL
+
+        val attributesJson = attributesElement as? JsonObject
+        if (attributesJson == null) {
+            warnings.add(
+                DocumentDecodeWarning.InvalidBlockAttributeParam(
+                    blockIndex = blockIndex,
+                    param = "attributes=${attributesElement.warningContent()}",
+                    fallback = "indentationLevel=${BlockAttributes.DEFAULT_INDENTATION_LEVEL}",
+                )
+            )
+            return BlockAttributes.DEFAULT_INDENTATION_LEVEL
+        }
+
+        val indentationElement = attributesJson["indentationLevel"]
+            ?: return BlockAttributes.DEFAULT_INDENTATION_LEVEL
+        val indentationPrimitive = indentationElement as? JsonPrimitive
+        val indentationLevel = if (indentationPrimitive != null && !indentationPrimitive.isString) {
+            indentationPrimitive.intOrNull
+        } else {
+            null
+        }
+
+        if (indentationLevel == null ||
+            indentationLevel !in BlockAttributes.MIN_INDENTATION_LEVEL..BlockAttributes.MAX_INDENTATION_LEVEL
+        ) {
+            warnings.add(
+                DocumentDecodeWarning.InvalidBlockAttributeParam(
+                    blockIndex = blockIndex,
+                    param = "indentationLevel=${indentationElement.warningContent()}",
+                    fallback = "indentationLevel=${BlockAttributes.DEFAULT_INDENTATION_LEVEL}",
+                )
+            )
+            return BlockAttributes.DEFAULT_INDENTATION_LEVEL
+        }
+
+        return indentationLevel
     }
 
     private fun resolveBlockId(
@@ -510,6 +605,11 @@ public object DocumentSchema {
     }
 
     // Safe JSON accessors
+
+    private fun JsonElement.warningContent(): String = when (this) {
+        is JsonPrimitive -> content
+        else -> toString()
+    }
 
     /**
      * Safely extracts a string from a JSON element that may not be a primitive.

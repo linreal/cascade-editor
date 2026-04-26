@@ -2,7 +2,7 @@
 
 ## 1. Feature Overview
 
-The toolbar system provides an inline rich text formatting UI at the bottom of the `CascadeEditor`. It lets users apply span styles (bold, italic, underline, strikethrough, inline code, highlight) to selected text or toggle pending styles at a collapsed cursor. The feature is fully configurable: consumers can use the built-in config-driven toolbar, supply a completely custom composable toolbar, or hide it entirely. Keyboard shortcuts (Cmd/Ctrl+B/I/U) work independently of toolbar visibility. An external `onFormattingStateChanged` callback enables out-of-editor UI (e.g., a floating toolbar or app bar) to reflect formatting state reactively.
+The toolbar system provides inline editor controls at the bottom of the `CascadeEditor`. It lets users apply span styles (bold, italic, underline, strikethrough, inline code, highlight) to selected text or toggle pending styles at a collapsed cursor, and the built-in toolbar also exposes block indent/outdent controls. The feature is fully configurable: consumers can use the built-in config-driven toolbar, supply a completely custom composable toolbar, or hide it entirely. Keyboard shortcuts (Cmd/Ctrl+B/I/U) work independently of toolbar visibility. An external `onFormattingStateChanged` callback enables out-of-editor UI (e.g., a floating toolbar or app bar) to reflect formatting state reactively, while indentation state/actions are available through CompositionLocals for custom chrome.
 
 ---
 
@@ -25,12 +25,19 @@ The toolbar system provides an inline rich text formatting UI at the bottom of t
 | `TextBlockKeyHandler` | `ui/renderers/TextBlockKeyHandler.kt` | Handles Cmd/Ctrl+B/I/U shortcuts and slash popup keyboard navigation. |
 | `LocalFormattingActions` | `ui/LocalFormattingActions.kt` | `CompositionLocal` providing `FormattingActions?` to the composition tree. |
 | `LocalSpanActionDispatcher` | `ui/LocalSpanActionDispatcher.kt` | `CompositionLocal` providing `SpanActionDispatcher?` to the composition tree. |
+| `IndentationState` | `indentation/IndentationState.kt` | `@Immutable` snapshot: `canIndentForward`, `canIndentBackward`, and document-ordered target root IDs. |
+| `IndentationActions` | `indentation/IndentationActions.kt` | `@Stable` interface with `indentForward()` and `indentBackward()`. |
+| `DefaultIndentationActions` | `indentation/DefaultIndentationActions.kt` | Resolves state at invocation time and dispatches structural indent actions only when enabled. |
+| `LocalIndentationState` | `ui/LocalIndentationState.kt` | `CompositionLocal` providing `State<IndentationState>?` to custom editor chrome. |
+| `LocalIndentationActions` | `ui/LocalIndentationActions.kt` | `CompositionLocal` providing `IndentationActions?` to custom editor chrome. |
 
 ### Key Design Decisions
 
 **Three-variant `ToolbarSlot` sealed interface.** Rather than a boolean toggle + optional composable, the slot is a sealed type with explicit variants. This makes the toolbar contract exhaustive at the call site and in the `when` dispatch inside `CascadeEditor`.
 
 **Config-driven default toolbar.** `RichTextToolbarConfig.Default` defines which buttons appear and in what order. Consumers can add/remove/reorder buttons without implementing a custom composable — just pass a modified `RichTextToolbarConfig`.
+
+**Indentation controls are config-gated but API-always available.** `RichTextToolbarConfig.showIndentation` controls whether the default toolbar renders indent/outdent icon buttons. `CascadeEditor` still provides `LocalIndentationState` and `LocalIndentationActions` in `ToolbarSlot.Default`, `ToolbarSlot.Custom`, and `ToolbarSlot.None`, so hidden or custom toolbars can expose indentation without changing the `ToolbarSlot.Custom` lambda signature.
 
 **Theme-injected highlight color.** When the consumer uses the exact `RichTextToolbarConfig.Default` sentinel, `CascadeEditor` replaces the placeholder `SpanStyle.Highlight` color with `theme.colors.highlight.toArgb()`. Custom configs are left untouched. This avoids a mismatch between the toolbar button's style and the rendered highlight color.
 
@@ -45,6 +52,8 @@ The toolbar system provides an inline rich text formatting UI at the bottom of t
 **Collapsed-cursor toggle produces pending styles, not zero-width spans.** When the cursor is collapsed, `toggleStyle` updates `BlockSpanStates.pendingStyles` for the block. Next inserted character inherits pending styles. No snapshot dispatch occurs — pending styles are runtime-only.
 
 **Focus-stealing prevention.** Both `RichTextToolbar` and individual `ToolbarToggleButton` set `Modifier.focusProperties { canFocus = false }`, preventing the toolbar from stealing focus from the active text field on tap.
+
+**Structural history boundary for indentation.** Default indentation actions dispatch `IndentForward` / `IndentBackward` through the same structural transaction wrapper used by built-in semantic document edits when runtime history holders are bound.
 
 ---
 
@@ -80,6 +89,27 @@ User presses Cmd+B
             ├─ Dedup guard: handledFormattingKey != Key.B → proceed
             └─ formattingActions.toggleStyle(SpanStyle.Bold)
                  └─ (same flow as toolbar tap above)
+```
+
+### Built-In Indentation Button Tap
+
+```
+User taps the indent-forward toolbar icon
+  └─ RichTextToolbar reads indentationState.value.canIndentForward
+       └─ If enabled: indentationActions.indentForward()
+            └─ DefaultIndentationActions re-reads current IndentationState
+                 └─ dispatchStructuralAction(IndentForward)
+                      └─ reducer shifts supported target roots/subtrees and renumbers ordered lists
+```
+
+### Custom Toolbar Indentation Access
+
+```
+ToolbarSlot.Custom content
+  └─ val indentationState = LocalIndentationState.current?.value
+  └─ val indentationActions = LocalIndentationActions.current
+  └─ Custom UI uses indentationState.canIndentForward / canIndentBackward
+       and calls indentationActions.indentForward() / indentBackward()
 ```
 
 ### Formatting State Observation
@@ -136,7 +166,10 @@ ToolbarSlot.Custom(
 ### `RichTextToolbarConfig` / `ToolbarButtonSpec`
 
 ```kotlin
-RichTextToolbarConfig(buttons: List<ToolbarButtonSpec>)
+RichTextToolbarConfig(
+    buttons: List<ToolbarButtonSpec>,
+    showIndentation: Boolean = true,
+)
 ToolbarButtonSpec(style: SpanStyle, label: String)
 ```
 
@@ -162,6 +195,21 @@ interface FormattingActions {
 }
 ```
 
+### `IndentationState` / `IndentationActions`
+
+```kotlin
+data class IndentationState(
+    val canIndentForward: Boolean,
+    val canIndentBackward: Boolean,
+    val targetBlockIds: List<BlockId>,
+)
+
+interface IndentationActions {
+    fun indentForward()
+    fun indentBackward()
+}
+```
+
 ### `SpanActionDispatcher`
 
 ```kotlin
@@ -178,6 +226,8 @@ class SpanActionDispatcher(dispatchFn, textStates, spanStates) {
 |-------|------|-------------|
 | `LocalFormattingActions` | `FormattingActions?` | `CascadeEditor` |
 | `LocalSpanActionDispatcher` | `SpanActionDispatcher?` | `CascadeEditor` |
+| `LocalIndentationState` | `State<IndentationState>?` | `CascadeEditor` |
+| `LocalIndentationActions` | `IndentationActions?` | `CascadeEditor` |
 
 ---
 
@@ -189,6 +239,7 @@ class SpanActionDispatcher(dispatchFn, textStates, spanStates) {
 |----------|---------------|-----|
 | `RichTextToolbar` | `State<FormattingState>`, `FormattingActions`, `RichTextToolbarConfig` | Direct parameters from `CascadeEditor` |
 | `ToolbarSlot.Custom.content` | `State<FormattingState>`, `FormattingActions` | Composable lambda parameters |
+| Custom toolbar indentation UI | `LocalIndentationState`, `LocalIndentationActions` | CompositionLocals inside `CascadeEditor` |
 | `TextBlockKeyHandler` | `FormattingActions` | Constructor parameter (sourced from `LocalFormattingActions`) |
 | External app code | `FormattingState` | `onFormattingStateChanged` callback |
 
@@ -203,6 +254,7 @@ class SpanActionDispatcher(dispatchFn, textStates, spanStates) {
 | `CascadeEditorTheme` | Colors for toolbar backgrounds, icons, primary/onPrimary; highlight color injection |
 | `CascadeEditorStrings` | Localized accessibility labels for built-in toolbar buttons |
 | `CascadeEditorTypography` | `toolbarButton` text style for button labels |
+| `IndentationStateCalculator` | Enablement for indent/outdent controls; mirrors reducer target resolution and outline validation |
 
 ### Placement in Editor Layout
 
@@ -237,6 +289,10 @@ The toolbar is intentionally outside the drag gesture `Box` to prevent drag even
 - Focused block type does not support text
 - Block selection is active (multi-select mode)
 - Drag is in progress
+
+**Indentation enablement is independent of formatting enablement.** Indent/outdent buttons use `IndentationState`, not `FormattingState.canFormat`. They can target focused supported blocks or selected supported root blocks and no-op when structural outline rules disallow movement.
+
+**`showIndentation = false` hides only default toolbar buttons.** It does not disable indentation reducers or remove `LocalIndentationState` / `LocalIndentationActions` from custom toolbar content.
 
 **Highlight color identity.** `SpanStyle.Highlight` uses `kindMatches` for toolbar status detection — any `Highlight` regardless of `colorArgb` is treated as the same "kind". This means the toolbar correctly reflects highlight status even when the theme color differs from the stored span color. However, applying highlight via the toolbar always uses the theme color, potentially creating spans with different `colorArgb` values in the same document.
 

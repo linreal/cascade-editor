@@ -11,6 +11,8 @@ import io.github.linreal.cascade.editor.action.EditorAction
 import io.github.linreal.cascade.editor.action.FocusBlock
 import io.github.linreal.cascade.editor.action.FocusNextBlock
 import io.github.linreal.cascade.editor.action.FocusPreviousBlock
+import io.github.linreal.cascade.editor.action.IndentBackward
+import io.github.linreal.cascade.editor.action.IndentForward
 import io.github.linreal.cascade.editor.action.MergeBlocks
 import io.github.linreal.cascade.editor.action.OpenSlashCommand
 import io.github.linreal.cascade.editor.action.SplitBlock
@@ -19,6 +21,7 @@ import io.github.linreal.cascade.editor.action.StartDrag
 import io.github.linreal.cascade.editor.action.ToggleTodo
 import io.github.linreal.cascade.editor.action.UpdateBlockContent
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
@@ -127,22 +130,28 @@ public open class DefaultBlockCallbacks(
 
     override fun onEnter(blockId: BlockId, cursorPosition: Int) {
         runStructuralMutation {
-            val newBlockId = BlockId.generate()
             val state = stateProvider?.invoke()
+            if (state != null && state.hasSelection) return@runStructuralMutation
+
             val currentBlock = state?.getBlock(blockId)
 
-            // Empty list item exit: convert to Paragraph instead of splitting.
             val blockType = currentBlock?.type
-            if (blockType is BlockType.BulletList || blockType is BlockType.NumberedList) {
-                val visibleText = textStates?.getVisibleText(blockId)
-                    ?: (currentBlock.content as? BlockContent.Text)?.text.orEmpty()
+            if (currentBlock != null) {
+                val visibleText = currentBlock.visibleText(blockId)
                 if (visibleText.isEmpty()) {
-                    dispatch(ConvertBlockType(blockId, BlockType.Paragraph))
-                    return@runStructuralMutation
+                    if (blockType.isEmptyEnterOutdentType() && currentBlock.isSupportedIndented()) {
+                        dispatch(IndentBackward)
+                        return@runStructuralMutation
+                    }
+                    if (blockType.isEmptyRootEnterExitType()) {
+                        dispatch(ConvertBlockType(blockId, BlockType.Paragraph))
+                        return@runStructuralMutation
+                    }
                 }
             }
 
             if (textStates != null) {
+                val newBlockId = BlockId.generate()
                 // Get current text from TextFieldState (source of truth)
                 val fallbackText = (currentBlock?.content as? BlockContent.Text)?.text.orEmpty()
                 val currentText = textStates.getVisibleText(blockId) ?: fallbackText
@@ -200,7 +209,7 @@ public open class DefaultBlockCallbacks(
                 )
             } else {
                 // Fallback to original behavior
-                dispatch(SplitBlock(blockId, cursorPosition, null, newBlockId))
+                dispatch(SplitBlock(blockId, cursorPosition, null, BlockId.generate()))
             }
         }
     }
@@ -208,9 +217,17 @@ public open class DefaultBlockCallbacks(
     override fun onBackspaceAtStart(blockId: BlockId) {
         runStructuralMutation {
             val state = stateProvider?.invoke()
+            if (state != null && state.hasSelection) return@runStructuralMutation
+
+            val currentBlock = state?.getBlock(blockId)
+
+            if (currentBlock != null && currentBlock.isSupportedIndented()) {
+                dispatch(IndentBackward)
+                return@runStructuralMutation
+            }
 
             // List item un-list: convert to Paragraph instead of merging with previous block.
-            val blockType = state?.getBlock(blockId)?.type
+            val blockType = currentBlock?.type
             if (blockType is BlockType.BulletList || blockType is BlockType.NumberedList || blockType is BlockType.Todo) {
                 dispatch(ConvertBlockType(blockId, BlockType.Paragraph))
                 return@runStructuralMutation
@@ -354,11 +371,45 @@ public open class DefaultBlockCallbacks(
     private fun runStructuralMutation(mutation: () -> Unit) {
         stateHolder?.runStructuralHistoryTransaction(textStates, spanStates, mutation) ?: mutation()
     }
+
+    private fun Block.visibleText(blockId: BlockId): String {
+        return textStates?.getVisibleText(blockId)
+            ?: (content as? BlockContent.Text)?.text.orEmpty()
+    }
+
+    /**
+     * True when a block participates in indentation semantics and can be outdented.
+     */
+    private fun Block.isSupportedIndented(): Boolean {
+        return type.supportsIndentation &&
+            attributes.indentationLevel > BlockAttributes.MIN_INDENTATION_LEVEL
+    }
+
+    /**
+     * True for empty block types that should outdent instead of splitting when
+     * they are already nested.
+     */
+    private fun BlockType?.isEmptyEnterOutdentType(): Boolean {
+        return this is BlockType.BulletList ||
+            this is BlockType.NumberedList ||
+            this is BlockType.Todo
+    }
+
+    /**
+     * True for empty root block types where Enter exits the structural type and
+     * converts the current block to a paragraph.
+     */
+    private fun BlockType?.isEmptyRootEnterExitType(): Boolean {
+        return this is BlockType.BulletList ||
+            this is BlockType.NumberedList
+    }
 }
 
 private fun EditorAction.shouldUseStructuralTransactionBoundary(): Boolean {
     return this is CompleteDrag ||
         this is DeleteSelectedOrFocused ||
+        this is IndentBackward ||
+        this is IndentForward ||
         this is ToggleTodo
 }
 

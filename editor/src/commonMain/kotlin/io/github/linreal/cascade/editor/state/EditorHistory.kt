@@ -15,14 +15,44 @@ import io.github.linreal.cascade.editor.core.SpanStyle
  * Focused editing context that must travel with a history entry.
  *
  * In v1 this is intentionally narrow: only the focused block, that block's
- * visible-text selection, and pending continuation styles are part of history.
- * Block selection highlight, slash UI state, and drag state are excluded.
+ * visible-text selection, block selection, and pending continuation styles are
+ * part of history. Slash UI state and drag state are excluded.
  */
 @Immutable
 internal data class EditingUiState(
+    /**
+     * Snapshot focus target. When this is non-null, [selectedBlockIds] is ignored
+     * during replay to maintain the EditorState focus/selection exclusivity rule.
+     */
     val focusedBlockId: BlockId?,
+
+    /**
+     * Runtime visible-text cursor or range for [focusedBlockId].
+     *
+     * This stays separate from [EditorState] because Compose text selection lives
+     * in per-block runtime holders, not in immutable document state.
+     */
     val focusedTextSelection: TextRange?,
+
+    /**
+     * Collapsed-cursor continuation styles for [focusedBlockId].
+     *
+     * These are runtime editing affordances, but they affect the next typed text
+     * and therefore must round-trip with block-text and structural history.
+     */
     val focusedPendingStyles: Set<SpanStyle>,
+
+    /**
+     * Snapshot block selection for structural replay.
+     *
+     * Structural commands can be defined by block selection, especially subtree
+     * drag where the selected root set controls the payload. Restoring block
+     * order without restoring this set leaves the editor in a visibly different
+     * interaction state after undo/redo. The value is filtered against replayed
+     * blocks before use so old or hand-authored checkpoints cannot select
+     * missing IDs.
+     */
+    val selectedBlockIds: Set<BlockId> = emptySet(),
 )
 
 /**

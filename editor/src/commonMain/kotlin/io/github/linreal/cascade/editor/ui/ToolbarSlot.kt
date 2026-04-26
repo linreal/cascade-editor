@@ -22,6 +22,10 @@ public sealed interface ToolbarSlot {
     /**
      * Consumer-provided composable toolbar receiving reactive state and actions.
      *
+     * Indentation controls intentionally stay out of this lambda signature for
+     * source compatibility. Read [LocalIndentationState] and [LocalIndentationActions]
+     * from the composable body when custom toolbar chrome needs indent/outdent.
+     *
      * @param trackedStyles Styles to include in [FormattingState.styles].
      *        Defaults to the default toolbar styles. Override to track additional
      *        styles (e.g., [SpanStyle.Custom][io.github.linreal.cascade.editor.core.SpanStyle.Custom]).

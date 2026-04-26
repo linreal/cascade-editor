@@ -152,6 +152,10 @@ CascadeEditor(
         strikethrough = "Barré",
         inlineCode = "Code en ligne",
         highlight = "Surligné",
+        slashCommand = "Commande slash",
+        hideKeyboard = "Masquer le clavier",
+        indentForward = "Augmenter le retrait",
+        indentBackward = "Réduire le retrait",
     ),
     blockStrings = CascadeEditorBlockStrings(
         blocks = mapOf(

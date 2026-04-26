@@ -2,10 +2,12 @@ package io.github.linreal.cascade.editor
 
 import io.github.linreal.cascade.editor.action.CompleteDrag
 import io.github.linreal.cascade.editor.action.DeleteSelectedOrFocused
+import io.github.linreal.cascade.editor.action.IndentForward
 import io.github.linreal.cascade.editor.action.StartDrag
 import io.github.linreal.cascade.editor.action.ToggleTodo
 import io.github.linreal.cascade.editor.action.UpdateDragTarget
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
@@ -289,6 +291,63 @@ class StructuralHistoryIntegrationTest {
     }
 
     @Test
+    fun `subtree drag restores order indentation numbering and selection through history`() {
+        val firstId = BlockId("a")
+        val parentId = BlockId("b")
+        val childId = BlockId("c")
+        val afterId = BlockId("d")
+        val tailId = BlockId("e")
+        val harness = Harness(
+            EditorState.withBlocks(
+                listOf(
+                    numbered(firstId, "A", number = 1, indentationLevel = 0),
+                    numbered(parentId, "B", number = 2, indentationLevel = 0),
+                    numbered(childId, "C", number = 1, indentationLevel = 1),
+                    paragraph(afterId, "D"),
+                    paragraph(tailId, "E"),
+                )
+            ).copy(
+                focusedBlockId = null,
+                selectedBlockIds = setOf(parentId),
+            )
+        )
+
+        harness.stateHolder.dispatch(StartDrag(parentId, touchOffsetY = 0f))
+        assertEquals(listOf(parentId, childId), harness.stateHolder.state.dragState?.payloadBlockIds)
+
+        harness.stateHolder.dispatch(UpdateDragTarget(targetIndex = 4, futureRootIndentationLevel = 1))
+        harness.callbacks.dispatch(CompleteDrag)
+
+        assertEquals(listOf(firstId, afterId, parentId, childId, tailId), harness.blockIds())
+        assertEquals(listOf(0, 0, 1, 2, 0), harness.indentationLevels())
+        assertEquals(null, harness.stateHolder.state.focusedBlockId)
+        assertEquals(setOf(parentId), harness.stateHolder.state.selectedBlockIds)
+        assertEquals(
+            mapOf(
+                firstId to 1,
+                parentId to 1,
+                childId to 1,
+            ),
+            harness.numberedValues(),
+        )
+
+        harness.stateHolder.undo()
+
+        assertEquals(listOf(firstId, parentId, childId, afterId, tailId), harness.blockIds())
+        assertEquals(listOf(0, 0, 1, 0, 0), harness.indentationLevels())
+        assertEquals(null, harness.stateHolder.state.focusedBlockId)
+        assertEquals(setOf(parentId), harness.stateHolder.state.selectedBlockIds)
+        assertEquals(
+            mapOf(
+                firstId to 1,
+                parentId to 2,
+                childId to 1,
+            ),
+            harness.numberedValues(),
+        )
+    }
+
+    @Test
     fun `selected block delete is undoable through the structural action wrapper`() {
         val firstId = BlockId("a")
         val secondId = BlockId("b")
@@ -311,6 +370,45 @@ class StructuralHistoryIntegrationTest {
 
         harness.stateHolder.undo()
         assertEquals(listOf(firstId, secondId, thirdId), harness.blockIds())
+    }
+
+    @Test
+    fun `indent forward is undoable through the structural action wrapper`() {
+        val firstId = BlockId("a")
+        val secondId = BlockId("b")
+        val harness = Harness(
+            EditorState.withBlocks(
+                listOf(
+                    paragraph(firstId, "A"),
+                    paragraph(secondId, "B"),
+                )
+            ).copy(focusedBlockId = secondId)
+        )
+
+        harness.callbacks.dispatch(IndentForward)
+
+        assertEquals(listOf(0, 1), harness.indentationLevels())
+
+        harness.stateHolder.undo()
+        assertEquals(listOf(0, 0), harness.indentationLevels())
+
+        harness.stateHolder.redo()
+        assertEquals(listOf(0, 1), harness.indentationLevels())
+    }
+
+    @Test
+    fun `no-op indent action through structural wrapper does not create undo step`() {
+        val blockId = BlockId("a")
+        val harness = Harness(
+            EditorState.withBlocks(listOf(paragraph(blockId, "A"))).copy(
+                focusedBlockId = blockId,
+            )
+        )
+
+        harness.callbacks.dispatch(IndentForward)
+
+        assertEquals(listOf(0), harness.indentationLevels())
+        assertFalse(harness.stateHolder.canUndo)
     }
 
     private class Harness(initialState: EditorState) {
@@ -344,6 +442,19 @@ class StructuralHistoryIntegrationTest {
 
         fun blockIds(): List<BlockId> {
             return stateHolder.state.blocks.map { it.id }
+        }
+
+        fun indentationLevels(): List<Int> {
+            return stateHolder.state.blocks.map { it.attributes.indentationLevel }
+        }
+
+        fun numberedValues(): Map<BlockId, Int> {
+            return stateHolder.state.blocks
+                .mapNotNull { block ->
+                    val type = block.type as? BlockType.NumberedList ?: return@mapNotNull null
+                    block.id to type.number
+                }
+                .toMap()
         }
 
         fun setRuntimeText(
@@ -445,6 +556,20 @@ class StructuralHistoryIntegrationTest {
             id = id,
             type = BlockType.Paragraph,
             content = BlockContent.Text(text),
+        )
+    }
+
+    private fun numbered(
+        id: BlockId,
+        text: String,
+        number: Int,
+        indentationLevel: Int,
+    ): Block {
+        return Block(
+            id = id,
+            type = BlockType.NumberedList(number),
+            content = BlockContent.Text(text),
+            attributes = BlockAttributes(indentationLevel = indentationLevel),
         )
     }
 }

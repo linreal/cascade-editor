@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 /**
  * Tests for [isDropAtOriginalPosition] — pure function that decides whether a
  * drag gesture ended at the block's original position (selection) or at a
- * different position (actual move).
+ * different position or indentation lane (actual move).
  */
 class DragSelectionTest {
 
@@ -35,6 +35,30 @@ class DragSelectionTest {
     @Test
     fun `target after original plus one - not select`() {
         assertFalse(isDropAtOriginalPosition(targetIndex = 4, originalIndex = 2))
+    }
+
+    @Test
+    fun `same position with changed indentation - not select`() {
+        assertFalse(
+            isDropAtOriginalPosition(
+                targetIndex = 2,
+                originalIndex = 2,
+                originalRootIndentationLevel = 0,
+                futureRootIndentationLevel = 1,
+            )
+        )
+    }
+
+    @Test
+    fun `null target with changed indentation - not select`() {
+        assertFalse(
+            isDropAtOriginalPosition(
+                targetIndex = null,
+                originalIndex = 2,
+                originalRootIndentationLevel = 0,
+                futureRootIndentationLevel = 1,
+            )
+        )
     }
 
     @Test

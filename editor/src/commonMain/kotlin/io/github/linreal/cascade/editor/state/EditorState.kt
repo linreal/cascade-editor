@@ -3,6 +3,7 @@ package io.github.linreal.cascade.editor.state
 import androidx.compose.runtime.Immutable
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockId
+import io.github.linreal.cascade.editor.core.normalizeIndentationOutline
 import io.github.linreal.cascade.editor.slash.SlashCommandId
 
 /**
@@ -37,22 +38,58 @@ public data class SlashCommandState(
 /**
  * State for drag-and-drop operations.
  *
- * @property draggingBlockIds The IDs of blocks currently being dragged
+ * @property draggingBlockIds Legacy containment set for blocks currently being dragged.
+ *           Use [payloadBlockIds] when document order matters.
  * @property targetIndex The calculated drop position index (null if not over a valid target).
- *           This is the visual gap position, converted to MoveBlocks index in CompleteDrag.
+ *           This is the visual gap position. Depth-aware hover resolution clears it for
+ *           gaps that cannot accept the payload without corrupting outline structure.
  * @property initialTouchOffsetY Y offset from the top of the primary block where touch started.
  *           Used to prevent the preview from "jumping" - the preview top position is
  *           calculated as (currentDragY - initialTouchOffsetY). Set once at drag start.
  * @property primaryBlockOriginalIndex Original list index of the primary dragged block
  *           (the block the user actually touched to initiate drag). Used for index
- *           conversion in CompleteDrag.
+ *           compatibility with existing drag gesture semantics.
+ * @property dragRootIds Payload root IDs in document order. For a selection drag this is
+ *           the selected root set after descendant de-duplication.
+ * @property payloadBlockIds Full payload IDs in document order, including every root subtree.
+ * @property payloadBlockIdSet O(1) membership companion for [payloadBlockIds].
+ * @property payloadBlockIndices Original document indices for [payloadBlockIds].
+ * @property payloadBlockIndexSet O(1) membership companion for [payloadBlockIndices].
+ * @property payloadIndexRanges Contiguous original index ranges occupied by the payload.
+ * @property primaryRootId The root that drives preview/depth intent. This may differ from
+ *           the first document-ordered root when a later selected root started the gesture.
+ * @property primaryRootOriginalIndex Original document index for [primaryRootId].
+ * @property primaryRootSupportsIndentation Whether [primaryRootId] can change indentation.
+ * @property originalRootIndentationLevels Original indentation level for every root.
+ * @property payloadRelativeDepthOffsets Relative indentation offset for each payload block
+ *           from the root subtree it belongs to.
+ * @property payloadRootIdsByBlockId Root ID for each payload block. Hover resolution uses
+ *           this with [payloadRelativeDepthOffsets] to compute multi-root depth bounds
+ *           without re-deriving ownership from the block list on every pointer frame.
+ * @property futureRootIndentationLevel Current candidate indentation level for [primaryRootId].
+ *           It changes only when hover resolution crosses a semantic indentation lane.
  */
 @Immutable
 public data class DragState(
     val draggingBlockIds: Set<BlockId>,
     val targetIndex: Int?,
     val initialTouchOffsetY: Float = 0f,
-    val primaryBlockOriginalIndex: Int = -1
+    val primaryBlockOriginalIndex: Int = -1,
+    val dragRootIds: List<BlockId> = draggingBlockIds.toList(),
+    val payloadBlockIds: List<BlockId> = draggingBlockIds.toList(),
+    val payloadBlockIdSet: Set<BlockId> = payloadBlockIds.toSet(),
+    val payloadBlockIndices: List<Int> = emptyList(),
+    val payloadBlockIndexSet: Set<Int> = payloadBlockIndices.toSet(),
+    val payloadIndexRanges: List<IntRange> = emptyList(),
+    val primaryRootId: BlockId? = dragRootIds.firstOrNull(),
+    val primaryRootOriginalIndex: Int = primaryBlockOriginalIndex,
+    val primaryRootSupportsIndentation: Boolean? = null,
+    val originalRootIndentationLevels: Map<BlockId, Int> = emptyMap(),
+    val payloadRelativeDepthOffsets: Map<BlockId, Int> = emptyMap(),
+    val payloadRootIdsByBlockId: Map<BlockId, BlockId> = emptyMap(),
+    val futureRootIndentationLevel: Int = primaryRootId
+        ?.let { originalRootIndentationLevels[it] }
+        ?: 0,
 )
 
 /**
@@ -110,11 +147,12 @@ public data class EditorState(
      * If empty or the last block doesn't support text, appends an empty paragraph.
      */
     internal fun ensureTrailingTextBlock(): EditorState {
-        val lastBlock = blocks.lastOrNull()
+        val normalizedBlocks = normalizeIndentationOutline(blocks)
+        val lastBlock = normalizedBlocks.lastOrNull()
         if (lastBlock == null || !lastBlock.type.supportsText) {
-            return copy(blocks = blocks + Block.paragraph())
+            return copy(blocks = normalizedBlocks + Block.paragraph())
         }
-        return this
+        return if (normalizedBlocks === blocks) this else copy(blocks = normalizedBlocks)
     }
 
     public companion object {

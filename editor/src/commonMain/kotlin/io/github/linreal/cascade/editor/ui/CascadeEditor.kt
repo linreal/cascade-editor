@@ -29,6 +29,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextRange
@@ -44,6 +45,8 @@ import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.SpanStyle
+import io.github.linreal.cascade.editor.indentation.DefaultIndentationActions
+import io.github.linreal.cascade.editor.indentation.rememberIndentationState
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
 import io.github.linreal.cascade.editor.richtext.DefaultFormattingActions
@@ -59,6 +62,7 @@ import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.EditorStateHolder
+import io.github.linreal.cascade.editor.ui.utils.DragHoverOutlineIndex
 import io.github.linreal.cascade.editor.theme.CascadeEditorBlockStrings
 import io.github.linreal.cascade.editor.theme.CascadeEditorStrings
 import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
@@ -115,6 +119,8 @@ import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
  *        [ToolbarSlot.None] hides the toolbar.
  *        [ToolbarSlot.Custom] renders a consumer-provided composable with
  *        reactive [FormattingState] and [FormattingActions][io.github.linreal.cascade.editor.richtext.FormattingActions].
+ *        Custom toolbars can read [LocalIndentationState] and [LocalIndentationActions]
+ *        for indentation controls without a separate slot parameter.
  * @param onFormattingStateChanged Optional callback fired when the formatting
  *        state changes. Uses structural equality to avoid redundant calls.
  */
@@ -281,6 +287,14 @@ public fun CascadeEditor(
         )
     }
 
+    val indentationState = rememberIndentationState(stateHolder)
+    val indentationActions = remember(stateHolder, indentationState) {
+        DefaultIndentationActions(
+            stateProvider = { indentationState.value },
+            dispatchAction = { action -> stateHolder.dispatchStructuralAction(action) },
+        )
+    }
+
     // Fire external callback on formatting state changes (structural equality dedup)
     if (onFormattingStateChanged != null && formattingState != null) {
         val currentCallback by rememberUpdatedState(onFormattingStateChanged)
@@ -334,6 +348,8 @@ public fun CascadeEditor(
         LocalBlockSpanStates provides spanStates,
         LocalSpanActionDispatcher provides spanActionDispatcher,
         LocalFormattingActions provides formattingActions,
+        LocalIndentationState provides indentationState,
+        LocalIndentationActions provides indentationActions,
         LocalSlashCommandExecutor provides slashExecutor,
         LocalSlashSessionAnchorBlockId provides slashState?.anchorBlockId,
         LocalSlashHighlightedCommandId provides slashState?.highlightedCommandId,
@@ -386,11 +402,20 @@ public fun CascadeEditor(
         }
         val selectionOverlayColor =
             LocalCascadeTheme.current.colors.selectionOverlay
+        val dimensions = LocalCascadeTheme.current.dimensions
+        val blockHorizontalPadding = dimensions.blockHorizontalPadding
+        val density = LocalDensity.current
+        val indentUnitPx = with(density) { dimensions.indentUnit.toPx() }
+        val dragHoverOutlineIndex = remember(state.blocks) {
+            DragHoverOutlineIndex(state.blocks)
+        }
+        val currentDragHoverOutlineIndex by rememberUpdatedState(dragHoverOutlineIndex)
 
         // Current drag Y position — local state, NOT in EditorState.
         // Updated at ~60-120fps during drag; keeping it local avoids full-tree
         // recomposition on every pointer move.
         val dragOffsetY = remember { mutableFloatStateOf(0f) }
+        val dragDeltaX = remember { mutableFloatStateOf(0f) }
 
         // Outer Column: editor content (weight=1f) + toolbar at bottom.
         // Toolbar is OUTSIDE the drag gesture Box to prevent drag events
@@ -404,7 +429,10 @@ public fun CascadeEditor(
                     .blockGestures(
                         lazyListState = lazyListState,
                         dragOffsetY = dragOffsetY,
+                        dragDeltaX = dragDeltaX,
+                        indentUnitPx = indentUnitPx,
                         stateProvider = { stateHolder.state },
+                        outlineIndexProvider = { currentDragHoverOutlineIndex },
                         callbacks = callbacks,
                         longPressTimeoutMillis = BLOCK_LONG_PRESS_MS,
                         onEmptySpaceTap = {
@@ -469,7 +497,7 @@ public fun CascadeEditor(
                                             Modifier.padding(vertical = 2.dp)
                                         }
                                     )
-                                    .padding(horizontal = 16.dp, vertical = 2.dp)
+                                    .padding(horizontal = blockHorizontalPadding, vertical = 2.dp)
                                     .graphicsLayer {
                                         // Apply 50% transparency to blocks being dragged
                                         alpha = if (isDragging) 0.5f else 1f
@@ -492,10 +520,18 @@ public fun CascadeEditor(
                 AutoScrollDuringDrag(
                     lazyListState = lazyListState,
                     dragOffsetY = { dragOffsetY.floatValue },
+                    dragDeltaX = { dragDeltaX.floatValue },
                     isDragging = state.dragState != null,
-                    blockCount = state.blocks.size,
-                    onDropTargetChanged = { newTarget ->
-                        callbacks.dispatch(UpdateDragTarget(newTarget))
+                    stateProvider = { stateHolder.state },
+                    outlineIndexProvider = { currentDragHoverOutlineIndex },
+                    indentUnitPx = indentUnitPx,
+                    onDropTargetChanged = { hoverTarget ->
+                        callbacks.dispatch(
+                            UpdateDragTarget(
+                                targetIndex = hoverTarget?.visualGap,
+                                futureRootIndentationLevel = hoverTarget?.futureRootIndentationLevel,
+                            )
+                        )
                     }
                 )
 
@@ -504,6 +540,7 @@ public fun CascadeEditor(
                 state.dragState?.let { dragState ->
                     DropIndicator(
                         targetIndex = dragState.targetIndex,
+                        futureRootIndentationLevel = dragState.futureRootIndentationLevel,
                         lazyListState = lazyListState
                     )
                 }
@@ -512,7 +549,8 @@ public fun CascadeEditor(
                 // Rendered last in Box so it draws on top of both list and indicator.
                 // Position updates happen in graphicsLayer (draw phase only).
                 state.dragState?.let { dragState ->
-                    val primaryBlockId = dragState.draggingBlockIds.firstOrNull()
+                    val primaryBlockId =
+                        dragState.primaryRootId ?: dragState.draggingBlockIds.firstOrNull()
                     val draggedBlock = primaryBlockId?.let { id ->
                         state.blocks.find { it.id == id }
                     }
@@ -521,6 +559,8 @@ public fun CascadeEditor(
                             block = draggedBlock,
                             dragOffsetY = { dragOffsetY.floatValue },
                             initialTouchOffsetY = dragState.initialTouchOffsetY,
+                            futureRootIndentationLevel = dragState.futureRootIndentationLevel,
+                            payloadBlockCount = dragState.payloadBlockIds.size,
                             registry = registry,
                             callbacks = callbacks
                         )
@@ -543,6 +583,8 @@ public fun CascadeEditor(
                     RichTextToolbar(
                         formattingState = formattingState,
                         actions = formattingActions,
+                        indentationState = indentationState,
+                        indentationActions = indentationActions,
                         config = resolvedToolbar.config,
                         onSlashInsert = {
                             val blockId =

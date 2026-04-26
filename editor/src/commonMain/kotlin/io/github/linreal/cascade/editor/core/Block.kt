@@ -8,12 +8,14 @@ import androidx.compose.runtime.Immutable
  * @property id Unique identifier for this block
  * @property type The type of block (paragraph, heading, etc.)
  * @property content The content stored in this block
+ * @property attributes Block-level document metadata.
  */
 @Immutable
 public data class Block(
     val id: BlockId,
     val type: BlockType,
-    val content: BlockContent
+    val content: BlockContent,
+    val attributes: BlockAttributes = BlockAttributes.Default,
 ) {
     /**
      * Creates a copy with a new type.
@@ -24,7 +26,12 @@ public data class Block(
      * Creates a copy with new content.
      */
     public fun withContent(newContent: BlockContent): Block = copy(content = newContent)
-    
+
+    /**
+     * Creates a copy with new block attributes.
+     */
+    public fun withAttributes(newAttributes: BlockAttributes): Block = copy(attributes = newAttributes)
+
     public companion object {
         /**
          * Creates a new paragraph block with the given text and optional spans.
@@ -38,7 +45,7 @@ public data class Block(
         ): Block = Block(
             id = BlockId.generate(),
             type = BlockType.Paragraph,
-            content = BlockContent.Text(text = text, spans = spans)
+            content = BlockContent.Text(text = text, spans = spans),
         )
 
         /**
@@ -50,7 +57,7 @@ public data class Block(
         public fun heading(level: Int, text: String = ""): Block = Block(
             id = BlockId.generate(),
             type = BlockType.Heading(level),
-            content = BlockContent.Text(text)
+            content = BlockContent.Text(text),
         )
 
         /**
@@ -59,7 +66,7 @@ public data class Block(
         public fun todo(text: String = "", checked: Boolean = false): Block = Block(
             id = BlockId.generate(),
             type = BlockType.Todo(checked),
-            content = BlockContent.Text(text)
+            content = BlockContent.Text(text),
         )
 
         /**
@@ -68,7 +75,7 @@ public data class Block(
         public fun bulletList(text: String = ""): Block = Block(
             id = BlockId.generate(),
             type = BlockType.BulletList,
-            content = BlockContent.Text(text)
+            content = BlockContent.Text(text),
         )
 
         /**
@@ -77,7 +84,7 @@ public data class Block(
         public fun numberedList(text: String = "", number: Int = 1): Block = Block(
             id = BlockId.generate(),
             type = BlockType.NumberedList(number),
-            content = BlockContent.Text(text)
+            content = BlockContent.Text(text),
         )
 
         /**
@@ -86,7 +93,7 @@ public data class Block(
         public fun divider(): Block = Block(
             id = BlockId.generate(),
             type = BlockType.Divider,
-            content = BlockContent.Empty
+            content = BlockContent.Empty,
         )
     }
 }
