@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.linreal.cascade.editor.action.ToggleTodo
@@ -72,7 +73,10 @@ public class TodoBlockRenderer : BlockRenderer<BlockType.Todo> {
             TextBlockField(
                 block = block,
                 isFocused = isFocused,
-                textStyle = theme.typography.body.copy(color = theme.colors.text),
+                textStyle = theme.typography.body.copy(
+                    color = theme.colors.text,
+                    textDecoration = if (todoType.checked) TextDecoration.LineThrough else TextDecoration.None
+                ),
                 modifier = Modifier.weight(1f),
                 callbacks = callbacks,
             )
