@@ -2,7 +2,7 @@
 
 ## 1. Feature Overview
 
-The toolbar system provides inline editor controls at the bottom of the `CascadeEditor`. It lets users apply span styles (bold, italic, underline, strikethrough, inline code, highlight) to selected text or toggle pending styles at a collapsed cursor, and the built-in toolbar also exposes block indent/outdent controls. The feature is fully configurable: consumers can use the built-in config-driven toolbar, supply a completely custom composable toolbar, or hide it entirely. Keyboard shortcuts (Cmd/Ctrl+B/I/U) work independently of toolbar visibility. An external `onFormattingStateChanged` callback enables out-of-editor UI (e.g., a floating toolbar or app bar) to reflect formatting state reactively, while indentation state/actions are available through CompositionLocals for custom chrome.
+The toolbar system provides inline editor controls at the bottom of the `CascadeEditor`. It lets users apply span styles (bold, italic, underline, strikethrough, inline code, highlight) to selected text or toggle pending styles at a collapsed cursor, and the built-in toolbar also exposes block indent/outdent controls. The feature is fully configurable: consumers can use the built-in config-driven toolbar, supply a completely custom composable toolbar, or hide it entirely. Keyboard shortcuts (Cmd/Ctrl+B/I/U) work independently of toolbar visibility. An external `onFormattingStateChanged` callback enables out-of-editor UI (e.g., a floating toolbar or app bar) to reflect formatting state reactively, while indentation and link state/actions are available through CompositionLocals for custom chrome.
 
 ---
 
@@ -13,8 +13,8 @@ The toolbar system provides inline editor controls at the bottom of the `Cascade
 | Type | File | Role |
 |------|------|------|
 | `ToolbarSlot` | `ui/ToolbarSlot.kt` | Sealed interface controlling which toolbar variant renders: `Default`, `None`, or `Custom`. |
-| `RichTextToolbarConfig` | `ui/RichTextToolbarConfig.kt` | `@Immutable` data class listing `ToolbarButtonSpec` entries. Ships a `Default` companion preset with 6 built-in styles. |
-| `ToolbarButtonSpec` | `ui/RichTextToolbarConfig.kt` | Pairs a `SpanStyle` with an accessibility `label`. |
+| `RichTextToolbarConfig` | `ui/RichTextToolbarConfig.kt` | `@Immutable` data class listing `ToolbarButtonSpec` entries plus default-toolbar feature flags. Ships a `Default` companion preset with 6 built-in styles and link enabled. |
+| `ToolbarButtonSpec` | `ui/RichTextToolbarConfig.kt` | Pairs a non-link `SpanStyle` with an accessibility `label`. Link editing uses `showLink` instead. |
 | `RichTextToolbar` | `ui/RichTextToolbar.kt` | `internal` composable — the default config-driven toolbar UI. Iterates `config.buttons`, renders toggle buttons reflecting `FormattingState`. |
 | `FormattingState` | `richtext/FormattingState.kt` | `@Immutable` snapshot: per-style `StyleStatus` map, `canFormat` flag, `focusedBlockId`, `selectionCollapsed`. |
 | `FormattingActions` | `richtext/FormattingActions.kt` | `@Stable` interface with `toggleStyle`, `applyStyle`, `removeStyle`. |
@@ -30,6 +30,16 @@ The toolbar system provides inline editor controls at the bottom of the `Cascade
 | `DefaultIndentationActions` | `indentation/DefaultIndentationActions.kt` | Resolves state at invocation time and dispatches structural indent actions only when enabled. |
 | `LocalIndentationState` | `ui/LocalIndentationState.kt` | `CompositionLocal` providing `State<IndentationState>?` to custom editor chrome. |
 | `LocalIndentationActions` | `ui/LocalIndentationActions.kt` | `CompositionLocal` providing `IndentationActions?` to custom editor chrome. |
+| `LinkState` | `richtext/LinkState.kt` | `@Immutable` snapshot of focused link target, existing URL, and mixed-link intersection state. |
+| `LinkActions` | `richtext/LinkActions.kt` | `@Stable` interface for apply/edit/remove link mutations against captured `LinkTarget`s or the latest current target. |
+| `rememberLinkState()` | `richtext/LinkStateObserver.kt` | `internal` composable bridge producing lazy `State<LinkState>` from editor runtime state. |
+| `LocalLinkState` | `ui/LocalLinkState.kt` | `CompositionLocal` providing `State<LinkState>?` to custom editor chrome. |
+| `LocalLinkActions` | `ui/LocalLinkActions.kt` | `CompositionLocal` providing gated `LinkActions?` to custom editor chrome. |
+| `LinkPopupSlot` | `ui/LinkPopupSlot.kt` | Public slot API for built-in, custom, or disabled editor-owned link popup UI. |
+| `LinkPopupState` | `ui/LinkPopupState.kt` | Public UI-ready state shape for custom popup content. |
+| `LinkPopupActions` | `ui/LinkPopupActions.kt` | Public action shape for custom popup content. |
+| `LinkPopupSession` | `ui/LinkPopupSession.kt` | Internal editor-owned popup session that freezes the target, owns fields, validates URL input, and delegates apply/remove. |
+| `LinkPopup` | `ui/LinkPopup.kt` | Internal foundation-only default popup UI, viewport-centered placement helper, and outside-tap dismiss scrim. |
 
 ### Key Design Decisions
 
@@ -39,11 +49,17 @@ The toolbar system provides inline editor controls at the bottom of the `Cascade
 
 **Indentation controls are config-gated but API-always available.** `RichTextToolbarConfig.showIndentation` controls whether the default toolbar renders indent/outdent icon buttons. `CascadeEditor` still provides `LocalIndentationState` and `LocalIndentationActions` in `ToolbarSlot.Default`, `ToolbarSlot.Custom`, and `ToolbarSlot.None`, so hidden or custom toolbars can expose indentation without changing the `ToolbarSlot.Custom` lambda signature.
 
+**Link APIs are local-provided and toolbar-agnostic.** `CascadeEditor` provides `LocalLinkState` and `LocalLinkActions` in `ToolbarSlot.Default`, `ToolbarSlot.Custom`, and `ToolbarSlot.None`. Custom toolbar and surrounding editor chrome can add link UI without changing `ToolbarSlot.Custom` parameters.
+
+**Default link button is special, not a `ToolbarButtonSpec`.** `RichTextToolbarConfig.showLink` controls the built-in link entry point separately from generic span-style buttons because link editing depends on URL state, mixed-link selection state, and a popup slot rather than a simple style toggle.
+
 **Theme-injected highlight color.** When the consumer uses the exact `RichTextToolbarConfig.Default` sentinel, `CascadeEditor` replaces the placeholder `SpanStyle.Highlight` color with `theme.colors.highlight.toArgb()`. Custom configs are left untouched. This avoids a mismatch between the toolbar button's style and the rendered highlight color.
 
 **`FormattingActions` always created — even without a toolbar.** Keyboard shortcuts (Cmd+B/I/U) consume `FormattingActions` via `LocalFormattingActions`. The actions are created unconditionally so shortcuts work regardless of `ToolbarSlot.None`.
 
 **`FormattingState` lazily created.** The expensive `rememberFormattingState()` observer chain is only instantiated when `resolvedToolbar !is ToolbarSlot.None || onFormattingStateChanged != null`. This avoids unnecessary `derivedStateOf` overhead in headless/no-toolbar configurations.
+
+**`LinkState` uses a lazy `State` wrapper.** The link local is always provided, but its target resolution is inside `derivedStateOf`; it only computes when a consumer reads `LocalLinkState.current?.value`.
 
 **Two-layer `derivedStateOf` in the formatting observer.** Layer 1 extracts `focusedBlockId`, `focusedBlockType`, `hasBlockSelection`, `isDragging` — each as an independent `derivedStateOf` that only propagates when its specific output changes. Layer 2 reads Layer 1 outputs plus per-block runtime state (selection, spans, pending styles). This shields the final derivation from high-frequency state churn (drag position, text changes in other blocks).
 
@@ -54,6 +70,10 @@ The toolbar system provides inline editor controls at the bottom of the `Cascade
 **Focus-stealing prevention.** Both `RichTextToolbar` and individual `ToolbarToggleButton` set `Modifier.focusProperties { canFocus = false }`, preventing the toolbar from stealing focus from the active text field on tap.
 
 **Structural history boundary for indentation.** Default indentation actions dispatch `IndentForward` / `IndentBackward` through the same structural transaction wrapper used by built-in semantic document edits when runtime history holders are bound.
+
+**Link actions are gated by link availability.** `LocalLinkActions` exposes a `LinkChromeActions` facade that delegates to `LinkActionDispatcher` only while `LinkState.canLink` is true. If linking is unavailable, `applyLink` still validates the URL for UI feedback but does not mutate, and `removeLink` no-ops. The chrome surface adds `currentTarget()`, `applyLinkAtCurrentTarget(...)`, and `removeLinkAtCurrentTarget()` for callers without a captured target; the latter two are inherited defaults that forward to `applyLink`/`removeLink` after consulting `currentTarget()`. The minimal target-based `LinkActions` interface is the right type for popup sessions and any code path that has already captured a `LinkTarget`.
+
+**Link popup sessions are editor-owned and slot-rendered.** Pressing the default toolbar link button creates a `LinkPopupSession` for `LinkPopupSlot.Default` and `Custom`. The session captures the current `LinkTarget`, owns title/URL field state, validates through `LinkUrlPolicy`, and routes valid apply/remove operations through `LinkActions`. `Default` renders the foundation-only popup, `Custom` receives the same state/actions for consumer UI, and `None` suppresses editor-owned popup state/UI.
 
 ---
 
@@ -112,6 +132,49 @@ ToolbarSlot.Custom content
        and calls indentationActions.indentForward() / indentBackward()
 ```
 
+### Custom Toolbar Link Access
+
+```
+ToolbarSlot.Custom content
+  └─ val linkState = LocalLinkState.current?.value
+  └─ val linkActions = LocalLinkActions.current
+  └─ Custom UI uses linkState.canLink / existingUrl / intersectsLink
+       and calls linkActions.applyLinkAtCurrentTarget(url, title)
+       or captures linkState.target for a popup session and later calls
+       linkActions.applyLink(capturedTarget, url, title)
+       or linkActions.removeLink(capturedTarget)
+```
+
+### Default Toolbar Link Popup
+
+```
+User taps default link button
+  └─ RichTextToolbar.onLinkClick
+       └─ CascadeEditor creates LinkPopupSession from current LinkState
+            ├─ Captures LinkTarget for apply/remove
+            ├─ Prefills title/URL from existing link, selection text, or selected URL text
+            └─ Provides LinkPopupState + LinkPopupActions to Default or Custom slot
+
+Default popup placement
+  └─ LinkPopup wraps content in a transparent scrim that fills the editor viewport
+       ├─ LinkPopupDefaults.calculatePopupOffset centers popup horizontally and vertically
+       │    in the viewport, regardless of cursor position
+       ├─ Tap on scrim (outside popup body) → LinkPopupActions.dismiss() (Cancel-equivalent,
+       │    no document mutation, focus/selection restored)
+       └─ Tap inside popup body is consumed locally so it does not bubble to the scrim
+
+User taps Apply
+  └─ LinkPopupSession.apply()
+       ├─ Invalid URL → no LinkActions call, popup stays open
+       └─ Valid URL → LinkActions.applyLink(capturedTarget, rawUrl, titleOrNull)
+            └─ LinkActionDispatcher handles runtime text/spans, snapshot sync, and history
+
+User taps Remove
+  └─ LinkPopupSession.remove()
+       └─ LinkActions.removeLink(capturedTarget)
+            └─ Removes link spans while preserving visible text and non-link spans
+```
+
 ### Formatting State Observation
 
 ```
@@ -150,6 +213,8 @@ Consumer
 | Parameter | Type | Default | Purpose |
 |-----------|------|---------|---------|
 | `toolbar` | `ToolbarSlot` | `ToolbarSlot.Default()` | Controls toolbar variant |
+| `linkPopup` | `LinkPopupSlot` | `LinkPopupSlot.Default` | Controls editor-owned link popup rendering |
+| `onOpenLink` | `((String) -> Unit)?` | `null` | App-controlled link opener for unfocused-block taps. When null, the editor falls back to `LocalUriHandler` and swallows platform open failures. |
 | `onFormattingStateChanged` | `((FormattingState) -> Unit)?` | `null` | External formatting state listener |
 
 ### `ToolbarSlot` (sealed interface)
@@ -169,9 +234,12 @@ ToolbarSlot.Custom(
 RichTextToolbarConfig(
     buttons: List<ToolbarButtonSpec>,
     showIndentation: Boolean = true,
+    showLink: Boolean = true,
 )
 ToolbarButtonSpec(style: SpanStyle, label: String)
 ```
+
+`ToolbarButtonSpec` rejects `SpanStyle.Link`. Links require URL validation, captured targets, and popup state, so they are configured through `RichTextToolbarConfig.showLink` and `LinkPopupSlot`.
 
 ### `FormattingState`
 
@@ -210,6 +278,53 @@ interface IndentationActions {
 }
 ```
 
+### `LinkState` / `LinkActions`
+
+```kotlin
+data class LinkState(
+    val canLink: Boolean,
+    val focusedBlockId: BlockId?,
+    val target: LinkTarget?,
+    val targetText: String,
+    val selectionCollapsed: Boolean,
+    val existingUrl: String?,
+    val existingLinkRange: LinkTarget?,
+    val existingLinkText: String?,
+    val isInsideLink: Boolean,
+    val intersectsLink: Boolean,
+)
+
+interface LinkActions {
+    fun applyLink(target: LinkTarget, url: String, title: String? = null): LinkValidationResult
+    fun removeLink(target: LinkTarget)
+}
+
+interface LinkChromeActions : LinkActions {
+    fun currentTarget(): LinkTarget?
+    fun applyLinkAtCurrentTarget(url: String, title: String? = null): LinkValidationResult? =
+        currentTarget()?.let { applyLink(it, url, title) }
+    fun removeLinkAtCurrentTarget() { currentTarget()?.let { removeLink(it) } }
+}
+```
+
+`isInsideLink` is true only for a collapsed cursor strictly inside a link span. A ranged selection can expose `existingUrl` without being inside a link. `selectionCollapsed` and `existingLinkText` are cached convenience values derived from the same visible-text snapshot.
+
+### `LinkPopupSlot`
+
+```kotlin
+LinkPopupSlot.Default
+LinkPopupSlot.None
+LinkPopupSlot.Custom(
+    content: @Composable (LinkPopupState, LinkPopupActions) -> Unit,
+)
+```
+
+`Default` selects CascadeEditor's built-in popup, `Custom` keeps the editor-managed session but lets the app render the UI, and `None` disables editor-owned popup UI.
+
+`LinkPopupState` contains the session title, raw URL field value, normalized URL when valid, stable validation error when invalid, existing URL when one was resolved at open time, and `canApply` / `canRemove` flags. `LinkPopupActions` mutates the current session (`updateTitle`, `updateUrl`) or delegates mutations (`apply`, `remove`) against the captured target; `dismiss` closes without document mutation. The default popup also routes outside-tap-dismiss through `dismiss`, so tapping anywhere in the editor viewport outside the popup body is equivalent to pressing Cancel. Custom popup slots may implement their own dismiss UX, but `dismiss` is the canonical no-mutation close.
+
+For collapsed cursors strictly inside an existing link, the popup mutates the full existing link range. For non-collapsed selections, the captured target remains the selected range even if the selection later changes. The default popup is always rendered centered in the editor content viewport rather than anchored to the cursor.
+
 ### `SpanActionDispatcher`
 
 ```kotlin
@@ -228,6 +343,8 @@ class SpanActionDispatcher(dispatchFn, textStates, spanStates) {
 | `LocalSpanActionDispatcher` | `SpanActionDispatcher?` | `CascadeEditor` |
 | `LocalIndentationState` | `State<IndentationState>?` | `CascadeEditor` |
 | `LocalIndentationActions` | `IndentationActions?` | `CascadeEditor` |
+| `LocalLinkState` | `State<LinkState>?` | `CascadeEditor` |
+| `LocalLinkActions` | `LinkActions?` | `CascadeEditor` |
 
 ---
 
@@ -238,8 +355,10 @@ class SpanActionDispatcher(dispatchFn, textStates, spanStates) {
 | Consumer | What it reads | How |
 |----------|---------------|-----|
 | `RichTextToolbar` | `State<FormattingState>`, `FormattingActions`, `RichTextToolbarConfig` | Direct parameters from `CascadeEditor` |
+| Default toolbar link button | `State<LinkState>`, `RichTextToolbarConfig.showLink`, `LinkPopupSlot` | Direct parameters from `CascadeEditor` |
 | `ToolbarSlot.Custom.content` | `State<FormattingState>`, `FormattingActions` | Composable lambda parameters |
 | Custom toolbar indentation UI | `LocalIndentationState`, `LocalIndentationActions` | CompositionLocals inside `CascadeEditor` |
+| Custom toolbar link UI | `LocalLinkState`, `LocalLinkActions` | CompositionLocals inside `CascadeEditor` |
 | `TextBlockKeyHandler` | `FormattingActions` | Constructor parameter (sourced from `LocalFormattingActions`) |
 | External app code | `FormattingState` | `onFormattingStateChanged` callback |
 
@@ -251,6 +370,8 @@ class SpanActionDispatcher(dispatchFn, textStates, spanStates) {
 | `BlockTextStates` | Visible text + cursor selection for the focused block |
 | `BlockSpanStates` | Runtime span state: spans, pending styles, style queries |
 | `SpanAlgorithms` | Pure functions for `queryStyleStatus`, `activeStylesAt` |
+| `LinkStateCalculator` | Focused-block link target, existing URL, and intersection state |
+| `LinkActionDispatcher` | Runtime/snapshot/history coordination for link mutations |
 | `CascadeEditorTheme` | Colors for toolbar backgrounds, icons, primary/onPrimary; highlight color injection |
 | `CascadeEditorStrings` | Localized accessibility labels for built-in toolbar buttons |
 | `CascadeEditorTypography` | `toolbarButton` text style for button labels |
@@ -266,6 +387,7 @@ Column(modifier) {
         DropIndicator
         DragPreview
         SlashCommandPopup
+        LinkPopupSlot.Default/Custom content
     }
     // --- Toolbar sits OUTSIDE the drag Box ---
     when (resolvedToolbar) {
@@ -290,9 +412,15 @@ The toolbar is intentionally outside the drag gesture `Box` to prevent drag even
 - Block selection is active (multi-select mode)
 - Drag is in progress
 
+**`canLink` disablement conditions.** Link state is disabled under the same editor-level guards as formatting: no focused text block, block selection active, or drag in progress. `LocalLinkActions` also checks this state at invocation time before mutating.
+
 **Indentation enablement is independent of formatting enablement.** Indent/outdent buttons use `IndentationState`, not `FormattingState.canFormat`. They can target focused supported blocks or selected supported root blocks and no-op when structural outline rules disallow movement.
 
 **`showIndentation = false` hides only default toolbar buttons.** It does not disable indentation reducers or remove `LocalIndentationState` / `LocalIndentationActions` from custom toolbar content.
+
+**Toolbar visibility does not affect link locals.** `LocalLinkState` and `LocalLinkActions` are provided in default, custom, and no-toolbar modes. `ToolbarSlot.None` hides editor-owned toolbar UI only.
+
+**`showLink = false` hides only the default toolbar link button.** It does not remove `LocalLinkState`, `LocalLinkActions`, or the `linkPopup` parameter. Apps that own all link chrome should usually combine `ToolbarSlot.Custom` or `RichTextToolbarConfig(showLink = false)` with `LinkPopupSlot.None`.
 
 **Highlight color identity.** `SpanStyle.Highlight` uses `kindMatches` for toolbar status detection — any `Highlight` regardless of `colorArgb` is treated as the same "kind". This means the toolbar correctly reflects highlight status even when the theme color differs from the stored span color. However, applying highlight via the toolbar always uses the theme color, potentially creating spans with different `colorArgb` values in the same document.
 
@@ -309,10 +437,12 @@ The toolbar is intentionally outside the drag gesture `Box` to prevent drag even
 | Term | Definition |
 |------|------------|
 | **ToolbarSlot** | Sealed type controlling which toolbar variant renders at the bottom of the editor. |
-| **ToolbarButtonSpec** | Pairs a `SpanStyle` with a display/accessibility label for one toolbar button. |
+| **ToolbarButtonSpec** | Pairs a non-link `SpanStyle` with a display/accessibility label for one toolbar button. |
 | **FormattingState** | Immutable snapshot of which styles are active/partial/absent for the current selection, plus formatting-allowed metadata. |
 | **FormattingActions** | Interface for triggering style toggle/apply/remove from UI (toolbar, shortcuts). |
 | **SpanActionDispatcher** | Coordination layer ensuring runtime `BlockSpanStates` and snapshot `EditorState` stay consistent on style mutations. |
+| **LinkState** | Immutable snapshot of the current focused link target and existing-link metadata. |
+| **LinkActions** | Interface for applying, editing, and removing links at captured or current `LinkTarget`s. |
 | **StyleStatus** | Enum: `FullyActive` (style covers entire selection), `Partial` (covers part), `Absent` (not present). |
 | **Pending styles** | Runtime-only set of `SpanStyle`s that will be applied to the next character typed at a collapsed cursor. Not persisted in snapshot state. |
 | **`kindMatches`** | `SpanStyle.Companion` function that compares styles by kind (ignoring parameters like `colorArgb`), used for toolbar status detection. |

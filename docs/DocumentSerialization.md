@@ -204,6 +204,21 @@ public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>)   // NEW
 
 `DocumentSchema` delegates text content encoding to the existing `RichTextSchema`. The document envelope wraps a `kind: "text"` discriminator around `RichTextSchema`'s output, preserving its inner `version` field.
 
+`RichTextSchema` preserves link spans as an additive version-1 style:
+
+```json
+{
+  "start": 0,
+  "end": 7,
+  "style": {
+    "type": "link",
+    "url": "https://example.com"
+  }
+}
+```
+
+Link URLs are normalized by `LinkUrlPolicy` during encode/decode. Bare domain-shaped values decode to `https://...`; values that already contain `://` are kept verbatim after trimming. Only blank URLs and entries whose `url` field is missing, non-string, or `null` drop the affected link span. Other spans and the surrounding text content continue decoding normally.
+
 ### 5.2 Editor Composable
 
 `CascadeEditor.kt` was modified to accept `textStates` and `spanStates` as optional parameters (defaulting to `remember { ... }`). All internal usages were updated to use these hoisted instances. This is a **non-breaking API change** — existing call sites that don't pass these parameters retain identical behavior.
@@ -284,7 +299,7 @@ public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>)   // NEW
 | **TextSpan** | A range (`start`, `end`) plus a `SpanStyle` applied to text content. |
 | **UnknownBlockType** | A `CustomBlockType` subclass that holds raw JSON for an unrecognized type, enabling lossless round-trip. |
 | **DocumentSchema** | Stateless object handling JSON encode/decode of `List<Block>` with versioning. |
-| **RichTextSchema** | Existing stateless object handling JSON encode/decode of `BlockContent.Text` with spans. |
+| **RichTextSchema** | Stateless object handling JSON encode/decode of `BlockContent.Text` with spans, including persisted link spans. |
 | **BlockTextStates** | Runtime holder mapping `BlockId` to Compose `TextFieldState` for on-screen blocks. |
 | **BlockSpanStates** | Runtime holder mapping `BlockId` to live span state for on-screen blocks. |
 | **Codec** | Consumer-provided `BlockTypeCodec` or `BlockContentCodec` that hooks into encode/decode for custom types. |

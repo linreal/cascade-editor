@@ -8,6 +8,7 @@ import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class SpanMaintenanceTextObserverTest {
 
@@ -92,5 +93,78 @@ class SpanMaintenanceTextObserverTest {
             ),
             spanStates.getSpans(blockId),
         )
+    }
+
+    @Test
+    fun `onCommittedVisibleText - insertion strictly inside link remains linked`() {
+        val blockId = BlockId("block-1")
+        val link = SpanStyle.Link("https://example.com")
+        val textStates = BlockTextStates()
+        textStates.getOrCreate(blockId, "Link")
+
+        val spanStates = BlockSpanStates()
+        spanStates.getOrCreate(
+            blockId = blockId,
+            initialSpans = listOf(TextSpan(0, 4, link)),
+            textLength = 4,
+        )
+        val observer = SpanMaintenanceTextObserver(
+            blockId = blockId,
+            textStates = textStates,
+            spanStates = spanStates,
+            initialVisibleText = "Link",
+        )
+
+        observer.onCommittedVisibleText("LiXnk")
+
+        assertEquals(listOf(TextSpan(0, 5, link)), spanStates.getSpans(blockId))
+    }
+
+    @Test
+    fun `onCommittedVisibleText - insertion at link end does not continue link`() {
+        val blockId = BlockId("block-1")
+        val link = SpanStyle.Link("https://example.com")
+        val textStates = BlockTextStates()
+        textStates.getOrCreate(blockId, "Link")
+
+        val spanStates = BlockSpanStates()
+        spanStates.getOrCreate(
+            blockId = blockId,
+            initialSpans = listOf(TextSpan(0, 4, link)),
+            textLength = 4,
+        )
+        val observer = SpanMaintenanceTextObserver(
+            blockId = blockId,
+            textStates = textStates,
+            spanStates = spanStates,
+            initialVisibleText = "Link",
+        )
+
+        observer.onCommittedVisibleText("LinkX")
+
+        assertEquals(listOf(TextSpan(0, 4, link)), spanStates.getSpans(blockId))
+    }
+
+    @Test
+    fun `onCommittedVisibleText - explicit pending link is not applied to inserted text`() {
+        val blockId = BlockId("block-1")
+        val link = SpanStyle.Link("https://example.com")
+        val textStates = BlockTextStates()
+        textStates.getOrCreate(blockId, "Hi")
+
+        val spanStates = BlockSpanStates()
+        spanStates.getOrCreate(blockId = blockId, initialSpans = emptyList(), textLength = 2)
+        spanStates.setPendingStyles(blockId, setOf(link, SpanStyle.Bold))
+        val observer = SpanMaintenanceTextObserver(
+            blockId = blockId,
+            textStates = textStates,
+            spanStates = spanStates,
+            initialVisibleText = "Hi",
+        )
+
+        observer.onCommittedVisibleText("Hi!")
+
+        assertEquals(listOf(TextSpan(2, 3, SpanStyle.Bold)), spanStates.getSpans(blockId))
+        assertNull(spanStates.getPendingStyles(blockId))
     }
 }

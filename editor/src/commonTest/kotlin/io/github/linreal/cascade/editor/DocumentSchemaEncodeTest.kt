@@ -157,6 +157,53 @@ class DocumentSchemaEncodeTest {
     }
 
     @Test
+    fun `encode code type`() {
+        val json = DocumentSchema.encode(listOf(block(type = BlockType.Code)))
+        val typeObj = json["blocks"]!!.jsonArray[0].jsonObject["type"]!!.jsonObject
+        assertEquals("code", typeObj["typeId"]?.jsonPrimitive?.content)
+        // No additional fields encoded for code
+        assertEquals(1, typeObj.size)
+    }
+
+    @Test
+    fun `encode code preserves multi-line text verbatim`() {
+        val multiLineText = "line1\nline2\n"
+        val json = DocumentSchema.encode(
+            listOf(
+                block(
+                    type = BlockType.Code,
+                    content = BlockContent.Text(multiLineText),
+                )
+            )
+        )
+        val contentObj = json["blocks"]!!.jsonArray[0].jsonObject["content"]!!.jsonObject
+        assertEquals("text", contentObj["kind"]?.jsonPrimitive?.content)
+        assertEquals(multiLineText, contentObj["text"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `encode code strips spans from text content even when present in source`() {
+        // Defensive: a malformed in-memory Code block carrying spans must not
+        // leak them into JSON. The strip is keyed on supportsSpans (not on
+        // BlockType.Code), so any future custom non-spans block inherits this guarantee.
+        val json = DocumentSchema.encode(
+            listOf(
+                block(
+                    type = BlockType.Code,
+                    content = BlockContent.Text(
+                        "println(x)",
+                        listOf(TextSpan(0, 7, SpanStyle.Bold)),
+                    ),
+                )
+            )
+        )
+        val contentObj = json["blocks"]!!.jsonArray[0].jsonObject["content"]!!.jsonObject
+        assertEquals("println(x)", contentObj["text"]?.jsonPrimitive?.content)
+        val spans = contentObj["spans"]!!.jsonArray
+        assertEquals(0, spans.size)
+    }
+
+    @Test
     fun `encode divider type`() {
         val json = DocumentSchema.encode(listOf(block(type = BlockType.Divider, content = BlockContent.Empty)))
         val typeObj = json["blocks"]!!.jsonArray[0].jsonObject["type"]!!.jsonObject

@@ -58,6 +58,18 @@ class FormattingStateCalculatorTest {
     }
 
     @Test
+    fun `Code block (text-supporting but spans-incapable) returns canFormat false`() {
+        val result = compute(
+            focusedBlockType = BlockType.Code,
+            selStart = 0,
+            selEnd = 5,
+            spans = emptyList(),
+        )
+        assertFalse(result.canFormat)
+        assertTrue(result.styles.isEmpty())
+    }
+
+    @Test
     fun `block selection active returns canFormat false`() {
         val result = compute(hasBlockSelection = true)
         assertFalse(result.canFormat)

@@ -3,12 +3,14 @@ package io.github.linreal.cascade.editor.serialization
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
+import io.github.linreal.cascade.editor.richtext.LinkUrlPolicy
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -33,6 +35,7 @@ import kotlinx.serialization.json.longOrNull
  * - Empty spans (after clamping) are dropped.
  * - Unknown style types are dropped gracefully.
  * - Missing required fields cause the individual span to be dropped, not the whole decode.
+ * - Invalid link URLs cause the individual span to be dropped, not the whole decode.
  *
  * Custom payload canonicalization:
  * - On encode, `SpanStyle.Custom.payload` (`String?`) is parsed and embedded as structured JSON.
@@ -51,7 +54,9 @@ public object RichTextSchema {
         put("text", JsonPrimitive(content.text))
         put("spans", buildJsonArray {
             for (span in content.spans) {
-                add(encodeSpan(span))
+                encodeSpan(span)?.let { encodedSpan ->
+                    add(encodedSpan)
+                }
             }
         })
     }
@@ -88,24 +93,28 @@ public object RichTextSchema {
 
     // -- Private encode helpers --
 
-    private fun encodeSpan(span: TextSpan): JsonObject = buildJsonObject {
-        put("start", JsonPrimitive(span.start))
-        put("end", JsonPrimitive(span.end))
-        put("style", encodeStyle(span.style))
+    private fun encodeSpan(span: TextSpan): JsonObject? {
+        val style = encodeStyle(span.style) ?: return null
+        return buildJsonObject {
+            put("start", JsonPrimitive(span.start))
+            put("end", JsonPrimitive(span.end))
+            put("style", style)
+        }
     }
 
-    private fun encodeStyle(style: SpanStyle): JsonObject = buildJsonObject {
+    private fun encodeStyle(style: SpanStyle): JsonObject? =
         when (style) {
-            is SpanStyle.Bold -> put("type", JsonPrimitive("bold"))
-            is SpanStyle.Italic -> put("type", JsonPrimitive("italic"))
-            is SpanStyle.Underline -> put("type", JsonPrimitive("underline"))
-            is SpanStyle.StrikeThrough -> put("type", JsonPrimitive("strikethrough"))
-            is SpanStyle.InlineCode -> put("type", JsonPrimitive("inline_code"))
-            is SpanStyle.Highlight -> {
+            is SpanStyle.Bold -> buildJsonObject { put("type", JsonPrimitive("bold")) }
+            is SpanStyle.Italic -> buildJsonObject { put("type", JsonPrimitive("italic")) }
+            is SpanStyle.Underline -> buildJsonObject { put("type", JsonPrimitive("underline")) }
+            is SpanStyle.StrikeThrough -> buildJsonObject { put("type", JsonPrimitive("strikethrough")) }
+            is SpanStyle.InlineCode -> buildJsonObject { put("type", JsonPrimitive("inline_code")) }
+            is SpanStyle.Highlight -> buildJsonObject {
                 put("type", JsonPrimitive("highlight"))
                 put("colorArgb", JsonPrimitive(style.colorArgb))
             }
-            is SpanStyle.Custom -> {
+            is SpanStyle.Link -> encodeLinkStyle(style)
+            is SpanStyle.Custom -> buildJsonObject {
                 put("type", JsonPrimitive("custom"))
                 put("typeId", JsonPrimitive(style.typeId))
                 if (style.payload != null) {
@@ -118,6 +127,13 @@ public object RichTextSchema {
                     put("payload", element)
                 }
             }
+        }
+
+    private fun encodeLinkStyle(style: SpanStyle.Link): JsonObject? {
+        val normalizedUrl = LinkUrlPolicy.validate(style.url).normalizedUrl ?: return null
+        return buildJsonObject {
+            put("type", JsonPrimitive("link"))
+            put("url", JsonPrimitive(normalizedUrl))
         }
     }
 
@@ -161,6 +177,13 @@ public object RichTextSchema {
             "highlight" -> {
                 val colorArgb = json["colorArgb"]?.jsonPrimitive?.longOrNull ?: return null
                 SpanStyle.Highlight(colorArgb)
+            }
+            "link" -> {
+                val urlPrimitive = json["url"] as? JsonPrimitive ?: return null
+                if (!urlPrimitive.isString) return null
+                val rawUrl = urlPrimitive.contentOrNull ?: return null
+                val normalizedUrl = LinkUrlPolicy.validate(rawUrl).normalizedUrl ?: return null
+                SpanStyle.Link(normalizedUrl)
             }
             "custom" -> {
                 val typeId = json["typeId"]?.jsonPrimitive?.content ?: return null

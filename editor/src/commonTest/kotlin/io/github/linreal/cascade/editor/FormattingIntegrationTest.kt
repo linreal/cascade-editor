@@ -405,6 +405,7 @@ class FormattingIntegrationTest {
     fun `default toolbar config has expected V1 buttons`() {
         val config = RichTextToolbarConfig.Default
         assertTrue(config.showIndentation)
+        assertTrue(config.showLink)
         assertEquals(6, config.buttons.size)
         assertEquals(SpanStyle.Bold, config.buttons[0].style)
         assertEquals(SpanStyle.Italic, config.buttons[1].style)
@@ -422,9 +423,11 @@ class FormattingIntegrationTest {
                 label = "Custom",
             ),
             showIndentation = false,
+            showLink = false,
         )
         assertEquals(7, custom.buttons.size)
         assertFalse(custom.showIndentation)
+        assertFalse(custom.showLink)
         assertTrue(custom.buttons.last().style is SpanStyle.Custom)
     }
 

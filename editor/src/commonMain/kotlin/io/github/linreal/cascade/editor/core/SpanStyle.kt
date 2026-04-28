@@ -26,6 +26,22 @@ public sealed interface SpanStyle {
     public data class Highlight(val colorArgb: Long) : SpanStyle
 
     /**
+     * Link to an external web URL.
+     *
+     * The visible link title remains the text covered by the [TextSpan] range.
+     * Callers should construct this style with a URL normalized by
+     * [io.github.linreal.cascade.editor.richtext.LinkUrlPolicy].
+     */
+    @Immutable
+    public data class Link(val url: String) : SpanStyle {
+        init {
+            require(url.isNotBlank()) {
+                "url must not be blank; use LinkUrlPolicy.validate before constructing Link"
+            }
+        }
+    }
+
+    /**
      * Extension point for custom span styles.
      *
      * @param typeId Identifier for the custom style type
@@ -57,6 +73,7 @@ public sealed interface SpanStyle {
             is StrikeThrough -> StrikeThrough
             is InlineCode -> InlineCode
             is Highlight -> Highlight::class // all Highlights share one key
+            is Link -> style                  // same URL = same key; different URLs stay distinct
             is Custom -> style               // different typeId/payload = different keys
         }
 

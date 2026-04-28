@@ -30,6 +30,7 @@ public fun BlockRegistry.registerBuiltInRenderers() {
         "bullet_list",
         "numbered_list",
         "quote",
+        "code",
     )
 
     textTypeIds.forEach { typeId ->

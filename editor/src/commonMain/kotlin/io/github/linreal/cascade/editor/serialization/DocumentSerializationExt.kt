@@ -51,14 +51,27 @@ internal fun resolveCurrentBlocks(
 
         val hasRuntimeText = textStates.get(block.id) != null
         val hasRuntimeSpans = spanStates.get(block.id) != null
-        if (!hasRuntimeText && !hasRuntimeSpans) return@map block
+        val supportsSpans = block.type.supportsSpans
+
+        // Non-spans blocks (e.g. Code) must always emit empty spans regardless of
+        // runtime state. This catches malformed snapshots and stale runtime span
+        // state that survived a same-id conversion.
+        if (!hasRuntimeText && !hasRuntimeSpans) {
+            return@map if (!supportsSpans && content.spans.isNotEmpty()) {
+                block.withContent(content.copy(spans = emptyList()))
+            } else {
+                block
+            }
+        }
 
         val resolvedText = if (hasRuntimeText) {
             textStates.getVisibleText(block.id) ?: content.text
         } else {
             content.text
         }
-        val resolvedSpans = if (hasRuntimeSpans) {
+        val resolvedSpans = if (!supportsSpans) {
+            emptyList()
+        } else if (hasRuntimeSpans) {
             spanStates.getSpans(block.id)
         } else {
             content.spans

@@ -136,6 +136,16 @@ public open class DefaultBlockCallbacks(
             val currentBlock = state?.getBlock(blockId)
 
             val blockType = currentBlock?.type
+
+            // Code blocks intercept Enter: insert a literal newline at the cursor
+            // (or replace a ranged selection) instead of splitting the block. The
+            // exception is the "trailing-blank-line" gesture, which exits the code
+            // block by inserting a fresh Paragraph below.
+            if (currentBlock != null && blockType is BlockType.Code) {
+                handleCodeBlockEnter(blockId, currentBlock, cursorPosition)
+                return@runStructuralMutation
+            }
+
             if (currentBlock != null) {
                 val visibleText = currentBlock.visibleText(blockId)
                 if (visibleText.isEmpty()) {
@@ -233,6 +243,13 @@ public open class DefaultBlockCallbacks(
                 return@runStructuralMutation
             }
 
+            // Code: backspace at start converts to Paragraph in place rather than merging
+            // upward. Multi-line text is preserved verbatim — the user can split it later.
+            if (blockType is BlockType.Code) {
+                dispatch(ConvertBlockType(blockId, BlockType.Paragraph))
+                return@runStructuralMutation
+            }
+
             if (state != null) {
                 val blockIndex = state.indexOfBlock(blockId)
                 if (blockIndex > 0) {
@@ -255,16 +272,30 @@ public open class DefaultBlockCallbacks(
                                 targetId = previousBlock.id,
                             )
                             if (targetTextLength != null) {
-                                spanStates?.mergeInto(
-                                    sourceId = blockId,
-                                    targetId = previousBlock.id,
-                                    targetTextLength = targetTextLength,
-                                )
+                                // Mirror the MergeBlocks reducer gate: when the target
+                                // type opts out of spans (e.g. Code), the source's
+                                // bold/link/etc spans must be discarded rather than
+                                // carried into the target's canonical-empty span list.
+                                val targetSupportsSpans = previousBlock.type.supportsSpans
+                                if (targetSupportsSpans) {
+                                    spanStates?.mergeInto(
+                                        sourceId = blockId,
+                                        targetId = previousBlock.id,
+                                        targetTextLength = targetTextLength,
+                                    )
+                                } else {
+                                    spanStates?.set(previousBlock.id, emptyList(), targetTextLength)
+                                    spanStates?.clearPendingStyles(previousBlock.id)
+                                }
 
                                 // Sync snapshot with merged content before deleting source
                                 val mergedText = textStates.getVisibleText(previousBlock.id)
                                 if (mergedText != null) {
-                                    val mergedSpans = spanStates?.getSpans(previousBlock.id).orEmpty()
+                                    val mergedSpans = if (targetSupportsSpans) {
+                                        spanStates?.getSpans(previousBlock.id).orEmpty()
+                                    } else {
+                                        emptyList()
+                                    }
                                     dispatch(UpdateBlockContent(previousBlock.id, BlockContent.Text(mergedText, mergedSpans)))
                                 }
 
@@ -324,16 +355,30 @@ public open class DefaultBlockCallbacks(
                                 targetId = blockId,
                             )
                             if (targetTextLength != null) {
-                                spanStates?.mergeInto(
-                                    sourceId = nextBlock.id,
-                                    targetId = blockId,
-                                    targetTextLength = targetTextLength,
-                                )
+                                // Mirror the MergeBlocks reducer gate: when the target
+                                // type opts out of spans (e.g. Code), the source's
+                                // bold/link/etc spans must be discarded rather than
+                                // carried into the target's canonical-empty span list.
+                                val targetSupportsSpans = state.getBlock(blockId)?.type?.supportsSpans ?: true
+                                if (targetSupportsSpans) {
+                                    spanStates?.mergeInto(
+                                        sourceId = nextBlock.id,
+                                        targetId = blockId,
+                                        targetTextLength = targetTextLength,
+                                    )
+                                } else {
+                                    spanStates?.set(blockId, emptyList(), targetTextLength)
+                                    spanStates?.clearPendingStyles(blockId)
+                                }
 
                                 // Sync snapshot with merged content before deleting source
                                 val mergedText = textStates.getVisibleText(blockId)
                                 if (mergedText != null) {
-                                    val mergedSpans = spanStates?.getSpans(blockId).orEmpty()
+                                    val mergedSpans = if (targetSupportsSpans) {
+                                        spanStates?.getSpans(blockId).orEmpty()
+                                    } else {
+                                        emptyList()
+                                    }
                                     dispatch(UpdateBlockContent(blockId, BlockContent.Text(mergedText, mergedSpans)))
                                 }
 
@@ -370,6 +415,142 @@ public open class DefaultBlockCallbacks(
 
     private fun runStructuralMutation(mutation: () -> Unit) {
         stateHolder?.runStructuralHistoryTransaction(textStates, spanStates, mutation) ?: mutation()
+    }
+
+    /**
+     * Implements the Code-block Enter contract. The caller already enforced the
+     * selection-mode and `block.type is BlockType.Code` guards.
+     *
+     * Branch order guarantees that ranged selections never trip
+     * the trailing-blank-line exit even when the range touches the block end:
+     *  1. Ranged selection - replace the selected visible range with a single `\n`.
+     *  2. Empty visible text — convert the block to a Paragraph (mirrors the empty
+     *     root-list exit).
+     *  3. Trailing-blank-line exit - collapsed cursor at end AND the visible text
+     *     ends with `\n`: drop the trailing newline and split off a fresh Paragraph.
+     *  4. Otherwise — insert a `\n` at the collapsed cursor.
+     *
+     * All mutations are programmatic and run inside the structural history
+     * transaction set up by the caller, so each Enter forms exactly one undo step.
+     */
+    private fun handleCodeBlockEnter(
+        blockId: BlockId,
+        block: Block,
+        cursorPosition: Int,
+    ) {
+        val visibleText = block.visibleText(blockId)
+        val rawSelection = textStates?.getSelection(blockId)
+        val rawStart = rawSelection?.start ?: cursorPosition
+        val rawEnd = rawSelection?.end ?: cursorPosition
+        val rangeStart = minOf(rawStart, rawEnd).coerceIn(0, visibleText.length)
+        val rangeEnd = maxOf(rawStart, rawEnd).coerceIn(0, visibleText.length)
+        val hasRangeSelection = rangeStart != rangeEnd
+
+        when {
+            hasRangeSelection -> {
+                // Ranged Enter never exits, even if the range touches the block end.
+                replaceCodeRangeWithNewline(blockId, rangeStart, rangeEnd)
+            }
+            visibleText.isEmpty() -> {
+                dispatch(ConvertBlockType(blockId, BlockType.Paragraph))
+            }
+            rangeStart == visibleText.length && visibleText.endsWith("\n") -> {
+                exitCodeBlockOnTrailingBlankLine(blockId, visibleText)
+            }
+            else -> {
+                replaceCodeRangeWithNewline(blockId, rangeStart, rangeStart)
+            }
+        }
+    }
+
+    /**
+     * Replaces the visible-text range `[start, endExclusive)` of a code block with
+     * a single `\n` and syncs the snapshot. The cursor lands immediately after the
+     * inserted newline. Spans are forced to `emptyList()` because Code opts out of
+     * spans (`supportsSpans = false`).
+     *
+     * Falls back to a snapshot-only `UpdateBlockContent` when no [textStates] is
+     * available (test paths that exercise the reducer directly).
+     */
+    private fun replaceCodeRangeWithNewline(
+        blockId: BlockId,
+        start: Int,
+        endExclusive: Int,
+    ) {
+        if (textStates != null) {
+            val cursorAfter = start + 1
+            val updatedText = textStates.replaceVisibleRange(
+                blockId = blockId,
+                start = start,
+                endExclusive = endExclusive,
+                replacement = "\n",
+                cursorPositionAfter = cursorAfter,
+            ) ?: return
+            spanStates?.set(blockId, emptyList(), updatedText.length)
+            spanStates?.clearPendingStyles(blockId)
+            dispatch(UpdateBlockContent(blockId, BlockContent.Text(updatedText, emptyList())))
+            return
+        }
+
+        val state = stateProvider?.invoke() ?: return
+        val current = (state.getBlock(blockId)?.content as? BlockContent.Text)?.text ?: return
+        val safeStart = start.coerceIn(0, current.length)
+        val safeEnd = endExclusive.coerceIn(safeStart, current.length)
+        val updatedText = current.take(safeStart) + "\n" + current.substring(safeEnd)
+        dispatch(UpdateBlockContent(blockId, BlockContent.Text(updatedText, emptyList())))
+    }
+
+    /**
+     * Trailing-blank-line exit: the cursor sits at the very end of a code block
+     * whose visible text ends with `\n`. Drops that trailing newline, then splits
+     * off a fresh empty Paragraph below.
+     *
+     * `SplitBlock` is preferable to a separate `UpdateBlockContent` + `InsertBlockAfter`
+     * pair because `SplitBlock`'s reducer already (a) writes the trimmed source-block
+     * snapshot via `sourceBlockText`, (b) inserts a `Paragraph` continuation
+     * (`else -> BlockType.Paragraph` in `SplitBlock.reduce`), (c) resets indentation
+     * for non-indentation source/target via `forSplitContinuation`, and (d) moves
+     * focus to the new block — all in one reducer call inside one structural history
+     * transaction.
+     */
+    private fun exitCodeBlockOnTrailingBlankLine(
+        blockId: BlockId,
+        visibleText: String,
+    ) {
+        val trimmedLength = visibleText.length - 1
+        val trimmedText = visibleText.take(trimmedLength)
+        val newBlockId = BlockId.generate()
+
+        if (textStates != null) {
+            textStates.replaceVisibleRange(
+                blockId = blockId,
+                start = trimmedLength,
+                endExclusive = visibleText.length,
+                replacement = "",
+                cursorPositionAfter = trimmedLength,
+            )
+            spanStates?.set(blockId, emptyList(), trimmedLength)
+            spanStates?.clearPendingStyles(blockId)
+            // Seed runtime span state for the new paragraph so the upcoming
+            // recomposition does not have to materialize it from snapshot.
+            spanStates?.split(
+                sourceBlockId = blockId,
+                newBlockId = newBlockId,
+                position = trimmedLength,
+            )
+        }
+
+        dispatch(
+            SplitBlock(
+                blockId = blockId,
+                atPosition = trimmedLength,
+                newBlockText = "",
+                newBlockId = newBlockId,
+                newBlockSpans = emptyList(),
+                sourceBlockText = trimmedText,
+                sourceBlockSpans = emptyList(),
+            )
+        )
     }
 
     private fun Block.visibleText(blockId: BlockId): String {

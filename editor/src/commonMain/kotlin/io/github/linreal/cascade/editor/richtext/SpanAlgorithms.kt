@@ -35,10 +35,11 @@ internal object SpanAlgorithms {
      * Normalizes a span list:
      * 1. Clamps coordinates to `[0, textLength]`.
      * 2. Drops empty spans (`start >= end` after clamping).
-     * 3. Merges overlapping and adjacent same-style spans.
-     * 4. Sorts by start position (then end for determinism).
+     * 3. Resolves overlapping different-URL links to non-overlapping ranges.
+     * 4. Merges overlapping and adjacent same-style spans.
+     * 5. Sorts by start position (then end for determinism).
      *
-     * Different-style overlaps are preserved (cumulative application).
+     * Different-style non-link overlaps are preserved (cumulative application).
      */
     fun normalize(spans: List<TextSpan>, textLength: Int): List<TextSpan> {
         if (spans.isEmpty()) return emptyList()
@@ -50,8 +51,8 @@ internal object SpanAlgorithms {
             if (s < e) TextSpan(s, e, span.style) else null
         }
 
-        // 3: merge same-style overlaps / adjacents
-        return mergeOverlapping(valid)
+        // 3: resolve link overlaps, then merge same-style overlaps / adjacents.
+        return canonicalize(valid)
     }
 
  // Edit Adjustment
@@ -87,7 +88,7 @@ internal object SpanAlgorithms {
             val newEnd = adjustEnd(span.end, editStart, editEnd, delta)
             if (newStart < newEnd) TextSpan(newStart, newEnd, span.style) else null
         }
-        return mergeOverlapping(adjusted)
+        return canonicalize(adjusted)
     }
 
     /**
@@ -167,7 +168,7 @@ internal object SpanAlgorithms {
         val shifted = secondSpans.map {
             TextSpan(it.start + firstTextLength, it.end + firstTextLength, it.style)
         }
-        return mergeOverlapping(firstSpans + shifted)
+        return canonicalize(firstSpans + shifted)
     }
 
  // Style Application
@@ -177,6 +178,8 @@ internal object SpanAlgorithms {
      *
      * If the range overlaps or is adjacent to existing spans of the same style,
      * they are merged. Different-style spans are left untouched.
+     * Applying [SpanStyle.Link] first clips existing link coverage from the target
+     * range regardless of URL.
      *
      * No-op if normalized range is empty after ordering/clamping.
      */
@@ -189,12 +192,17 @@ internal object SpanAlgorithms {
     ): List<TextSpan> {
         require(textLength >= 0) { "textLength must be non-negative, got $textLength" }
 
-        val normalizedStart = max(0, min(rangeStart, rangeEnd)).coerceAtMost(textLength)
-        val normalizedEnd = max(0, max(rangeStart, rangeEnd)).coerceAtMost(textLength)
+        val normalizedStart = min(rangeStart, rangeEnd).coerceIn(0, textLength)
+        val normalizedEnd = max(rangeStart, rangeEnd).coerceIn(0, textLength)
         if (normalizedStart >= normalizedEnd) return spans
 
+        val baseSpans = if (style is SpanStyle.Link) {
+            removeStyle(spans, normalizedStart, normalizedEnd, style)
+        } else {
+            spans
+        }
         val newSpan = TextSpan(normalizedStart, normalizedEnd, style)
-        return normalize(spans + newSpan, textLength)
+        return normalize(baseSpans + newSpan, textLength)
     }
 
     /**
@@ -202,6 +210,7 @@ internal object SpanAlgorithms {
      *
      * Spans of the matching style are clipped or split around the removal range.
      * Spans with other styles are untouched.
+     * A requested [SpanStyle.Link] matches every existing link regardless of URL.
      *
      * No-op if normalized range is empty after ordering/clamping.
      */
@@ -211,24 +220,51 @@ internal object SpanAlgorithms {
         rangeEnd: Int,
         style: SpanStyle,
     ): List<TextSpan> {
+        return removeMatchingSpans(spans, rangeStart, rangeEnd) { span ->
+            operationMatches(span.style, style)
+        }
+    }
+
+    /**
+     * Removes every link span from `[rangeStart, rangeEnd)` regardless of URL.
+     *
+     * This keeps link removal explicit instead of depending on a synthetic
+     * [SpanStyle.Link] value whose URL is ignored by operation matching.
+     */
+    fun removeLinks(
+        spans: List<TextSpan>,
+        rangeStart: Int,
+        rangeEnd: Int,
+    ): List<TextSpan> {
+        return removeMatchingSpans(spans, rangeStart, rangeEnd) { span ->
+            span.style is SpanStyle.Link
+        }
+    }
+
+    private inline fun removeMatchingSpans(
+        spans: List<TextSpan>,
+        rangeStart: Int,
+        rangeEnd: Int,
+        shouldRemove: (TextSpan) -> Boolean,
+    ): List<TextSpan> {
         val normalizedStart = max(0, min(rangeStart, rangeEnd))
         val normalizedEnd = max(0, max(rangeStart, rangeEnd))
         if (normalizedStart >= normalizedEnd) return spans
 
         return spans.flatMap { span ->
-            if (!SpanStyle.kindMatches(span.style, style)) {
+            if (!shouldRemove(span)) {
                 listOf(span)
             } else {
                 buildList {
                     // Part before the removal range
                     if (span.start < normalizedStart && span.end > normalizedStart) {
-                        add(TextSpan(span.start, minOf(span.end, normalizedStart), style))
+                        add(TextSpan(span.start, minOf(span.end, normalizedStart), span.style))
                     } else if (span.end <= normalizedStart) {
                         add(span) // entirely before removal
                     }
                     // Part after the removal range
                     if (span.end > normalizedEnd && span.start < normalizedEnd) {
-                        add(TextSpan(maxOf(span.start, normalizedEnd), span.end, style))
+                        add(TextSpan(maxOf(span.start, normalizedEnd), span.end, span.style))
                     } else if (span.start >= normalizedEnd) {
                         add(span) // entirely after removal
                     }
@@ -272,6 +308,8 @@ internal object SpanAlgorithms {
      * For a **ranged selection**: computes union coverage of matching spans within
      * the range and returns [StyleStatus.FullyActive], [StyleStatus.Partial], or
      * [StyleStatus.Absent] accordingly.
+     *
+     * A requested [SpanStyle.Link] matches every existing link regardless of URL.
      */
     fun queryStyleStatus(
         spans: List<TextSpan>,
@@ -285,14 +323,14 @@ internal object SpanAlgorithms {
         if (normalizedStart == normalizedEnd) {
             // Collapsed cursor: check containment
             val inside = spans.any {
-                SpanStyle.kindMatches(it.style, style) && it.start <= normalizedStart && it.end > normalizedStart
+                operationMatches(it.style, style) && it.start <= normalizedStart && it.end > normalizedStart
             }
             return if (inside) StyleStatus.FullyActive else StyleStatus.Absent
         }
 
         // Ranged selection: compute coverage
         val clipped = spans
-            .filter { SpanStyle.kindMatches(it.style, style) }
+            .filter { operationMatches(it.style, style) }
             .map { maxOf(it.start, normalizedStart) to minOf(it.end, normalizedEnd) }
             .filter { it.first < it.second }
             .sortedBy { it.first }
@@ -345,6 +383,69 @@ internal object SpanAlgorithms {
      * Different-style spans are preserved independently.
      * Output is sorted by (start, end).
      */
+    private fun canonicalize(spans: List<TextSpan>): List<TextSpan> {
+        if (spans.isEmpty()) return emptyList()
+
+        val linkSpans = spans.filter { it.style is SpanStyle.Link }
+        val nonLinkSpans = spans.filterNot { it.style is SpanStyle.Link }
+        val normalizedLinks = normalizeLinkSpans(linkSpans)
+        return mergeOverlapping(nonLinkSpans + normalizedLinks)
+    }
+
+    /**
+     * Resolves different-URL link overlaps without changing non-link span semantics.
+     *
+     * Links are resolved by input order. A later different-URL link owns its range,
+     * clipping earlier links around the overlap while preserving their before/after
+     * portions. Same-URL links are merged afterward.
+     */
+    private fun normalizeLinkSpans(spans: List<TextSpan>): List<TextSpan> {
+        if (spans.isEmpty()) return emptyList()
+
+        val events = buildList {
+            spans.forEachIndexed { index, span ->
+                add(LinkEvent(position = span.start, spanIndex = index, isStart = true))
+                add(LinkEvent(position = span.end, spanIndex = index, isStart = false))
+            }
+        }.sortedBy { it.position }
+
+        val active = BooleanArray(spans.size)
+        val activeIndices = IntMaxHeap()
+        val resolved = mutableListOf<TextSpan>()
+        var previousPosition = events.first().position
+        var eventIndex = 0
+
+        while (eventIndex < events.size) {
+            val position = events[eventIndex].position
+            val winnerIndex = activeIndices.peekActive(active)
+            if (previousPosition < position && winnerIndex != null) {
+                resolved += TextSpan(previousPosition, position, spans[winnerIndex].style)
+            }
+
+            while (eventIndex < events.size && events[eventIndex].position == position) {
+                val event = events[eventIndex]
+                if (event.isStart) {
+                    active[event.spanIndex] = true
+                    activeIndices.add(event.spanIndex)
+                } else {
+                    active[event.spanIndex] = false
+                }
+                eventIndex++
+            }
+            previousPosition = position
+        }
+
+        return mergeOverlapping(resolved)
+    }
+
+    private fun operationMatches(existing: SpanStyle, requested: SpanStyle): Boolean {
+        return if (requested is SpanStyle.Link) {
+            existing is SpanStyle.Link
+        } else {
+            SpanStyle.kindMatches(existing, requested)
+        }
+    }
+
     private fun mergeOverlapping(spans: List<TextSpan>): List<TextSpan> {
         if (spans.isEmpty()) return emptyList()
 
@@ -374,5 +475,68 @@ internal object SpanAlgorithms {
         }
 
         return result.sortedWith(compareBy({ it.start }, { it.end }))
+    }
+
+    private data class LinkEvent(
+        val position: Int,
+        val spanIndex: Int,
+        val isStart: Boolean,
+    )
+
+    private class IntMaxHeap {
+        private val values = mutableListOf<Int>()
+
+        fun add(value: Int) {
+            values += value
+            siftUp(values.lastIndex)
+        }
+
+        fun peekActive(active: BooleanArray): Int? {
+            while (values.isNotEmpty()) {
+                val top = values[0]
+                if (active[top]) return top
+                removeRoot()
+            }
+            return null
+        }
+
+        private fun removeRoot() {
+            val last = values.removeAt(values.lastIndex)
+            if (values.isNotEmpty()) {
+                values[0] = last
+                siftDown(0)
+            }
+        }
+
+        private fun siftUp(startIndex: Int) {
+            var index = startIndex
+            while (index > 0) {
+                val parent = (index - 1) / 2
+                if (values[parent] >= values[index]) return
+                values.swap(parent, index)
+                index = parent
+            }
+        }
+
+        private fun siftDown(startIndex: Int) {
+            var index = startIndex
+            while (true) {
+                val left = index * 2 + 1
+                if (left >= values.size) return
+
+                val right = left + 1
+                val largerChild = if (right < values.size && values[right] > values[left]) right else left
+                if (values[index] >= values[largerChild]) return
+
+                values.swap(index, largerChild)
+                index = largerChild
+            }
+        }
+
+        private fun MutableList<Int>.swap(first: Int, second: Int) {
+            val temp = this[first]
+            this[first] = this[second]
+            this[second] = temp
+        }
     }
 }

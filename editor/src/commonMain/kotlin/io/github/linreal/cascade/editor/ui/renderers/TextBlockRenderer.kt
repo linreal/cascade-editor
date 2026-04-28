@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -42,6 +43,15 @@ private val QuoteContentPaddingStart = 12.dp
 /** Vertical padding inside the quote block. */
 private val QuoteContentPaddingVertical = 4.dp
 
+/** Corner radius for the code block tinted surface. */
+private val CodeBlockCornerRadius = 6.dp
+
+/** Horizontal padding between the code block tinted surface and its text. */
+private val CodeBlockPaddingHorizontal = 12.dp
+
+/** Vertical padding between the code block tinted surface and its text. */
+private val CodeBlockPaddingVertical = 8.dp
+
 /**
  * Renderer for text-supporting block types (paragraph, headings, lists, etc.).
  *
@@ -63,6 +73,21 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
         val targetStyle = remember(block.type.typeId, theme.typography) {
             getTextStyleForType(block.type, theme.typography)
         }
+
+        // Code uses a static monospace style — short-circuit before constructing the
+        // animated font size so Paragraph -> Code conversion does not drive a 300ms
+        // tween + recompositions for a value the Code branch ignores.
+        if (block.type is BlockType.Code) {
+            CodeBlock(
+                block = block,
+                isFocused = isFocused,
+                textStyle = targetStyle.copy(color = theme.colors.text),
+                modifier = modifier,
+                callbacks = callbacks,
+            )
+            return
+        }
+
         val animatedFontSize by animateFloatAsState(
             targetValue = targetStyle.fontSize.value,
             animationSpec = tween(durationMillis = 300),
@@ -113,6 +138,8 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
 
             is BlockType.Quote -> typography.body.copy(fontStyle = FontStyle.Italic)
 
+            is BlockType.Code -> typography.code
+
             else -> typography.body
         }
     }
@@ -144,6 +171,54 @@ private fun QuoteBlock(
                 start = QuoteBorderWidth + QuoteContentPaddingStart,
                 top = QuoteContentPaddingVertical,
                 bottom = QuoteContentPaddingVertical,
+            ),
+    ) {
+        TextBlockField(
+            block = block,
+            isFocused = isFocused,
+            textStyle = textStyle,
+            modifier = Modifier.fillMaxWidth(),
+            callbacks = callbacks,
+        )
+    }
+}
+
+/**
+ * Slack-style code block surface: a tinted rounded rectangle hosting a
+ * monospace [TextBlockField].
+ *
+ * Visual contract:
+ *  - Fills parent width and paints [CascadeEditorColors.codeBlockBackground]
+ *    clipped to a [CodeBlockCornerRadius] rounded rectangle.
+ *  - Internal padding is [CodeBlockPaddingHorizontal] x [CodeBlockPaddingVertical].
+ *  - Renders no chrome (no language label, no copy button, no indentation
+ *    rail). Code blocks do not support indentation.
+ *
+ * Selection chrome is intentionally absent here: the renderer relies on the
+ * wrapper-level selection overlay (`handlesSelectionVisual = false`).
+ */
+@Composable
+private fun CodeBlock(
+    block: Block,
+    isFocused: Boolean,
+    textStyle: TextStyle,
+    modifier: Modifier,
+    callbacks: BlockCallbacks,
+) {
+    val backgroundColor = LocalCascadeTheme.current.colors.codeBlockBackground
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .drawBehind {
+                drawRoundRect(
+                    color = backgroundColor,
+                    cornerRadius = CornerRadius(CodeBlockCornerRadius.toPx()),
+                )
+            }
+            .padding(
+                horizontal = CodeBlockPaddingHorizontal,
+                vertical = CodeBlockPaddingVertical,
             ),
     ) {
         TextBlockField(

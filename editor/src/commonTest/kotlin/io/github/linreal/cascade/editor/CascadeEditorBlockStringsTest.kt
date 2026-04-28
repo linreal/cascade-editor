@@ -94,6 +94,28 @@ class CascadeEditorBlockStringsTest {
         assertEquals("Heading 1", entry.displayName)
     }
 
+    // -- Code entry (Task 6) --
+
+    @Test
+    fun `code entry has expected v1 metadata`() {
+        val entry = blockStrings.forType("code")
+        assertNotNull(entry)
+        assertEquals("Code", entry.displayName)
+        assertTrue(entry.keywords.contains("code"))
+        assertTrue(entry.keywords.contains("snippet"))
+        assertTrue(entry.keywords.contains("monospace"))
+    }
+
+    @Test
+    fun `code entry description does not mention syntax`() {
+        val entry = blockStrings.forType("code")
+        assertNotNull(entry)
+        assertTrue(
+            "syntax" !in entry.description.lowercase(),
+            "v1 code block is plain — description must not reference syntax highlighting",
+        )
+    }
+
     // -- Default stability --
 
     @Test

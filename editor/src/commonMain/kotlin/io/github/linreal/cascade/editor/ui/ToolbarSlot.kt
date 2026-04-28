@@ -25,6 +25,7 @@ public sealed interface ToolbarSlot {
      * Indentation controls intentionally stay out of this lambda signature for
      * source compatibility. Read [LocalIndentationState] and [LocalIndentationActions]
      * from the composable body when custom toolbar chrome needs indent/outdent.
+     * Link controls follow the same pattern via [LocalLinkState] and [LocalLinkActions].
      *
      * @param trackedStyles Styles to include in [FormattingState.styles].
      *        Defaults to the default toolbar styles. Override to track additional

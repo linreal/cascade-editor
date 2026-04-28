@@ -28,7 +28,11 @@ import io.github.linreal.cascade.editor.richtext.StyleStatus
 @Stable
 public class BlockSpanStates {
 
-    private val states = mutableMapOf<BlockId, MutableState<List<TextSpan>>>()
+    // Snapshot-aware so derived state observers (e.g. rememberLinkState) re-evaluate
+    // when a new block's span state is registered after a focus change. A plain map
+    // would silently miss insertions because reading an absent key would not record
+    // a snapshot subscription.
+    private val states = mutableStateMapOf<BlockId, MutableState<List<TextSpan>>>()
     /**
      * Monotonically increasing counter, incremented on [clear].
      * Used as a `remember` key so composables re-fetch from the map after a bulk reset.
@@ -260,6 +264,26 @@ public class BlockSpanStates {
     }
 
     /**
+     * Removes link spans from `[rangeStart, rangeEnd)` regardless of URL.
+     *
+     * This is the link-specific counterpart to [removeStyle] for callers that
+     * need remove-link semantics without passing a throwaway [SpanStyle.Link].
+     * Non-link spans are preserved.
+     */
+    public fun removeLinkSpans(
+        blockId: BlockId,
+        rangeStart: Int,
+        rangeEnd: Int,
+    ) {
+        val state = states[blockId] ?: return
+        state.value = SpanAlgorithms.removeLinks(
+            spans = state.value,
+            rangeStart = rangeStart,
+            rangeEnd = rangeEnd,
+        )
+    }
+
+    /**
      * Toggles [style] on the range `[rangeStart, rangeEnd)` in the given block.
      * If fully active, removes; otherwise applies.
      * No-op if the block has no state entry.
@@ -355,9 +379,16 @@ public class BlockSpanStates {
         position: Int,
     ): Set<SpanStyle> {
         val pending = pendingStyles.remove(blockId)
-        if (pending != null) return pending.toSet()
+        if (pending != null) return pending.insertionContinuableStyles()
 
         if (position <= 0) return emptySet()
-        return activeStylesAt(blockId, position - 1)
+        return activeStylesAt(blockId, position - 1).insertionContinuableStyles()
+    }
+
+    private fun Set<SpanStyle>.insertionContinuableStyles(): Set<SpanStyle> {
+        // Links are range semantics, not continuation formatting. Typing inside a
+        // link remains linked through coordinate adjustment; boundary typing should
+        // require an explicit link action to create or extend link coverage.
+        return filterNotTo(mutableSetOf()) { it is SpanStyle.Link }
     }
 }

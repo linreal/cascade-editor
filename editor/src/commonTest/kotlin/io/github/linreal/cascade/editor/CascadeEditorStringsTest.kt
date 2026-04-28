@@ -1,9 +1,9 @@
 package io.github.linreal.cascade.editor
 
+import io.github.linreal.cascade.editor.richtext.LinkValidationError
 import io.github.linreal.cascade.editor.theme.CascadeEditorStrings
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class CascadeEditorStringsTest {
@@ -67,6 +67,26 @@ class CascadeEditorStringsTest {
         assertTrue(strings.indentBackward.isNotEmpty())
     }
 
+    @Test
+    fun `link labels are non-empty`() {
+        assertTrue(strings.link.isNotEmpty())
+        assertTrue(strings.linkApply.isNotEmpty())
+        assertTrue(strings.linkCancel.isNotEmpty())
+        assertTrue(strings.linkRemove.isNotEmpty())
+        assertTrue(strings.linkTitle.isNotEmpty())
+        assertTrue(strings.linkUrl.isNotEmpty())
+    }
+
+    @Test
+    fun `link validation error labels are non-empty for every error`() {
+        LinkValidationError.entries.forEach { error ->
+            assertTrue(
+                strings.linkValidationError(error).isNotEmpty(),
+                "Expected non-empty label for $error",
+            )
+        }
+    }
+
     // -- unsupportedBlock lambda --
 
     @Test
@@ -108,6 +128,30 @@ class CascadeEditorStringsTest {
     }
 
     @Test
+    fun `copy with custom link labels works`() {
+        val custom = strings.copy(
+            link = "Link",
+            linkApply = "Apply",
+            linkCancel = "Cancel",
+            linkRemove = "Remove",
+            linkTitle = "Title",
+            linkUrl = "URL",
+            linkValidationError = { "Invalid: $it" },
+        )
+
+        assertEquals("Link", custom.link)
+        assertEquals("Apply", custom.linkApply)
+        assertEquals("Cancel", custom.linkCancel)
+        assertEquals("Remove", custom.linkRemove)
+        assertEquals("Title", custom.linkTitle)
+        assertEquals("URL", custom.linkUrl)
+        assertEquals(
+            "Invalid: Blank",
+            custom.linkValidationError(LinkValidationError.Blank),
+        )
+    }
+
+    @Test
     fun `copy produces equal instance when no changes`() {
         assertEquals(strings, strings.copy())
     }
@@ -138,5 +182,11 @@ class CascadeEditorStringsTest {
         assertEquals("Hide Keyboard", strings.hideKeyboard)
         assertEquals("Indent Forward", strings.indentForward)
         assertEquals("Indent Backward", strings.indentBackward)
+        assertEquals("Link", strings.link)
+        assertEquals("Apply Link", strings.linkApply)
+        assertEquals("Cancel", strings.linkCancel)
+        assertEquals("Remove Link", strings.linkRemove)
+        assertEquals("Title", strings.linkTitle)
+        assertEquals("URL", strings.linkUrl)
     }
 }

@@ -160,6 +160,92 @@ class BlockTest {
     }
 
     @Test
+    fun `built in text supporting block types support spans by default`() {
+        val spansSupportingTypes: List<BlockType> = listOf(
+            BlockType.Paragraph,
+            BlockType.Heading(1),
+            BlockType.Heading(2),
+            BlockType.Heading(3),
+            BlockType.Heading(4),
+            BlockType.Heading(5),
+            BlockType.Heading(6),
+            BlockType.Todo(),
+            BlockType.BulletList,
+            BlockType.NumberedList(),
+            BlockType.Quote,
+        )
+
+        spansSupportingTypes.forEach { type ->
+            assertTrue(type.supportsSpans, "${type.displayName} should support spans")
+        }
+    }
+
+    @Test
+    fun `Divider does not support spans`() {
+        assertFalse(BlockType.Divider.supportsText)
+        assertFalse(BlockType.Divider.supportsSpans)
+    }
+
+    @Test
+    fun `Code block exposes expected capabilities`() {
+        val type = BlockType.Code
+
+        assertEquals("code", type.typeId)
+        assertEquals("Code", type.displayName)
+        assertTrue(type.supportsText)
+        assertFalse(type.supportsIndentation)
+        assertFalse(type.supportsSpans)
+        assertTrue(type.isConvertible)
+    }
+
+    @Test
+    fun `Code is pattern-matchable as BlockType`() {
+        val type: BlockType = BlockType.Code
+        assertIs<BlockType.Code>(type)
+        assertTrue(type is BlockType.Code)
+    }
+
+    @Test
+    fun `CustomBlockType inherits supportsSpans default from supportsText`() {
+        val textCustomType = object : CustomBlockType {
+            override val typeId: String = "callout_text"
+            override val displayName: String = "Callout"
+            override val supportsText: Boolean = true
+        }
+        val nonTextCustomType = object : CustomBlockType {
+            override val typeId: String = "embed"
+            override val displayName: String = "Embed"
+        }
+
+        assertTrue(textCustomType.supportsSpans)
+        assertFalse(nonTextCustomType.supportsSpans)
+    }
+
+    @Test
+    fun `CustomBlockType can opt out of spans while supporting text`() {
+        val plainTextCustomType = object : CustomBlockType {
+            override val typeId: String = "plain_log"
+            override val displayName: String = "Log"
+            override val supportsText: Boolean = true
+            override val supportsSpans: Boolean = false
+        }
+
+        assertTrue(plainTextCustomType.supportsText)
+        assertFalse(plainTextCustomType.supportsSpans)
+    }
+
+    @Test
+    fun `UnknownBlockType does not support spans`() {
+        val unknown = UnknownBlockType(
+            typeId = "future_widget",
+            rawTypeJson = """{"typeId":"future_widget"}""",
+        )
+
+        assertFalse(unknown.supportsText)
+        assertFalse(unknown.supportsSpans)
+    }
+
+    @Test
     fun `block creation with text content`() {
         val block = Block(
             id = BlockId("test-1"),
