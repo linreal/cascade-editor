@@ -112,9 +112,10 @@ internal fun TextBlockField(
     }
     val inlineCodeBackground = colors.inlineCodeBackground
     val highlightBackground = colors.highlight
-    val outputTransformation = remember(block.id, spanState, inlineCodeBackground, highlightBackground) {
+    val baseDecoration = textStyle.textDecoration
+    val outputTransformation = remember(block.id, spanState, inlineCodeBackground, highlightBackground, baseDecoration) {
         OutputTransformation {
-            SpanMapper.run { applyStyles(spanState.value, inlineCodeBackground, highlightBackground) }
+            SpanMapper.run { applyStyles(spanState.value, inlineCodeBackground, highlightBackground, baseDecoration) }
         }
     }
     val spanTextObserver = remember(block.id, textStates, spanStates) {

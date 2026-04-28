@@ -37,10 +37,11 @@ internal object SpanMapper {
         spans: List<TextSpan>,
         inlineCodeBackground: Color,
         highlightBackground: Color,
+        baseDecoration: TextDecoration? = null,
     ): OutputTransformation? {
         if (spans.isEmpty()) return null
 
-        val mapped = mapRenderableSpans(spans, inlineCodeBackground, highlightBackground)
+        val mapped = mapRenderableSpans(spans, inlineCodeBackground, highlightBackground, baseDecoration)
         if (mapped.isEmpty()) return null
 
         return OutputTransformation {
@@ -53,15 +54,21 @@ internal object SpanMapper {
      *
      * Unlike [toOutputTransformation], this is suitable for a stable OutputTransformation
      * instance that reads the latest span list on each invocation.
+     *
+     * [baseDecoration] is the [TextDecoration] carried by the consumer's base [TextStyle]
+     * (e.g. completion strikethrough on a checked todo). Per-run [SpanStyle.textDecoration]
+     * replaces the base field-by-field during Compose merging, so without combining here,
+     * a base decoration would be silently dropped on any run that sets its own decoration.
      */
     fun TextFieldBuffer.applyStyles(
         spans: List<TextSpan>,
         inlineCodeBackground: Color,
         highlightBackground: Color,
+        baseDecoration: TextDecoration? = null,
     ) {
         if (spans.isEmpty()) return
 
-        val mapped = mapRenderableSpans(spans, inlineCodeBackground, highlightBackground)
+        val mapped = mapRenderableSpans(spans, inlineCodeBackground, highlightBackground, baseDecoration)
         if (mapped.isEmpty()) return
 
         applyMappedStyles(mapped)
@@ -92,6 +99,7 @@ internal object SpanMapper {
         spans: List<TextSpan>,
         inlineCodeBackground: Color,
         highlightBackground: Color,
+        baseDecoration: TextDecoration? = null,
     ): List<RenderSpan> {
         if (spans.isEmpty()) return emptyList()
 
@@ -101,8 +109,23 @@ internal object SpanMapper {
         }
         if (base.isEmpty()) return emptyList()
 
+        // Overlay must be built from the un-combined base so the equality filters on
+        // Underline / LineThrough still match — combining baseDecoration into the runs
+        // first would change those values and miss the run-vs-run overlap.
         val overlay = buildCombinedDecorationOverlay(base)
-        return if (overlay.isEmpty()) base else base + overlay
+        val combined = if (overlay.isEmpty()) base else base + overlay
+
+        if (baseDecoration == null || baseDecoration == TextDecoration.None) {
+            return combined
+        }
+        return combined.map { run ->
+            val runDecoration = run.style.textDecoration ?: return@map run
+            run.copy(
+                style = run.style.copy(
+                    textDecoration = TextDecoration.combine(listOf(baseDecoration, runDecoration))
+                )
+            )
+        }
     }
 
     private fun buildCombinedDecorationOverlay(base: List<RenderSpan>): List<RenderSpan> {
