@@ -228,6 +228,25 @@ class DocumentSerializationExtTest {
     }
 
     @Test
+    fun `loadFromJson preserves free indentation on first block and after unsupported boundary`() {
+        val holder = EditorStateHolder()
+        val textStates = BlockTextStates()
+        val spanStates = BlockSpanStates()
+
+        val json = """{"version":2,"blocks":[
+            {"id":"b1","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":5},"content":{"kind":"text","version":1,"text":"Indented root","spans":[]}},
+            {"id":"h1","type":{"typeId":"heading_1"},"content":{"kind":"text","version":1,"text":"Boundary","spans":[]}},
+            {"id":"b2","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":4},"content":{"kind":"text","version":1,"text":"Indented after boundary","spans":[]}}
+        ]}"""
+
+        holder.loadFromJson(json, textStates, spanStates)
+
+        assertEquals(5, holder.state.blocks[0].attributes.indentationLevel)
+        assertEquals(0, holder.state.blocks[1].attributes.indentationLevel)
+        assertEquals(4, holder.state.blocks[2].attributes.indentationLevel)
+    }
+
+    @Test
     fun `loadFromJson clears runtime state`() {
         val oldId = BlockId("old")
         val textStates = BlockTextStates()

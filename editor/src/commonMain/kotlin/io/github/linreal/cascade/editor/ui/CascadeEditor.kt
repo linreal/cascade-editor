@@ -69,6 +69,8 @@ import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
 import io.github.linreal.cascade.editor.theme.LocalCascadeBlockStrings
 import io.github.linreal.cascade.editor.theme.LocalCascadeStrings
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
+import io.github.linreal.cascade.editor.ui.renderers.LocalOrderedListPrefixStyles
+import io.github.linreal.cascade.editor.ui.renderers.resolveOrderedListPrefixStyles
 
 /**
  * Main editor composable for CascadeEditor.
@@ -145,6 +147,9 @@ public fun CascadeEditor(
     onFormattingStateChanged: ((FormattingState) -> Unit)? = null,
 ) {
     val state = stateHolder.state
+    val orderedListPrefixStyles = remember(state.blocks) {
+        resolveOrderedListPrefixStyles(state.blocks)
+    }
 
     // History replay uses the live runtime holders owned by this composition.
     // Caller-provided instances should remain stable for the lifetime of stateHolder.
@@ -343,6 +348,7 @@ public fun CascadeEditor(
         LocalCascadeStrings provides strings,
         LocalCascadeBlockStrings provides blockStrings,
         LocalTextSelectionColors provides textSelectionColors,
+        LocalOrderedListPrefixStyles provides orderedListPrefixStyles,
         LocalEditorStateHolder provides stateHolder,
         LocalBlockTextStates provides textStates,
         LocalBlockSpanStates provides spanStates,

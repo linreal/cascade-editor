@@ -213,7 +213,7 @@ See [Undo/Redo Feature Context](docs/UndoRedoFeatureContext.md) for the hybrid h
 
 CascadeEditor supports flat-outline indentation for paragraphs, todos, bullet lists, and numbered lists. The document remains an ordered `List<Block>`: depth is stored in `BlockAttributes.indentationLevel`, rendered as an animated leading inset, and preserved through split/merge, undo/redo, drag-and-drop, and save/load.
 
-The default toolbar includes indent/outdent buttons when `RichTextToolbarConfig.showIndentation` is enabled, which it is by default. Commands shift the focused supported block or selected supported root blocks together with their descendants. Indentation is bounded to levels `0..3`; invalid outline moves no-op instead of producing orphaned nested blocks.
+The default toolbar includes indent/outdent buttons when `RichTextToolbarConfig.showIndentation` is enabled, which it is by default. Commands shift the focused supported block or selected supported root blocks together with their descendants. Indentation is bounded to levels `0..5`; supported blocks can use any level in that range, and invalid outline moves no-op instead of producing hidden indentation on unsupported blocks.
 
 ```kotlin
 CascadeEditor(

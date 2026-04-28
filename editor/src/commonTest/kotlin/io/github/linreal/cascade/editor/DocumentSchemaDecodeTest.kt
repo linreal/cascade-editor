@@ -235,25 +235,20 @@ class DocumentSchemaDecodeTest {
     }
 
     @Test
-    fun `first supported block indentation is normalized on decode with warning`() {
-        val json = """{"version":2,"blocks":[{"id":"b1","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":1},"content":{"kind":"text","version":1,"text":"Orphan","spans":[]}}]}"""
+    fun `first supported block indentation is preserved on decode`() {
+        val json = """{"version":2,"blocks":[{"id":"b1","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":5},"content":{"kind":"text","version":1,"text":"Indented root","spans":[]}}]}"""
 
         val result = DocumentSchema.decodeFromStringWithReport(json)
 
-        assertEquals(0, result.blocks[0].attributes.indentationLevel)
-        val warning = assertIs<DocumentDecodeWarning.InvalidBlockAttributeParam>(
-            result.warnings.single { it is DocumentDecodeWarning.InvalidBlockAttributeParam }
-        )
-        assertEquals(0, warning.blockIndex)
-        assertEquals("indentationLevel=1", warning.param)
-        assertEquals("indentationLevel=0", warning.fallback)
+        assertEquals(5, result.blocks[0].attributes.indentationLevel)
+        assertTrue(result.warnings.isEmpty())
     }
 
     @Test
-    fun `normalization warning reports source index after skipped block`() {
+    fun `attribute warning reports source index after skipped block`() {
         val json = """{"version":2,"blocks":[
             "bad_entry",
-            {"id":"b1","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":1},"content":{"kind":"text","version":1,"text":"Orphan","spans":[]}}
+            {"id":"b1","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":6},"content":{"kind":"text","version":1,"text":"Out of range","spans":[]}}
         ]}"""
 
         val result = DocumentSchema.decodeFromStringWithReport(json)
@@ -270,27 +265,22 @@ class DocumentSchemaDecodeTest {
             result.warnings.single { it is DocumentDecodeWarning.InvalidBlockAttributeParam }
         )
         assertEquals(1, attributeWarning.blockIndex)
-        assertEquals("indentationLevel=1", attributeWarning.param)
+        assertEquals("indentationLevel=6", attributeWarning.param)
         assertEquals("indentationLevel=0", attributeWarning.fallback)
     }
 
     @Test
-    fun `supported block after unsupported boundary is normalized on decode`() {
+    fun `supported block after unsupported boundary keeps free indentation on decode`() {
         val json = """{"version":2,"blocks":[
             {"id":"p","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":0},"content":{"kind":"text","version":1,"text":"Parent","spans":[]}},
             {"id":"h","type":{"typeId":"heading_2"},"attributes":{"indentationLevel":0},"content":{"kind":"text","version":1,"text":"Heading","spans":[]}},
-            {"id":"c","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":1},"content":{"kind":"text","version":1,"text":"Child","spans":[]}}
+            {"id":"c","type":{"typeId":"paragraph"},"attributes":{"indentationLevel":4},"content":{"kind":"text","version":1,"text":"Indented after boundary","spans":[]}}
         ]}"""
 
         val result = DocumentSchema.decodeFromStringWithReport(json)
 
-        assertEquals(listOf(0, 0, 0), result.blocks.map { it.attributes.indentationLevel })
-        val warning = assertIs<DocumentDecodeWarning.InvalidBlockAttributeParam>(
-            result.warnings.single { it is DocumentDecodeWarning.InvalidBlockAttributeParam }
-        )
-        assertEquals(2, warning.blockIndex)
-        assertEquals("indentationLevel=1", warning.param)
-        assertEquals("indentationLevel=0", warning.fallback)
+        assertEquals(listOf(0, 0, 4), result.blocks.map { it.attributes.indentationLevel })
+        assertTrue(result.warnings.isEmpty())
     }
 
     @Test

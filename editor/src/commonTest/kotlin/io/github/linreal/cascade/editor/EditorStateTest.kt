@@ -78,7 +78,7 @@ class EditorStateTest {
     }
 
     @Test
-    fun `DeleteBlocks normalizes remaining subtree when parent is removed`() {
+    fun `DeleteBlocks preserves free indentation when parent is removed`() {
         val blocks = listOf(
             createTestBlock("parent"),
             createTestBlock("child").atDepth(1),
@@ -90,11 +90,11 @@ class EditorStateTest {
         val newState = DeleteBlocks(setOf(BlockId("parent"))).reduce(state)
 
         assertEquals(listOf("child", "grandchild", "sibling"), newState.blocks.map { it.id.value })
-        assertEquals(listOf(0, 1, 0), newState.blocks.map { it.attributes.indentationLevel })
+        assertEquals(listOf(1, 2, 0), newState.blocks.map { it.attributes.indentationLevel })
     }
 
     @Test
-    fun `EditorStateHolder setState normalizes loaded outline`() {
+    fun `EditorStateHolder setState preserves free indentation`() {
         val holder = EditorStateHolder()
 
         holder.setState(
@@ -106,7 +106,7 @@ class EditorStateTest {
             )
         )
 
-        assertEquals(listOf(0, 1), holder.state.blocks.map { it.attributes.indentationLevel })
+        assertEquals(listOf(1, 2), holder.state.blocks.map { it.attributes.indentationLevel })
     }
 
     @Test
@@ -905,7 +905,7 @@ class EditorStateTest {
     }
 
     @Test
-    fun `ConvertBlockType to unsupported normalizes former descendants`() {
+    fun `ConvertBlockType to unsupported keeps former descendants as free indentation segment`() {
         val blocks = listOf(
             createTestBlock("parent"),
             createTestBlock("child").atDepth(1),
@@ -916,7 +916,7 @@ class EditorStateTest {
         val newState = ConvertBlockType(BlockId("parent"), BlockType.Heading(1)).reduce(state)
 
         assertEquals(BlockType.Heading(1), newState.blocks[0].type)
-        assertEquals(listOf(0, 0, 1), newState.blocks.map { it.attributes.indentationLevel })
+        assertEquals(listOf(0, 1, 2), newState.blocks.map { it.attributes.indentationLevel })
     }
 
     @Test
@@ -1005,13 +1005,13 @@ class EditorStateTest {
     }
 
     @Test
-    fun `IndentForward is no-op for the first block`() {
+    fun `IndentForward indents the first block`() {
         val block = createTestBlock("a", "First")
         val state = EditorState.withBlocks(listOf(block)).copy(focusedBlockId = block.id)
 
         val newState = IndentForward.reduce(state)
 
-        assertEquals(state, newState)
+        assertEquals(1, newState.blocks[0].attributes.indentationLevel)
     }
 
     @Test
@@ -1019,14 +1019,27 @@ class EditorStateTest {
         val blocks = listOf(
             createTestBlock("a", "Root"),
             createTestBlock("b", "Child").atDepth(1),
-            createTestBlock("c", "Grandchild").atDepth(2),
-            createTestBlock("d", "Max depth target").atDepth(3),
+            createTestBlock("c", "Grandchild").atDepth(4),
+            createTestBlock("d", "Max depth target").atDepth(5),
         )
         val state = EditorState.withBlocks(blocks).copy(focusedBlockId = BlockId("d"))
 
         val newState = IndentForward.reduce(state)
 
         assertEquals(state, newState)
+    }
+
+    @Test
+    fun `IndentForward allows skipped indentation levels after shallow sibling`() {
+        val blocks = listOf(
+            createTestBlock("a", "Root").atDepth(0),
+            createTestBlock("b", "Already deep").atDepth(4),
+        )
+        val state = EditorState.withBlocks(blocks).copy(focusedBlockId = BlockId("b"))
+
+        val newState = IndentForward.reduce(state)
+
+        assertEquals(listOf(0, 5), newState.blocks.map { it.attributes.indentationLevel })
     }
 
     @Test

@@ -244,8 +244,8 @@ public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>)   // NEW
 
 - `attributes` is optional on every block entry. Missing `attributes` and missing `attributes.indentationLevel` both decode as depth `0`.
 - `attributes` must be a JSON object. Non-object values emit `InvalidBlockAttributeParam` and fall back to depth `0`.
-- `indentationLevel` must be a non-string integer in the supported range `0..3`. Strings, malformed values, and out-of-range values emit `InvalidBlockAttributeParam` and fall back to depth `0`.
-- Structurally invalid but in-range indentation is normalized after decode. Examples: the first supported block at depth `1`, a supported block after an unsupported boundary at depth `1`, or a jump from depth `0` to depth `2`. These emit `InvalidBlockAttributeParam` with the normalized fallback depth.
+- `indentationLevel` must be a non-string integer in the supported range `0..5`. Strings, malformed values, and out-of-range values emit `InvalidBlockAttributeParam` and fall back to depth `0`.
+- Unsupported block types cannot carry indentation. If an unsupported block decodes with non-zero indentation, it is normalized to depth `0` and emits `InvalidBlockAttributeParam` with the normalized fallback depth.
 - Encode omits `attributes` when the effective indentation level is `0`, keeping root-level documents compact.
 - Decode runs outline normalization before `renumberNumberedLists()`, so loaded nested ordered lists use valid outline-aware sequence numbers.
 
