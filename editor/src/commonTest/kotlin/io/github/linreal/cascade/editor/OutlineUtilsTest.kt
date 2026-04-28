@@ -46,13 +46,13 @@ class OutlineUtilsTest {
     }
 
     @Test
-    fun `canShiftIndentation rejects first supported block moving deeper`() {
+    fun `canShiftIndentation allows first supported block moving deeper`() {
         val blocks = listOf(
             block("first"),
             block("second"),
         )
 
-        assertFalse(
+        assertTrue(
             canShiftIndentation(
                 blocks = blocks,
                 targetRootIndices = listOf(0),
@@ -116,11 +116,11 @@ class OutlineUtilsTest {
             block("orphan", depth = 1),
         )
 
-        assertFalse(blocks.isValidIndentationOutline())
+        assertTrue(blocks.isValidIndentationOutline())
     }
 
     @Test
-    fun `normalizeIndentationOutline outdents supported blocks after unsupported boundary`() {
+    fun `normalizeIndentationOutline preserves supported indentation after unsupported boundary`() {
         val blocks = listOf(
             block("root"),
             block("heading", type = BlockType.Heading(1)),
@@ -129,7 +129,20 @@ class OutlineUtilsTest {
 
         val normalized = normalizeIndentationOutline(blocks)
 
-        assertEquals(listOf(0, 0, 0), normalized.map { it.attributes.indentationLevel })
+        assertEquals(listOf(0, 0, 1), normalized.map { it.attributes.indentationLevel })
         assertTrue(normalized.isValidIndentationOutline())
+    }
+
+    @Test
+    fun `free indentation outline allows skipped levels and indented first block`() {
+        val blocks = listOf(
+            block("first", depth = 4),
+            block("child", depth = 5),
+            block("sibling", depth = 2),
+            block("deep-sibling", depth = 4),
+        )
+
+        assertTrue(blocks.isValidIndentationOutline())
+        assertEquals(blocks, normalizeIndentationOutline(blocks))
     }
 }

@@ -67,7 +67,7 @@ class IndentationStateCalculatorTest {
     }
 
     @Test
-    fun `selected supported blocks deeper than root enable indent backward`() {
+    fun `selected supported blocks deeper than root enable both indentation directions`() {
         val root = block("root")
         val firstChild = block("first-child", depth = 1)
         val secondChild = block("second-child", depth = 1)
@@ -79,7 +79,7 @@ class IndentationStateCalculatorTest {
             ),
         )
 
-        assertFalse(result.canIndentForward)
+        assertTrue(result.canIndentForward)
         assertTrue(result.canIndentBackward)
         assertEquals(listOf(firstChild.id, secondChild.id), result.targetBlockIds)
     }
@@ -120,7 +120,7 @@ class IndentationStateCalculatorTest {
     }
 
     @Test
-    fun `indent forward is disabled when structural outline rules forbid moving deeper`() {
+    fun `indent forward is enabled after unsupported boundary`() {
         val heading = block("heading", type = BlockType.Heading(1))
         val paragraph = block("paragraph")
 
@@ -131,7 +131,7 @@ class IndentationStateCalculatorTest {
             ),
         )
 
-        assertFalse(result.canIndentForward)
+        assertTrue(result.canIndentForward)
         assertFalse(result.canIndentBackward)
         assertEquals(listOf(paragraph.id), result.targetBlockIds)
     }

@@ -153,9 +153,9 @@ public fun calculateDropTargetIndex(
  *
  * Y selects [visualGap]. Horizontal movement selects a raw depth in whole indent-unit
  * steps from the primary root's original depth. Surrounding non-payload blocks and
- * payload depth range then clamp that raw value so the eventual move cannot create
- * outline gaps, exceed the persisted depth range, or make following non-dragged blocks
- * become accidental descendants of the moved payload.
+ * payload depth range then clamp that raw value so the eventual move cannot exceed
+ * the persisted depth range or make following non-dragged blocks become accidental
+ * descendants of the moved payload.
  *
  * Returns `null` when the visual gap is inside the dragged payload or when no depth can
  * satisfy the surrounding outline constraints.
@@ -208,7 +208,6 @@ internal fun resolveDepthAwareDragHoverTarget(
     } ?: payloadIndices.toContiguousRanges()
     if (gap.isInsidePayloadRanges(payloadIndexRanges)) return null
 
-    val previousBlock = outlineIndex.previousNonPayloadBlock(gap, payloadIndexSet)
     val nextBlock = outlineIndex.nextNonPayloadBlock(gap, payloadIndexSet)
 
     val primaryRootId = currentDragState.primaryRootId ?: return null
@@ -241,18 +240,6 @@ internal fun resolveDepthAwareDragHoverTarget(
         BlockAttributes.MAX_INDENTATION_LEVEL,
         BlockAttributes.MAX_INDENTATION_LEVEL - deepestPayloadOffset,
     )
-
-    if (previousBlock == null) {
-        // At the document start the moved root must remain a root. This also covers
-        // the "dragging the entire document" case where there is no next block.
-        minDepth = max(minDepth, BlockAttributes.MIN_INDENTATION_LEVEL)
-        maxDepth = min(maxDepth, BlockAttributes.MIN_INDENTATION_LEVEL)
-    } else if (!previousBlock.type.supportsIndentation) {
-        // Unsupported blocks are hard outline boundaries, not parents.
-        maxDepth = min(maxDepth, BlockAttributes.MIN_INDENTATION_LEVEL)
-    } else {
-        maxDepth = min(maxDepth, previousBlock.attributes.indentationLevel + 1)
-    }
 
     if (!primarySupportsIndentation) {
         minDepth = max(minDepth, BlockAttributes.MIN_INDENTATION_LEVEL)

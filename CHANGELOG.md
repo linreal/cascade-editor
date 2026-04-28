@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-04-28
+
+### Changed
+
+- Expanded supported block indentation from `0..3` to `0..5`
+- Added free indentation: supported blocks can now start at any indentation level, including the first block and blocks after unsupported boundaries
+- Drag-and-drop now supports free target indentation while still moving child blocks with their parent payload
+- Numbered-list prefixes now follow numbered-list ancestry with a `1.` → `a.` → `i.` cycle instead of absolute indentation depth
+- Updated indentation serialization, documentation, and regression coverage for the new outline rules
+
 ## [1.2.0] - 2026-04-26
 
 ### Added

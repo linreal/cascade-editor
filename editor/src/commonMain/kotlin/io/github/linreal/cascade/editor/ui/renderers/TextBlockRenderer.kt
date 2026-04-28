@@ -164,11 +164,12 @@ private fun ListPrefixRow(
     modifier: Modifier,
     callbacks: BlockCallbacks,
 ) {
+    val orderedListPrefixStyles = LocalOrderedListPrefixStyles.current
     val prefixText = when (val type = block.type) {
         is BlockType.BulletList -> "\u2022"
         is BlockType.NumberedList -> formatOrderedListPrefix(
             number = type.number,
-            depth = block.attributes.indentationLevel,
+            style = orderedListPrefixStyles.styleFor(block.id),
         )
         else -> return // should not happen
     }

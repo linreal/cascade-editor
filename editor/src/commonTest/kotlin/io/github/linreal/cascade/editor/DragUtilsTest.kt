@@ -53,7 +53,7 @@ class DragUtilsTest {
     // =========================================================================
 
     @Test
-    fun `hover target caps future depth to previous block plus one`() {
+    fun `hover target allows free depth beyond previous block plus one`() {
         val state = draggingState(
             blocks = listOf(
                 block("A", depth = 0),
@@ -72,11 +72,11 @@ class DragUtilsTest {
         )
 
         assertEquals(2, target?.visualGap)
-        assertEquals(2, target?.futureRootIndentationLevel)
+        assertEquals(3, target?.futureRootIndentationLevel)
     }
 
     @Test
-    fun `hover target before first block only allows root depth zero`() {
+    fun `hover target before first block allows free indentation`() {
         val state = draggingState(
             blocks = listOf(
                 block("A", depth = 0),
@@ -94,11 +94,11 @@ class DragUtilsTest {
         )
 
         assertEquals(0, target?.visualGap)
-        assertEquals(0, target?.futureRootIndentationLevel)
+        assertEquals(2, target?.futureRootIndentationLevel)
     }
 
     @Test
-    fun `hover target is invalid when next depth would be adopted and payload cannot fit there`() {
+    fun `hover target raises future depth to avoid adopting following non-payload block`() {
         val state = draggingState(
             blocks = listOf(
                 block("A", depth = 0),
@@ -119,11 +119,12 @@ class DragUtilsTest {
             indentUnitPx = 24f,
         )
 
-        assertNull(target)
+        assertEquals(2, target?.visualGap)
+        assertEquals(2, target?.futureRootIndentationLevel)
     }
 
     @Test
-    fun `hover target caps future depth by deepest dragged descendant offset`() {
+    fun `hover target allows subtree to move until deepest dragged descendant reaches max depth`() {
         val state = draggingState(
             blocks = listOf(
                 block("A", depth = 0),
@@ -143,7 +144,7 @@ class DragUtilsTest {
         )
 
         assertEquals(1, target?.visualGap)
-        assertEquals(1, target?.futureRootIndentationLevel)
+        assertEquals(3, target?.futureRootIndentationLevel)
     }
 
     @Test
@@ -217,7 +218,7 @@ class DragUtilsTest {
     }
 
     @Test
-    fun `hover target treats previous unsupported block as outline boundary`() {
+    fun `hover target allows free indentation after previous unsupported block`() {
         val state = draggingState(
             blocks = listOf(
                 block("A", depth = 0),
@@ -236,7 +237,7 @@ class DragUtilsTest {
         )
 
         assertEquals(2, target?.visualGap)
-        assertEquals(0, target?.futureRootIndentationLevel)
+        assertEquals(1, target?.futureRootIndentationLevel)
     }
 
     @Test

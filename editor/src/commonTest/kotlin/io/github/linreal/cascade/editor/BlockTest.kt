@@ -143,12 +143,19 @@ class BlockTest {
     }
 
     @Test
-    fun `BlockAttributes rejects indentation outside v1 range`() {
+    fun `BlockAttributes accepts indentation through level five`() {
+        val attributes = BlockAttributes(indentationLevel = 5)
+
+        assertEquals(5, attributes.indentationLevel)
+    }
+
+    @Test
+    fun `BlockAttributes rejects indentation outside supported range`() {
         assertFailsWith<IllegalArgumentException> {
             BlockAttributes(indentationLevel = -1)
         }
         assertFailsWith<IllegalArgumentException> {
-            BlockAttributes(indentationLevel = 4)
+            BlockAttributes(indentationLevel = 6)
         }
     }
 

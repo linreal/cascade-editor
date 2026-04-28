@@ -400,14 +400,23 @@ class StructuralHistoryIntegrationTest {
     fun `no-op indent action through structural wrapper does not create undo step`() {
         val blockId = BlockId("a")
         val harness = Harness(
-            EditorState.withBlocks(listOf(paragraph(blockId, "A"))).copy(
+            EditorState.withBlocks(
+                listOf(
+                    paragraph(blockId, "A")
+                        .withAttributes(
+                            BlockAttributes(
+                                indentationLevel = BlockAttributes.MAX_INDENTATION_LEVEL,
+                            )
+                        )
+                )
+            ).copy(
                 focusedBlockId = blockId,
             )
         )
 
         harness.callbacks.dispatch(IndentForward)
 
-        assertEquals(listOf(0), harness.indentationLevels())
+        assertEquals(listOf(BlockAttributes.MAX_INDENTATION_LEVEL), harness.indentationLevels())
         assertFalse(harness.stateHolder.canUndo)
     }
 

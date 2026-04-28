@@ -5,12 +5,12 @@
 CascadeEditor's block model already defined `BulletList` and `NumberedList` as block types, but they rendered as plain paragraphs with no visual distinction or list-specific editing behavior.
 
 This feature adds:
-- **Visual prefixes** — a non-editable `•` or depth-formatted ordered-list gutter to the left of the text field
+- **Visual prefixes** — a non-editable `•` or ancestry-formatted ordered-list gutter to the left of the text field
 - **Auto-detection** — typing `- ` or `1. ` in a paragraph automatically converts it to the corresponding list type
 - **Enter continuation** — pressing Enter in a list item creates a new item of the same type; pressing Enter on an empty item exits the list
 - **Backspace un-listing** — backspace at position 0 of a list item demotes it to a paragraph
 - **Automatic renumbering** — sequential numbers in numbered lists are corrected after structural mutations and document decode, using indentation depth and derived parent scope
-- **Nested ordered-list formats** — stored numbers remain decimal, but rendering formats prefixes by depth (`1.`, `a.`, `i.`, `A.`)
+- **Nested ordered-list formats** — stored numbers remain decimal, but rendering cycles prefixes by numbered-list ancestry (`1.`, `a.`, `i.`, then `1.` again)
 
 The implementation touches the core model, action reducers, rendering layer, and text observers. List numbering now integrates with block indentation through `BlockAttributes.indentationLevel`, but list content remains a flat `List<Block>` rather than a tree.
 
@@ -24,7 +24,7 @@ The implementation touches the core model, action reducers, rendering layer, and
 |------|---------|
 | `core/ListUtils.kt` | `renumberNumberedLists()` — pure function that corrects sequential numbers across outline-aware sequences |
 | `ui/observers/ListAutoDetectObserver.kt` | Text observer that detects `- ` and `N. ` trigger patterns and fires conversion callbacks |
-| `ui/renderers/OrderedListPrefixFormatter.kt` | Presentation-only ordered prefix formatter for depth-specific decimal, alphabetic, and roman forms |
+| `ui/renderers/OrderedListPrefixFormatter.kt` | Presentation-only ordered prefix formatter for numbered-ancestry-specific decimal, alphabetic, and roman forms |
 
 ### Modified Files
 
@@ -35,7 +35,7 @@ The implementation touches the core model, action reducers, rendering layer, and
 | `action/EditorAction.kt` | `SplitBlock` propagates list type to new block; structural reducers and drag/indent actions call `renumberNumberedLists()` post-processing |
 | `registry/BlockRenderer.kt` | `DefaultBlockCallbacks.onEnter` — empty-list-item exit; `onBackspaceAtStart` — un-list conversion |
 | `registry/BlockRegistry.kt` | Factory updated: `NumberedList` → `NumberedList(number = 1)` |
-| `ui/renderers/TextBlockRenderer.kt` | Added list prefix row and depth-aware ordered prefixes; branching render path for list vs. non-list types |
+| `ui/renderers/TextBlockRenderer.kt` | Added list prefix row and numbered-ancestry-aware ordered prefixes; branching render path for list vs. non-list types |
 | `ui/renderers/TextBlockField.kt` | Wired `ListAutoDetectObserver` into the combined text observation `LaunchedEffect` |
 
 ### Key Design Choices
@@ -48,7 +48,9 @@ The implementation touches the core model, action reducers, rendering layer, and
 
 **Text observer pattern for auto-detection.** `ListAutoDetectObserver` follows the same observer architecture as `SlashCommandTextObserver` and `SpanMaintenanceTextObserver` — a stateful class that receives committed text diffs and reacts. This avoids coupling detection logic to the composable or the action system.
 
-**Non-editable prefix via `Row` layout.** The prefix (`•`, `1.`, `a.`, `i.`, `A.`) is a separate `Text` composable in a `Row`, not part of the editable `TextFieldState`. This avoids cursor/span offset complications and keeps the content model clean.
+**Non-editable prefix via `Row` layout.** The prefix (`•`, `1.`, `a.`, `i.`) is a separate `Text` composable in a `Row`, not part of the editable `TextFieldState`. This avoids cursor/span offset complications and keeps the content model clean.
+
+**Ordered style follows numbered ancestry.** Absolute indentation no longer controls ordered-list marker style. A numbered list without a shallower numbered-list ancestor uses decimal. A numbered child of decimal uses lower alpha, a child of lower alpha uses lower roman, and a child of lower roman cycles back to decimal.
 
 ---
 
@@ -81,7 +83,7 @@ User presses Enter on non-empty numbered list item (number = 3)
       2. New block type = NumberedList(number = 4)
       3. New block keeps the source indentation level
       4. renumberNumberedLists() corrects the outline sequence
-  → Recomposition: new list item appears with the correct depth-formatted prefix
+  → Recomposition: new list item appears with the correct ancestry-formatted prefix
 ```
 
 ### Enter on Empty Root List Item (Exit) Flow
@@ -233,7 +235,7 @@ All implementation helpers (`ListAutoDetectObserver`, `renumberNumberedLists`, `
 | **Derived parent** | The nearest preceding shallower outline block used to scope nested numbering in the flat block list. Depth `0` uses a shared root parent. |
 | **Trigger pattern** | A text pattern at position 0 of a non-list block that, when completed with a Space keypress, converts the block to a list type. `- ` for bullet, `N. ` for numbered. |
 | **Un-list** | Converting a root list/todo block back to a Paragraph. Triggered by Backspace at position `0` for root list/todo blocks, or Enter on an empty root bullet/numbered list. Text and spans are preserved. |
-| **Prefix gutter** | The non-editable area to the left of the text field in a list item, displaying `•` or a depth-formatted ordered prefix. Implemented as a separate `Text` composable, not part of `TextFieldState`. |
+| **Prefix gutter** | The non-editable area to the left of the text field in a list item, displaying `•` or an ancestry-formatted ordered prefix. Implemented as a separate `Text` composable, not part of `TextFieldState`. |
 | **Quick scan** | The optimization pass in `renumberNumberedLists()` that checks whether any numbers need fixing before allocating a new list. Returns the original list by reference when no changes are needed. |
 | **`ListAutoDetectObserver`** | Internal text observer that monitors committed visible-text changes and detects list trigger patterns. Follows the same stateful-observer pattern as `SlashCommandTextObserver`. |
 | **`renumberNumberedLists()`** | Internal pure function that scans a block list for outline-aware `NumberedList` sequences and corrects stored decimal numbers. Called after structural reducers and decode. |

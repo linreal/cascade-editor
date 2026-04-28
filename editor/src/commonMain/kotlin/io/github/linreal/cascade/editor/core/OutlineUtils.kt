@@ -268,7 +268,6 @@ internal fun canShiftIndentation(
     var activeRootDepth: Int? = null
     var activeDelta = 0
     var changed = false
-    var previousSupportedDepth: Int? = null
 
     for (index in blocks.indices) {
         val block = blocks[index]
@@ -302,24 +301,13 @@ internal fun canShiftIndentation(
             originalDepth
         }
 
-        if (index == 0 && proposedDepth != BlockAttributes.MIN_INDENTATION_LEVEL) return false
         if (proposedDepth !in BlockAttributes.MIN_INDENTATION_LEVEL..BlockAttributes.MAX_INDENTATION_LEVEL) {
             return false
         }
 
         if (!block.type.supportsIndentation) {
             if (proposedDepth != BlockAttributes.MIN_INDENTATION_LEVEL) return false
-            previousSupportedDepth = null
-            continue
         }
-
-        val previousDepth = previousSupportedDepth
-        if (previousDepth == null) {
-            if (proposedDepth != BlockAttributes.MIN_INDENTATION_LEVEL) return false
-        } else if (proposedDepth > previousDepth + 1) {
-            return false
-        }
-        previousSupportedDepth = proposedDepth
     }
 
     return changed
@@ -442,15 +430,13 @@ internal fun List<Int>.toContiguousRanges(): List<IntRange> {
 /**
  * Validates the outline invariants that indentation reducers are allowed to create.
  *
- * The nearest preceding supported block in the current outline segment is the structural
- * anchor for gap checks. Unsupported blocks are accepted only at depth 0 and reset that
- * segment, which prevents hidden hierarchy on block types without indentation behavior.
+ * Supported blocks may use any persisted indentation lane in the supported range.
+ * Unsupported blocks are accepted only at depth 0, which prevents hidden hierarchy on
+ * block types without indentation behavior.
  */
 internal fun List<Block>.isValidIndentationOutline(): Boolean {
     if (isEmpty()) return true
-    if (first().attributes.indentationLevel != BlockAttributes.MIN_INDENTATION_LEVEL) return false
 
-    var previousSupportedDepth: Int? = null
     for (block in this) {
         val depth = block.attributes.indentationLevel
         if (depth !in BlockAttributes.MIN_INDENTATION_LEVEL..BlockAttributes.MAX_INDENTATION_LEVEL) {
@@ -459,17 +445,7 @@ internal fun List<Block>.isValidIndentationOutline(): Boolean {
 
         if (!block.type.supportsIndentation) {
             if (depth != BlockAttributes.MIN_INDENTATION_LEVEL) return false
-            previousSupportedDepth = null
-            continue
         }
-
-        val previousDepth = previousSupportedDepth
-        if (previousDepth == null) {
-            if (depth != BlockAttributes.MIN_INDENTATION_LEVEL) return false
-        } else if (depth > previousDepth + 1) {
-            return false
-        }
-        previousSupportedDepth = depth
     }
 
     return true
@@ -488,23 +464,16 @@ internal fun normalizeIndentationOutlineWithReport(
 
     val normalized = ArrayList<Block>(blocks.size)
     val changedIndices = mutableListOf<Int>()
-    var previousSupportedDepth: Int? = null
 
     blocks.forEachIndexed { index, block ->
         val originalDepth = block.attributes.indentationLevel
         val normalizedDepth = if (!block.type.supportsIndentation) {
-            previousSupportedDepth = null
             BlockAttributes.DEFAULT_INDENTATION_LEVEL
         } else {
-            val maxAllowedDepth = previousSupportedDepth
-                ?.let { previousDepth -> previousDepth + 1 }
-                ?: BlockAttributes.MIN_INDENTATION_LEVEL
-            val depth = originalDepth.coerceIn(
+            originalDepth.coerceIn(
                 BlockAttributes.MIN_INDENTATION_LEVEL,
-                minOf(maxAllowedDepth, BlockAttributes.MAX_INDENTATION_LEVEL),
+                BlockAttributes.MAX_INDENTATION_LEVEL,
             )
-            previousSupportedDepth = depth
-            depth
         }
 
         if (normalizedDepth == originalDepth) {

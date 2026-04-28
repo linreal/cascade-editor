@@ -4,7 +4,7 @@
 
 Indentation adds flat-outline nesting to CascadeEditor without replacing the document model with a tree. Supported blocks store a bounded `BlockAttributes.indentationLevel`, reducers shift target roots and their descendants as structural operations, and rendering turns depth into a visual leading inset. Numbered lists, serialization, toolbar state, keyboard editing behavior, and drag-and-drop all read the same block attributes, so nested documents remain consistent across editing, save/load, and reorder flows.
 
-The V1 supported indentation block types are `Paragraph`, `Todo`, `BulletList`, and `NumberedList`. `Heading`, `Quote`, `Divider`, unknown block types, and custom block types that do not opt into indentation remain at depth `0`.
+The supported indentation block types are `Paragraph`, `Todo`, `BulletList`, and `NumberedList`. `Heading`, `Quote`, `Divider`, unknown block types, and custom block types that do not opt into indentation remain at depth `0`.
 
 ---
 
@@ -24,7 +24,7 @@ The V1 supported indentation block types are `Paragraph`, `Todo`, `BulletList`, 
 | `ui/LocalIndentationActions.kt` | `LocalIndentationActions` | CompositionLocal exposing indentation actions inside `CascadeEditor`. |
 | `ui/IndentationAnimation.kt` | `IndentationAnimation` | Internal shared 150 ms FastOutSlowIn animation tokens for indentation-related transitions. |
 | `ui/renderers/BlockIndentationModifier.kt` | `withBlockIndentation()` | Internal renderer helper that animates supported block leading inset. |
-| `ui/renderers/OrderedListPrefixFormatter.kt` | `formatOrderedListPrefix()` | Internal renderer helper for depth-specific ordered-list prefixes. |
+| `ui/renderers/OrderedListPrefixFormatter.kt` | `resolveOrderedListPrefixStyles()`, `formatOrderedListPrefix()` | Internal single-pass prefix-style cache and formatter for ancestry-derived ordered-list prefixes. |
 
 ### Key Design Decisions
 
@@ -32,9 +32,11 @@ The V1 supported indentation block types are `Paragraph`, `Todo`, `BulletList`, 
 
 **Attributes separate from block type.** `BlockAttributes` belongs to `Block`, not `BlockType`, so layout metadata does not become part of every semantic block type. `Block.attributes` has a trailing default parameter to preserve existing `Block(id, type, content)` call sites.
 
-**Bounded V1 depth.** `indentationLevel` is validated in the range `0..3`. Reducers no-op instead of clamping when an indent command or drag move would create an invalid outline.
+**Bounded free depth.** `indentationLevel` is validated in the range `0..5`. Supported blocks may use any level in that range, including the first block in a document and the first supported block after an unsupported boundary. Reducers no-op instead of clamping when an indent command or drag move would create an invalid outline.
 
-**Supported-type contract.** `BlockType.supportsIndentation` is true only for `Paragraph`, `Todo`, `BulletList`, and `NumberedList`. Unsupported blocks do not receive hidden indentation through reducers, rendering, or serialization. They are hard outline boundaries: they do not own children, they terminate preceding supported subtrees, and later supported blocks start a new outline segment.
+**Supported-type contract.** `BlockType.supportsIndentation` is true only for `Paragraph`, `Todo`, `BulletList`, and `NumberedList`. Unsupported blocks do not receive hidden indentation through reducers, rendering, or serialization. They are hard outline boundaries: they do not own children, they terminate preceding supported subtrees, and later supported blocks start a new outline segment that can begin at any supported indentation level.
+
+**Ordered-list style follows numbered ancestry.** Numbered-list marker style is derived from the nearest shallower numbered-list ancestor, not from absolute indentation level. The visible style cycles `decimal -> lower alpha -> lower roman -> decimal`, while the model still stores only decimal `BlockType.NumberedList(number)` values. `CascadeEditor` precomputes the marker-style map in a single pass for each block snapshot; list prefix rows use O(1) lookup and do not receive the full block list.
 
 **Reducer and public state share validation.** `IndentationStateCalculator` uses the same target resolution and outline checks as the `IndentForward` / `IndentBackward` reducers, so toolbar enablement matches the actual command result.
 
@@ -90,11 +92,11 @@ Block renderer receives Block(attributes.indentationLevel = N)
        -> unsupported block types use 0
        -> supported block inset = N * CascadeEditorTheme.dimensions.indentUnit
        -> inset animates horizontally
-  -> NumberedList prefix is formatted by depth:
-       depth 0: 1.
-       depth 1: a.
-       depth 2: i.
-       depth 3: A.
+  -> NumberedList prefix is formatted by numbered-list ancestry:
+       no numbered-list ancestor: 1.
+       parent style decimal: a.
+       parent style lower alpha: i.
+       parent style lower roman: 1.
 ```
 
 ### Drag-and-Drop
@@ -187,8 +189,8 @@ val indentationActions = LocalIndentationActions.current
 | Core model | `Block.attributes` stores persistent indentation metadata; `BlockType.supportsIndentation` declares supported semantics. |
 | Reducers | `IndentForward`, `IndentBackward`, conversion, split, merge, replace, insert, delete, move, and drag completion preserve or clear attributes according to type support. |
 | Numbered lists | `renumberNumberedLists()` scopes sequences by depth and derived parent within a supported outline segment, then stores decimal numbers in `BlockType.NumberedList(number)`. Unsupported blocks reset numbering scope and outline ancestry. |
-| Rendering | `withBlockIndentation()` applies animated leading inset through `IndentationAnimation`; ordered-list prefixes are depth-formatted at render time. |
-| Serialization | `DocumentSchema.CURRENT_VERSION = 2`; supported non-zero indentation is encoded under `attributes.indentationLevel`; invalid or structurally orphaned decode values warn and fall back to normalized depths. |
+| Rendering | `withBlockIndentation()` applies animated leading inset through `IndentationAnimation`; ordered-list prefix styles are precomputed from numbered-list ancestry and formatted with an O(1) per-block lookup at render time. |
+| Serialization | `DocumentSchema.CURRENT_VERSION = 2`; supported non-zero indentation is encoded under `attributes.indentationLevel`; out-of-range or unsupported-block indentation values warn and fall back to normalized depths. |
 | Toolbar | Default toolbar shows indent/outdent buttons when `RichTextToolbarConfig.showIndentation` is true; custom toolbars use indentation locals. |
 | History | Built-in indentation commands and drag completion are structural transactions when routed through the history-aware holder boundary. |
 | Drag | Drag state stores roots, full payload IDs, payload index metadata, original depths, and future root depth; hover resolution uses a cached block index, prevents invalid drops before completion, and pins unsupported primary roots to depth `0`. |
@@ -197,8 +199,8 @@ val indentationActions = LocalIndentationActions.current
 
 ## 7. Edge Cases & Known Constraints
 
-- The first block in a document must be depth `0`.
-- A supported block cannot be more than one level deeper than the nearest preceding supported block in the same outline segment.
+- Supported blocks can use any indentation level in `0..5`, including skipped levels such as `0, 1, 2, 2, 4`.
+- The first block in a document and the first supported block after an unsupported boundary may be indented.
 - Unsupported block types must remain at depth `0`; conversion into unsupported types clears indentation and normalizes former descendants into a new supported outline segment.
 - `IndentForward` is all-or-no-op. It does not clamp to an alternate legal depth when the exact one-level shift would be invalid.
 - `IndentBackward` leaves root targets already at depth `0` unchanged; other selected roots in the same command can still move.
@@ -214,11 +216,12 @@ val indentationActions = LocalIndentationActions.current
 
 | Term | Definition |
 |------|------------|
-| **Indentation level** | Persistent integer depth stored in `BlockAttributes.indentationLevel`. V1 supports `0..3`. |
+| **Indentation level** | Persistent integer depth stored in `BlockAttributes.indentationLevel`. Supported range is `0..5`. |
 | **Supported block** | A block whose `BlockType.supportsIndentation` is `true`: paragraph, todo, bullet list, or numbered list. |
 | **Flat outline** | A hierarchy represented by block order plus depth metadata, not by nested child arrays. |
 | **Subtree** | A supported root block plus following supported blocks whose indentation depth is greater than the root depth, stopping at a same-or-shallower supported block or any unsupported block. |
 | **Derived parent** | The nearest preceding shallower supported block in the same outline segment used to scope nested numbered-list sequences. |
+| **Numbered-list ancestry** | The nearest preceding shallower numbered-list ancestors in the same outline segment, used to choose ordered-list marker style. |
 | **Unsupported boundary** | A block that does not support indentation. It stays at depth `0`, cannot own descendants, and resets outline validation, subtree discovery, drag payloads, and numbering ancestry. |
 | **Target root** | A focused or selected supported block that receives an indent/outdent command. Descendants move with it. |
 | **Future root depth** | The resolved indentation level a dragged primary root would have if dropped at the current hover target. |

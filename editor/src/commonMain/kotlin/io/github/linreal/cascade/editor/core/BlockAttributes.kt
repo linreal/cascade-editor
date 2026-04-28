@@ -3,13 +3,13 @@ package io.github.linreal.cascade.editor.core
 import androidx.compose.runtime.Immutable
 
 private const val MIN_INDENTATION_LEVEL_VALUE: Int = 0
-private const val MAX_INDENTATION_LEVEL_VALUE: Int = 3
+private const val MAX_INDENTATION_LEVEL_VALUE: Int = 5
 private const val DEFAULT_INDENTATION_LEVEL_VALUE: Int = MIN_INDENTATION_LEVEL_VALUE
 
 /**
  * Block-level metadata that belongs to the document model rather than a block type.
  *
- * @property indentationLevel Persistent outline depth for blocks that participate in v1 indentation.
+ * @property indentationLevel Persistent outline depth for blocks that participate in indentation.
  */
 @Immutable
 public data class BlockAttributes(
