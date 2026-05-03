@@ -18,6 +18,7 @@ class SpanMapperTest {
     // so SpanMapper stays decoupled from theme.
     private val testInlineCodeBg = Color(0x14000000)
     private val testHighlightBg = Color(0xFFFFEB3B)
+    private val testLinkText = Color(0xFF1A73E8)
 
     // ╔══════════════════════════════════════════════════════════════════╗
     // ║  toComposeSpanStyle — style mapping                             ║
@@ -79,6 +80,20 @@ class SpanMapperTest {
             result.background,
             "Highlight should use the theme highlight color",
         )
+    }
+
+    @Test
+    fun `link maps to theme link color and underline`() {
+        val result = SpanMapper.toComposeSpanStyle(
+            inlineCodeBackground = testInlineCodeBg,
+            highlightBackground = testHighlightBg,
+            linkText = testLinkText,
+            style = SpanStyle.Link("https://example.com"),
+        )
+
+        assertNotNull(result)
+        assertEquals(testLinkText, result.color)
+        assertEquals(TextDecoration.Underline, result.textDecoration)
     }
 
     @Test
@@ -145,6 +160,7 @@ class SpanMapperTest {
             SpanStyle.StrikeThrough,
             SpanStyle.InlineCode,
             SpanStyle.Highlight(0xFFFFFF00),
+            SpanStyle.Link("https://example.com"),
         )
         for (style in renderableStyles) {
             assertNotNull(
@@ -214,6 +230,7 @@ class SpanMapperTest {
             SpanStyle.StrikeThrough,
             SpanStyle.InlineCode,
             SpanStyle.Highlight(0xFFFFFF00),
+            SpanStyle.Link("https://example.com"),
         )
         for (style in styles) {
             val transformation = SpanMapper.toOutputTransformation(
@@ -233,6 +250,7 @@ class SpanMapperTest {
         // start == end is allowed by TextSpan. The mapped list includes it
         // (Bold is renderable), so toOutputTransformation returns non-null.
         // The lambda will skip the empty range at render time via clamping.
+        // This is a mapper regression guard, not a rich-text spec requirement.
         val spans = listOf(TextSpan(3, 3, SpanStyle.Bold))
         assertNotNull(SpanMapper.toOutputTransformation(inlineCodeBackground = testInlineCodeBg, highlightBackground = testHighlightBg, spans = spans))
     }
@@ -274,6 +292,127 @@ class SpanMapperTest {
         assertTrue(
             mapped.none { it.style.textDecoration == combined },
             "No combined decoration should be emitted when ranges do not intersect",
+        )
+    }
+
+    @Test
+    fun `link and strikethrough overlap produces combined decoration run`() {
+        val spans = listOf(
+            TextSpan(0, 5, SpanStyle.Link("https://example.com")),
+            TextSpan(3, 8, SpanStyle.StrikeThrough),
+        )
+
+        val mapped = SpanMapper.mapRenderableSpans(
+            inlineCodeBackground = testInlineCodeBg,
+            highlightBackground = testHighlightBg,
+            linkText = testLinkText,
+            spans = spans,
+        )
+        val combined = TextDecoration.combine(
+            listOf(TextDecoration.Underline, TextDecoration.LineThrough)
+        )
+
+        assertTrue(
+            mapped.any { it.start == 3 && it.end == 5 && it.style.textDecoration == combined },
+            "Expected combined underline+strikethrough overlay for linked overlap [3,5)",
+        )
+    }
+
+    @Test
+    fun `link and highlight overlap preserves link color and highlight background`() {
+        val spans = listOf(
+            TextSpan(0, 5, SpanStyle.Link("https://example.com")),
+            TextSpan(0, 5, SpanStyle.Highlight(0xFFFFFF00)),
+        )
+
+        val mapped = SpanMapper.mapRenderableSpans(
+            inlineCodeBackground = testInlineCodeBg,
+            highlightBackground = testHighlightBg,
+            linkText = testLinkText,
+            spans = spans,
+        )
+
+        assertTrue(
+            mapped.any { it.start == 0 && it.end == 5 && it.style.color == testLinkText && it.style.textDecoration == TextDecoration.Underline },
+            "Expected link color and underline to be rendered",
+        )
+        assertTrue(
+            mapped.any { it.start == 0 && it.end == 5 && it.style.background == testHighlightBg },
+            "Expected highlight background to be rendered with overlapping link",
+        )
+    }
+
+    @Test
+    fun `link and inline code overlap preserves link styling and inline code styling`() {
+        val spans = listOf(
+            TextSpan(0, 5, SpanStyle.Link("https://example.com")),
+            TextSpan(0, 5, SpanStyle.InlineCode),
+        )
+
+        val mapped = SpanMapper.mapRenderableSpans(
+            inlineCodeBackground = testInlineCodeBg,
+            highlightBackground = testHighlightBg,
+            linkText = testLinkText,
+            spans = spans,
+        )
+
+        assertTrue(
+            mapped.any { it.start == 0 && it.end == 5 && it.style.color == testLinkText && it.style.textDecoration == TextDecoration.Underline },
+            "Expected link color and underline to be rendered",
+        )
+        assertTrue(
+            mapped.any {
+                it.start == 0 &&
+                    it.end == 5 &&
+                    it.style.fontFamily == androidx.compose.ui.text.font.FontFamily.Monospace &&
+                    it.style.background == testInlineCodeBg
+            },
+            "Expected inline code font and background to be rendered with overlapping link",
+        )
+    }
+
+    @Test
+    fun `link and underline overlap emits one underline decoration for shared range`() {
+        val spans = listOf(
+            TextSpan(0, 8, SpanStyle.Underline),
+            TextSpan(2, 6, SpanStyle.Link("https://example.com")),
+        )
+
+        val mapped = SpanMapper.mapRenderableSpans(
+            inlineCodeBackground = testInlineCodeBg,
+            highlightBackground = testHighlightBg,
+            linkText = testLinkText,
+            spans = spans,
+        )
+        val plainUnderlineRunsInLinkRange = mapped.count {
+            it.start < 6 &&
+                it.end > 2 &&
+                it.style.textDecoration == TextDecoration.Underline &&
+                it.style.color == Color.Unspecified
+        }
+
+        assertEquals(0, plainUnderlineRunsInLinkRange)
+        assertTrue(
+            mapped.any { it.start == 2 && it.end == 6 && it.style.color == testLinkText && it.style.textDecoration == TextDecoration.Underline },
+            "Expected link run to own underline decoration in the shared range",
+        )
+    }
+
+    @Test
+    fun `zero-length underline clipped by link is filtered`() {
+        val mapped = SpanMapper.mapRenderableSpans(
+            inlineCodeBackground = testInlineCodeBg,
+            highlightBackground = testHighlightBg,
+            linkText = testLinkText,
+            spans = listOf(
+                TextSpan(0, 5, SpanStyle.Link("https://example.com")),
+                TextSpan(3, 3, SpanStyle.Underline),
+            ),
+        )
+
+        assertTrue(
+            mapped.none { it.start == 3 && it.end == 3 },
+            "Degenerate underline intervals should not produce render runs when clipped around links",
         )
     }
 

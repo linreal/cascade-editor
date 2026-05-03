@@ -30,6 +30,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import cascadeeditor.sample.generated.resources.Res
 import cascadeeditor.sample.generated.resources.ic_arrow_back
@@ -82,6 +83,8 @@ fun EditorDemoScreen(
     }
     var isLoaded by remember { mutableStateOf(false) }
     var saveStatus by remember { mutableStateOf("") }
+    var lastOpenedLink by remember { mutableStateOf("") }
+    val uriHandler = LocalUriHandler.current
 
     // Load saved document or fall back to bundled default
     LaunchedEffect(Unit) {
@@ -211,6 +214,18 @@ fun EditorDemoScreen(
                                 modifier = Modifier.padding(start = 12.dp),
                             )
                         }
+                        AnimatedVisibility(
+                            visible = lastOpenedLink.isNotEmpty(),
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                        ) {
+                            Text(
+                                text = "Opened: $lastOpenedLink",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 12.dp),
+                            )
+                        }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(
@@ -248,6 +263,14 @@ fun EditorDemoScreen(
                 textStates = textStates,
                 spanStates = spanStates,
                 theme = editorTheme,
+                onOpenLink = { url ->
+                    lastOpenedLink = url
+                    scope.launch {
+                        delay(3_000)
+                        if (lastOpenedLink == url) lastOpenedLink = ""
+                    }
+                    runCatching { uriHandler.openUri(url) }
+                },
                 modifier = Modifier.fillMaxSize().imePadding(),
             )
         }

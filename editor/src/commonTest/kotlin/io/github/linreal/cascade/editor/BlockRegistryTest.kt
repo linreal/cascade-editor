@@ -7,6 +7,8 @@ import io.github.linreal.cascade.editor.registry.BlockDescriptor
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.slash.BuiltInBlockSlashBehavior
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandSpec
+import io.github.linreal.cascade.editor.slash.SlashCommandIconKey
+import io.github.linreal.cascade.editor.ui.createEditorRegistry
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -175,7 +177,7 @@ class BlockRegistryTest {
         val convertTypes = listOf(
             "paragraph", "heading_1", "heading_2", "heading_3",
             "heading_4", "heading_5", "heading_6",
-            "todo", "bullet_list", "numbered_list", "quote"
+            "todo", "bullet_list", "numbered_list", "quote", "code"
         )
 
         for (typeId in convertTypes) {
@@ -203,6 +205,73 @@ class BlockRegistryTest {
         }
     }
 
+
+    // -- Code descriptor (Task 6) --
+
+    @Test
+    fun `default registry has code descriptor with ConvertInPlace behavior`() {
+        val registry = BlockRegistry.createDefault()
+
+        val descriptor = registry.getDescriptor("code")
+
+        assertNotNull(descriptor)
+        assertEquals("code", descriptor.typeId)
+        assertEquals("Code", descriptor.displayName)
+        assertNotNull(descriptor.slash)
+        assertEquals(BuiltInBlockSlashBehavior.ConvertInPlace, descriptor.slash!!.behavior)
+    }
+
+    @Test
+    fun `code slash spec carries ic_code icon key`() {
+        val registry = BlockRegistry.createDefault()
+        val descriptor = registry.getDescriptor("code")!!
+        assertEquals(SlashCommandIconKey("ic_code"), descriptor.slash!!.icon)
+    }
+
+    @Test
+    fun `code factory creates a Code block with empty text`() {
+        val registry = BlockRegistry.createDefault()
+
+        val block = registry.createBlock("code")
+
+        assertNotNull(block)
+        assertEquals(BlockType.Code, block.type)
+        assertEquals(BlockContent.Text(""), block.content)
+    }
+
+    @Test
+    fun `code descriptor description does not mention syntax`() {
+        val registry = BlockRegistry.createDefault()
+        val descriptor = registry.getDescriptor("code")!!
+        assertTrue(
+            "syntax" !in descriptor.description.lowercase(),
+            "Code description should not reference syntax highlighting (v1 is plain code)",
+        )
+    }
+
+    @Test
+    fun `editor registry binds Code blocks to the shared TextBlockRenderer instance`() {
+        val registry = createEditorRegistry()
+
+        val codeRenderer = registry.getRenderer(BlockType.Code)
+        val paragraphRenderer = registry.getRenderer(BlockType.Paragraph)
+        val headingRenderer = registry.getRenderer(BlockType.Heading(1))
+        val bulletRenderer = registry.getRenderer(BlockType.BulletList)
+
+        assertNotNull(codeRenderer)
+        assertTrue(
+            codeRenderer === paragraphRenderer,
+            "Code renderer must be the same shared TextBlockRenderer used by Paragraph",
+        )
+        assertTrue(
+            codeRenderer === headingRenderer,
+            "Code renderer must be the same shared TextBlockRenderer used by Headings",
+        )
+        assertTrue(
+            codeRenderer === bulletRenderer,
+            "Code renderer must be the same shared TextBlockRenderer used by lists",
+        )
+    }
 
     @Test
     fun `custom descriptor with slash spec is preserved`() {

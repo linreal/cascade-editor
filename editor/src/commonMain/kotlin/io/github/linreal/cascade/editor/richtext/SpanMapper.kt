@@ -37,11 +37,12 @@ internal object SpanMapper {
         spans: List<TextSpan>,
         inlineCodeBackground: Color,
         highlightBackground: Color,
+        linkText: Color = Color.Unspecified,
         baseDecoration: TextDecoration? = null,
     ): OutputTransformation? {
         if (spans.isEmpty()) return null
 
-        val mapped = mapRenderableSpans(spans, inlineCodeBackground, highlightBackground, baseDecoration)
+        val mapped = mapRenderableSpans(spans, inlineCodeBackground, highlightBackground, linkText, baseDecoration)
         if (mapped.isEmpty()) return null
 
         return OutputTransformation {
@@ -64,11 +65,12 @@ internal object SpanMapper {
         spans: List<TextSpan>,
         inlineCodeBackground: Color,
         highlightBackground: Color,
+        linkText: Color = Color.Unspecified,
         baseDecoration: TextDecoration? = null,
     ) {
         if (spans.isEmpty()) return
 
-        val mapped = mapRenderableSpans(spans, inlineCodeBackground, highlightBackground, baseDecoration)
+        val mapped = mapRenderableSpans(spans, inlineCodeBackground, highlightBackground, linkText, baseDecoration)
         if (mapped.isEmpty()) return
 
         applyMappedStyles(mapped)
@@ -99,14 +101,12 @@ internal object SpanMapper {
         spans: List<TextSpan>,
         inlineCodeBackground: Color,
         highlightBackground: Color,
+        linkText: Color = Color.Unspecified,
         baseDecoration: TextDecoration? = null,
     ): List<RenderSpan> {
         if (spans.isEmpty()) return emptyList()
 
-        val base = spans.mapNotNull { span ->
-            val composeStyle = toComposeSpanStyle(span.style, inlineCodeBackground, highlightBackground) ?: return@mapNotNull null
-            RenderSpan(start = span.start, end = span.end, style = composeStyle)
-        }
+        val base = mapBaseRenderableSpans(spans, inlineCodeBackground, highlightBackground, linkText)
         if (base.isEmpty()) return emptyList()
 
         // Overlay must be built from the un-combined base so the equality filters on
@@ -128,30 +128,119 @@ internal object SpanMapper {
         }
     }
 
-    private fun buildCombinedDecorationOverlay(base: List<RenderSpan>): List<RenderSpan> {
-        val underlineRuns = base.filter { it.style.textDecoration == TextDecoration.Underline }
-        val strikeRuns = base.filter { it.style.textDecoration == TextDecoration.LineThrough }
-        if (underlineRuns.isEmpty() || strikeRuns.isEmpty()) return emptyList()
+    /**
+     * Builds direct render runs before cumulative decoration overlays are added.
+     *
+     * Link ranges are collected first because links provide their own underline;
+     * explicit underline spans need to be clipped around those ranges.
+     */
+    private fun mapBaseRenderableSpans(
+        spans: List<TextSpan>,
+        inlineCodeBackground: Color,
+        highlightBackground: Color,
+        linkText: Color,
+    ): List<RenderSpan> {
+        val linkIntervals = spans.mapNotNull { span ->
+            if (span.style is SpanStyle.Link) Interval(span.start, span.end) else null
+        }
+        return spans.flatMap { span ->
+            val composeStyle = toComposeSpanStyle(span.style, inlineCodeBackground, highlightBackground, linkText)
+                ?: return@flatMap emptyList()
 
-        val overlapIntervals = mutableListOf<Interval>()
-        for (underline in underlineRuns) {
-            for (strike in strikeRuns) {
-                val start = maxOf(underline.start, strike.start)
-                val end = minOf(underline.end, strike.end)
-                if (start < end) {
-                    overlapIntervals += Interval(start, end)
+            if (span.style == SpanStyle.Underline && linkIntervals.isNotEmpty()) {
+                return@flatMap subtractIntervals(
+                    source = Interval(span.start, span.end),
+                    cuts = linkIntervals,
+                ).map { interval ->
+                    RenderSpan(start = interval.start, end = interval.end, style = composeStyle)
                 }
             }
+
+            listOf(RenderSpan(start = span.start, end = span.end, style = composeStyle))
         }
+    }
+
+    /**
+     * Splits [source] around [cuts] so explicit underline runs do not stack on
+     * top of link-provided underline decoration in shared ranges.
+     */
+    private fun subtractIntervals(source: Interval, cuts: List<Interval>): List<Interval> {
+        if (source.start >= source.end) return emptyList()
+
+        val result = mutableListOf<Interval>()
+        var cursor = source.start
+
+        for (cut in mergeIntervals(cuts)) {
+            if (cut.end <= cursor || cut.start >= source.end) continue
+
+            val clippedStart = cut.start.coerceAtLeast(source.start)
+            val clippedEnd = cut.end.coerceAtMost(source.end)
+            if (cursor < clippedStart) {
+                result += Interval(cursor, clippedStart)
+            }
+            cursor = maxOf(cursor, clippedEnd)
+            if (cursor >= source.end) break
+        }
+
+        if (cursor < source.end) {
+            result += Interval(cursor, source.end)
+        }
+        return result
+    }
+
+    private fun buildCombinedDecorationOverlay(base: List<RenderSpan>): List<RenderSpan> {
+        val underlineIntervals = mergeIntervals(
+            base
+                .filter { it.style.textDecoration == TextDecoration.Underline }
+                .map { Interval(it.start, it.end) }
+        )
+        val strikeIntervals = mergeIntervals(
+            base
+                .filter { it.style.textDecoration == TextDecoration.LineThrough }
+                .map { Interval(it.start, it.end) }
+        )
+        if (underlineIntervals.isEmpty() || strikeIntervals.isEmpty()) return emptyList()
+
+        val overlapIntervals = intersectIntervals(underlineIntervals, strikeIntervals)
         if (overlapIntervals.isEmpty()) return emptyList()
 
-        return mergeIntervals(overlapIntervals).map { interval ->
+        return overlapIntervals.map { interval ->
             RenderSpan(
                 start = interval.start,
                 end = interval.end,
                 style = ComposeSpanStyle(textDecoration = combinedDecoration),
             )
         }
+    }
+
+    private fun intersectIntervals(
+        first: List<Interval>,
+        second: List<Interval>,
+    ): List<Interval> {
+        val intersections = mutableListOf<Interval>()
+        var firstIndex = 0
+        var secondIndex = 0
+
+        while (firstIndex < first.size && secondIndex < second.size) {
+            val left = first[firstIndex]
+            val right = second[secondIndex]
+            val start = maxOf(left.start, right.start)
+            val end = minOf(left.end, right.end)
+            if (start < end) {
+                intersections += Interval(start, end)
+            }
+
+            when {
+                left.end < right.end -> firstIndex++
+                right.end < left.end -> secondIndex++
+                else -> {
+                    firstIndex++
+                    secondIndex++
+                }
+            }
+        }
+
+        return intersections
     }
 
     private fun mergeIntervals(intervals: List<Interval>): List<Interval> {
@@ -180,6 +269,7 @@ internal object SpanMapper {
         style: SpanStyle,
         inlineCodeBackground: Color,
         highlightBackground: Color,
+        linkText: Color = Color.Unspecified,
     ): ComposeSpanStyle? {
         return when (style) {
             SpanStyle.Bold -> ComposeSpanStyle(fontWeight = FontWeight.Bold)
@@ -191,6 +281,10 @@ internal object SpanMapper {
                 background = inlineCodeBackground,
             )
             is SpanStyle.Highlight -> ComposeSpanStyle(background = highlightBackground)
+            is SpanStyle.Link -> ComposeSpanStyle(
+                color = linkText,
+                textDecoration = TextDecoration.Underline,
+            )
             is SpanStyle.Custom -> null
         }
     }

@@ -57,6 +57,7 @@ class DocumentSchemaDecodeTest {
             BlockType.BulletList to BlockContent.Text("bullet"),
             BlockType.NumberedList(1) to BlockContent.Text("num"),
             BlockType.Quote to BlockContent.Text("quote"),
+            BlockType.Code to BlockContent.Text("println(x)"),
             BlockType.Divider to BlockContent.Empty,
         )
 
@@ -135,6 +136,74 @@ class DocumentSchemaDecodeTest {
         val original = listOf(block(type = BlockType.Quote, content = BlockContent.Text("Quote")))
         val decoded = DocumentSchema.decode(DocumentSchema.encode(original))
         assertIs<BlockType.Quote>(decoded[0].type)
+    }
+
+    @Test
+    fun `round-trip code`() {
+        val original = listOf(
+            block(
+                type = BlockType.Code,
+                content = BlockContent.Text("hello"),
+            )
+        )
+        val decoded = DocumentSchema.decode(DocumentSchema.encode(original))
+        assertIs<BlockType.Code>(decoded[0].type)
+        val content = assertIs<BlockContent.Text>(decoded[0].content)
+        assertEquals("hello", content.text)
+        assertTrue(content.spans.isEmpty())
+    }
+
+    @Test
+    fun `round-trip code preserves multi-line text including trailing newline`() {
+        val multiLine = "line1\nline2\n"
+        val original = listOf(
+            block(
+                type = BlockType.Code,
+                content = BlockContent.Text(multiLine),
+            )
+        )
+        val decoded = DocumentSchema.decode(DocumentSchema.encode(original))
+        val content = assertIs<BlockContent.Text>(decoded[0].content)
+        assertEquals(multiLine, content.text)
+    }
+
+    @Test
+    fun `decode silently strips spans on code block without producing a warning`() {
+        // Malformed input: a Code block whose content snuck a non-empty spans
+        // array past the wire. Decode must succeed with empty spans and emit
+        // no DocumentDecodeWarning for the strip (out of scope per spec).
+        val json = """
+            {
+                "version": 2,
+                "blocks": [
+                    {
+                        "id": "c1",
+                        "type": {"typeId": "code"},
+                        "content": {
+                            "kind": "text",
+                            "version": 1,
+                            "text": "println(x)",
+                            "spans": [
+                                {"start": 0, "end": 7, "style": {"type": "bold"}}
+                            ]
+                        }
+                    }
+                ]
+            }
+        """.trimIndent()
+        val result = DocumentSchema.decodeFromStringWithReport(json)
+
+        assertEquals(1, result.blocks.size)
+        val codeBlock = result.blocks[0]
+        assertIs<BlockType.Code>(codeBlock.type)
+        val content = assertIs<BlockContent.Text>(codeBlock.content)
+        assertEquals("println(x)", content.text)
+        assertTrue(content.spans.isEmpty())
+        // No warning of any kind for the silent strip.
+        assertTrue(
+            result.warnings.isEmpty(),
+            "Unexpected decode warnings: ${result.warnings}",
+        )
     }
 
     @Test

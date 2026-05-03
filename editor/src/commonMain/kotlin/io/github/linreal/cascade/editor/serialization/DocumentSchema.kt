@@ -170,7 +170,25 @@ public object DocumentSchema {
         encodeBlockAttributes(block)?.let { attributes ->
             put("attributes", attributes)
         }
-        put("content", encodeBlockContent(block.content, options, contentCodec))
+        put("content", encodeBlockContent(stripSpansIfUnsupported(block), options, contentCodec))
+    }
+
+    /**
+     * Drops spans from text content when the block's type opts out of rich-text
+     * spans (`supportsSpans = false`).
+     *
+     * Defense-in-depth: runtime/snapshot resolution already strips spans via
+     * `resolveCurrentBlocks`, but this guard keeps direct encode callers (and
+     * any block that bypassed the runtime path) from leaking spans into JSON.
+     * Keyed on `supportsSpans` so future custom non-spans block types inherit
+     * the same persistence guarantee — no `BlockType.Code` reference here.
+     */
+    private fun stripSpansIfUnsupported(block: Block): BlockContent {
+        val content = block.content
+        if (block.type.supportsSpans) return content
+        if (content !is BlockContent.Text) return content
+        if (content.spans.isEmpty()) return content
+        return content.copy(spans = emptyList())
     }
 
     private fun encodeBlockAttributes(block: Block): JsonObject? {
@@ -232,6 +250,9 @@ public object DocumentSchema {
         }
         is BlockType.Quote -> buildJsonObject {
             put("typeId", JsonPrimitive("quote"))
+        }
+        is BlockType.Code -> buildJsonObject {
+            put("typeId", JsonPrimitive("code"))
         }
         is BlockType.Divider -> buildJsonObject {
             put("typeId", JsonPrimitive("divider"))
@@ -367,10 +388,23 @@ public object DocumentSchema {
 
         // Decode content (before ID, so content failures don't pollute seenIds either)
         val contentJson = json["content"] as? JsonObject
-        val content = if (contentJson != null) {
+        val rawContent = if (contentJson != null) {
             decodeBlockContent(contentJson, blockIndex, contentCodec, warnings) ?: return null
         } else {
             BlockContent.Empty
+        }
+
+        // Drop spans for non-spans block types (e.g. Code). Malformed documents
+        // carrying spans on a non-spans block decode silently with empty spans —
+        // no DocumentDecodeWarning, per spec.
+        val content = if (
+            !blockType.supportsSpans &&
+            rawContent is BlockContent.Text &&
+            rawContent.spans.isNotEmpty()
+        ) {
+            rawContent.copy(spans = emptyList())
+        } else {
+            rawContent
         }
 
         // Resolve ID only after type+content validation succeeds
@@ -540,6 +574,7 @@ public object DocumentSchema {
                 }
             }
             "quote" -> BlockType.Quote
+            "code" -> BlockType.Code
             "divider" -> BlockType.Divider
             else -> null
         }

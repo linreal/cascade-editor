@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextRange
@@ -50,9 +51,12 @@ import io.github.linreal.cascade.editor.indentation.rememberIndentationState
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
 import io.github.linreal.cascade.editor.richtext.DefaultFormattingActions
+import io.github.linreal.cascade.editor.richtext.DefaultLinkActions
 import io.github.linreal.cascade.editor.richtext.FormattingState
+import io.github.linreal.cascade.editor.richtext.LinkActionDispatcher
 import io.github.linreal.cascade.editor.richtext.SpanActionDispatcher
 import io.github.linreal.cascade.editor.richtext.rememberFormattingState
+import io.github.linreal.cascade.editor.richtext.rememberLinkState
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandFactory
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
 import io.github.linreal.cascade.editor.slash.SlashCommandItem
@@ -122,7 +126,15 @@ import io.github.linreal.cascade.editor.ui.renderers.resolveOrderedListPrefixSty
  *        [ToolbarSlot.Custom] renders a consumer-provided composable with
  *        reactive [FormattingState] and [FormattingActions][io.github.linreal.cascade.editor.richtext.FormattingActions].
  *        Custom toolbars can read [LocalIndentationState] and [LocalIndentationActions]
- *        for indentation controls without a separate slot parameter.
+ *        for indentation controls, and [LocalLinkState] / [LocalLinkActions]
+ *        for link controls, without separate slot parameters.
+ * @param linkPopup Controls editor-owned link popup rendering. [LinkPopupSlot.Default]
+ *        selects the built-in popup, [LinkPopupSlot.Custom] uses editor-managed
+ *        state/actions with consumer UI, and [LinkPopupSlot.None] disables
+ *        editor-owned popup UI.
+ * @param onOpenLink Optional app-controlled link opener. When null, links
+ *        opened from unfocused text blocks use the platform [LocalUriHandler]
+ *        and swallow platform opening failures.
  * @param onFormattingStateChanged Optional callback fired when the formatting
  *        state changes. Uses structural equality to avoid redundant calls.
  */
@@ -144,6 +156,8 @@ public fun CascadeEditor(
     blockStrings: CascadeEditorBlockStrings = CascadeEditorBlockStrings.default(),
     modifier: Modifier = Modifier,
     toolbar: ToolbarSlot = ToolbarSlot.Default(),
+    linkPopup: LinkPopupSlot = LinkPopupSlot.Default,
+    onOpenLink: ((String) -> Unit)? = null,
     onFormattingStateChanged: ((FormattingState) -> Unit)? = null,
 ) {
     val state = stateHolder.state
@@ -300,6 +314,40 @@ public fun CascadeEditor(
         )
     }
 
+    val linkState = rememberLinkState(
+        stateHolder = stateHolder,
+        textStates = textStates,
+        spanStates = spanStates,
+    )
+    val linkActionDispatcher = remember(stateHolder, textStates, spanStates) {
+        LinkActionDispatcher(
+            dispatchFn = { action -> stateHolder.dispatch(action) },
+            textStates = textStates,
+            spanStates = spanStates,
+            stateHolder = stateHolder,
+        )
+    }
+    val linkActions = remember(linkState, linkActionDispatcher) {
+        DefaultLinkActions(
+            stateProvider = { linkState.value },
+            delegate = linkActionDispatcher,
+        )
+    }
+    val uriHandler = LocalUriHandler.current
+    val linkOpener = remember(onOpenLink, uriHandler) {
+        createLinkOpener(onOpenLink, uriHandler)
+    }
+    // Owns popup session lifecycle: open/dismiss, anchor rect, focus restoration,
+    // and stale-target invalidation. See [LinkPopupController].
+    val linkPopupController = rememberLinkPopupController(
+        linkPopup = linkPopup,
+        linkActions = linkActions,
+        stateHolder = stateHolder,
+        textStates = textStates,
+        spanStates = spanStates,
+        linkState = linkState,
+    )
+
     // Fire external callback on formatting state changes (structural equality dedup)
     if (onFormattingStateChanged != null && formattingState != null) {
         val currentCallback by rememberUpdatedState(onFormattingStateChanged)
@@ -356,6 +404,9 @@ public fun CascadeEditor(
         LocalFormattingActions provides formattingActions,
         LocalIndentationState provides indentationState,
         LocalIndentationActions provides indentationActions,
+        LocalLinkState provides linkState,
+        LocalLinkActions provides linkActions,
+        LocalLinkOpener provides linkOpener,
         LocalSlashCommandExecutor provides slashExecutor,
         LocalSlashSessionAnchorBlockId provides slashState?.anchorBlockId,
         LocalSlashHighlightedCommandId provides slashState?.highlightedCommandId,
@@ -581,6 +632,17 @@ public fun CascadeEditor(
                         slashExecutor = slashExecutor,
                     )
                 }
+
+                linkPopupController.session?.let { session ->
+                    when (val popup = linkPopup) {
+                        LinkPopupSlot.Default -> LinkPopup(
+                            state = session.state,
+                            actions = session,
+                        )
+                        is LinkPopupSlot.Custom -> popup.content(session.state, session)
+                        LinkPopupSlot.None -> Unit
+                    }
+                }
             }
 
             // Toolbar
@@ -591,6 +653,7 @@ public fun CascadeEditor(
                         actions = formattingActions,
                         indentationState = indentationState,
                         indentationActions = indentationActions,
+                        linkState = linkState,
                         config = resolvedToolbar.config,
                         onSlashInsert = {
                             val blockId =
@@ -602,6 +665,7 @@ public fun CascadeEditor(
                                 selection = TextRange(sel.min + 2)
                             }
                         },
+                        onLinkClick = linkPopupController::open,
                         onHideKeyboard = if (isIos) {
                             { stateHolder.dispatch(ClearFocus) }
                         } else {

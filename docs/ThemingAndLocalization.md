@@ -12,10 +12,10 @@ This feature introduces a **theme + strings** configuration layer that lets cons
 
 | Class | Role |
 |-------|------|
-| `CascadeEditorColors` | `@Immutable data class` — 18 named color slots covering every hardcoded color in the editor. Ships `light()` and `dark()` presets. |
+| `CascadeEditorColors` | `@Immutable data class` — 21 named color slots covering every hardcoded color in the editor plus rich-text rendering colors. Ships `light()` and `dark()` presets. |
 | `CascadeEditorTypography` | `@Immutable data class` — 11 `TextStyle` slots (body, heading1–6, code, slash UI, toolbar). Ships `default()`. Styles carry font properties only — **no color**. |
 | `CascadeEditorTheme` | Facade combining `colors` + `typography`. Ships `light()` / `dark()`. |
-| `CascadeEditorStrings` | `@Immutable data class` — UI chrome strings: toolbar accessibility labels, back button text, error message lambda. Ships `default()` (English). |
+| `CascadeEditorStrings` | `@Immutable data class` — UI chrome strings: toolbar accessibility labels, link popup labels, back button text, and error-message lambdas. Ships `default()` (English). |
 | `BlockLocalizedStrings` | Per-block-type display name, description, and additive search keywords. |
 | `CascadeEditorBlockStrings` | `Map<typeId, BlockLocalizedStrings>` with a `forType()` lookup. Ships `default()` (English, mirrors `BlockRegistry`). |
 | `LocalCascadeTheme` | `internal staticCompositionLocalOf<CascadeEditorTheme>` |
@@ -34,7 +34,7 @@ This feature introduces a **theme + strings** configuration layer that lets cons
 
 **Additive keyword merging.** Localized keywords supplement English keywords — they never replace them. This guarantees English search always works regardless of locale: `(descriptor.keywords + localized.keywords).distinct()`.
 
-**SpanMapper refactored to accept color parameters.** `SpanMapper` is an `internal object` used inside `OutputTransformation` (layout phase, not composition). It cannot read `CompositionLocal`s. Colors are captured at composition time in `TextBlockField` and passed as explicit parameters to `toComposeSpanStyle()`, `applyStyles()`, `mapRenderableSpans()`, and `toOutputTransformation()`.
+**SpanMapper refactored to accept color parameters.** `SpanMapper` is an `internal object` used inside `OutputTransformation` (layout phase, not composition). It cannot read `CompositionLocal`s. Colors are captured at composition time in `TextBlockField` and passed as explicit parameters to `toComposeSpanStyle()`, `applyStyles()`, `mapRenderableSpans()`, and `toOutputTransformation()`. Link spans use `CascadeEditorColors.linkText` plus underline; click/open semantics are handled by later link interaction layers.
 
 ---
 
@@ -50,7 +50,7 @@ Consumer
             ├─ TextBlockRenderer: val theme = LocalCascadeTheme.current
             ├─ SlashCommandPopup/Row: reads colors + typography
             ├─ DropIndicator: resolves colors.primary when no override
-            └─ TextBlockField: captures colors.linkText, colors.inlineCodeBackground
+            └─ TextBlockField: captures colors.linkText, colors.inlineCodeBackground, colors.highlight
                  └─ passes into SpanMapper via OutputTransformation closure
 ```
 
@@ -156,6 +156,13 @@ CascadeEditor(
         hideKeyboard = "Masquer le clavier",
         indentForward = "Augmenter le retrait",
         indentBackward = "Réduire le retrait",
+        link = "Lien",
+        linkApply = "Appliquer le lien",
+        linkCancel = "Annuler",
+        linkRemove = "Supprimer le lien",
+        linkTitle = "Titre",
+        linkUrl = "URL",
+        linkValidationError = { "URL invalide : $it" },
     ),
     blockStrings = CascadeEditorBlockStrings(
         blocks = mapOf(
@@ -194,11 +201,11 @@ All `CompositionLocal` instances (`LocalCascadeTheme`, `LocalCascadeStrings`, `L
 | `ui/DropIndicator.kt` | Resolves `colors.primary` from theme when no color override; removed `DropIndicatorDefaults.Color` |
 | `ui/BackspaceAwareTextEdit.kt` | Added `cursorBrush` parameter |
 | `ui/renderers/TextBlockRenderer.kt` | Reads typography for heading/body/code styles; applies `colors.text` |
-| `ui/renderers/TextBlockField.kt` | Captures `colors.linkText`/`colors.inlineCodeBackground`, passes to SpanMapper via OutputTransformation |
+| `ui/renderers/TextBlockField.kt` | Captures `colors.linkText`/`colors.inlineCodeBackground`/`colors.highlight`, passes them to SpanMapper via OutputTransformation |
 | `ui/renderers/TodoBlockRenderer.kt` | Reads theme for body typography + text color |
 | `ui/renderers/DividerBlockRenderer.kt` | Reads `colors.contentDivider` |
 | `ui/renderers/UnknownBlockRenderer.kt` | Reads `colors` + `strings` for background/text/error message |
-| `richtext/SpanMapper.kt` | `linkColor` + `inlineCodeBackground` now required parameters (no private vals) |
+| `richtext/SpanMapper.kt` | `linkText`, `inlineCodeBackground`, and `highlightBackground` are explicit parameters (no private vals or CompositionLocal reads) |
 | `slash/BuiltInSlashCommandFactory.kt` | `generate()` accepts optional `CascadeEditorBlockStrings?` for localized titles/descriptions/keywords |
 
 ### Downstream Impact
@@ -218,7 +225,7 @@ All `CompositionLocal` instances (`LocalCascadeTheme`, `LocalCascadeStrings`, `L
 
 **Default toolbar config sentinel check.** The highlight color injection uses reference identity (`toolbar.config === RichTextToolbarConfig.Default`) to detect the default config. Custom configs pass through untouched. This means copying the default config creates a new identity that bypasses injection.
 
-**`unsupportedBlock` lambda equality.** `CascadeEditorStrings` is a data class, but lambdas don't participate in structural equality. The default lambda is extracted as a `private val` singleton in the companion to ensure `CascadeEditorStrings.default() == CascadeEditorStrings.default()` holds true.
+**String lambda equality.** `CascadeEditorStrings` is a data class, but lambdas don't participate in structural equality. Default lambdas such as `unsupportedBlock` and `linkValidationError` are extracted as singletons to ensure `CascadeEditorStrings.default() == CascadeEditorStrings.default()` holds true.
 
 **Typography excludes color.** `TextStyle` slots in `CascadeEditorTypography` carry size, weight, and font family only. Color is always applied from `CascadeEditorColors` at use-site via `.copy(color = colors.text)`. Providing a `TextStyle` with color set will have that color overridden.
 
@@ -226,7 +233,7 @@ All `CompositionLocal` instances (`LocalCascadeTheme`, `LocalCascadeStrings`, `L
 
 **No RTL support.** Explicitly deferred (V1 decision).
 
-**Toolbar button labels (`B`, `I`, `U`, `S`, `<>`, `H`) are not localized.** They are visual glyphs, not linguistic content. Only accessibility `contentDescription` labels are localized via `CascadeEditorStrings`.
+**Toolbar button labels (`B`, `I`, `U`, `S`, `<>`, `H`) are not localized.** They are visual glyphs, not linguistic content. Only accessibility `contentDescription` labels are localized via `CascadeEditorStrings`; the link button uses an icon with localized accessibility text.
 
 ---
 

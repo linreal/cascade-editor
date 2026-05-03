@@ -48,6 +48,7 @@ internal class DefaultFormattingActions(
         val blockType = block.type
 
         if (!blockType.supportsText) return null
+        if (!blockType.supportsSpans) return null
         if (state.selectedBlockIds.isNotEmpty()) return null
         if (state.dragState != null) return null
 

@@ -1,6 +1,7 @@
 package io.github.linreal.cascade.editor.richtext
 
 import io.github.linreal.cascade.editor.core.BlockId
+import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import kotlin.math.min
@@ -57,18 +58,16 @@ internal class SpanMaintenanceTextObserver(
         val insertEnd = (editStart + insertedLength).coerceIn(insertStart, visibleTextLength)
         if (insertStart >= insertEnd) return
 
-        val explicitPending = spanStates.getPendingStyles(blockId)
-        if (explicitPending != null) {
-            spanStates.clearPendingStyles(blockId)
-        }
-
-        val resolvedStyles = explicitPending ?: spanStates.resolveStylesForInsertion(
+        val resolvedStyles = spanStates.resolveStylesForInsertion(
             blockId = blockId,
             position = insertStart,
         )
         val currentStyles = spanStates.activeStylesAt(blockId, insertStart)
 
-        for (style in currentStyles - resolvedStyles) {
+        // Link coverage is owned by SpanAlgorithms.adjustForEdit above. Removing it
+        // here would break insertions strictly inside links, while applying it here
+        // would make boundary insertions continue links through generic formatting.
+        for (style in (currentStyles - resolvedStyles).filterNot { it is SpanStyle.Link }) {
             spanStates.removeStyle(
                 blockId = blockId,
                 rangeStart = insertStart,
@@ -77,7 +76,7 @@ internal class SpanMaintenanceTextObserver(
             )
         }
 
-        for (style in resolvedStyles - currentStyles) {
+        for (style in (resolvedStyles - currentStyles).filterNot { it is SpanStyle.Link }) {
             spanStates.applyStyle(
                 blockId = blockId,
                 rangeStart = insertStart,

@@ -145,10 +145,45 @@ class BuiltInSlashCommandFactoryLocalizationTest {
         assertTrue(items[0].keywords.contains("titre"))
     }
 
+    // -- Code descriptor (Task 6) --
+
+    @Test
+    fun `code descriptor generates localized item with ConvertInPlace`() {
+        val items = factory.generate(
+            listOf(codeDescriptor()),
+            CascadeEditorBlockStrings.default(),
+        )
+
+        assertEquals(1, items.size)
+        val item = items[0]
+        assertEquals("Code", item.title)
+        assertEquals("Plain code block", item.description)
+        assertTrue(item.keywords.contains("code"))
+        assertTrue(item.keywords.contains("snippet"))
+        assertTrue(item.keywords.contains("monospace"))
+    }
+
+    @Test
+    fun `code descriptor without blockStrings falls back to descriptor metadata`() {
+        val items = factory.generate(listOf(codeDescriptor()), blockStrings = null)
+        assertEquals("Code", items[0].title)
+        assertEquals("Plain code block", items[0].description)
+        assertEquals(listOf("code", "snippet", "monospace"), items[0].keywords)
+    }
+
     // -- Helpers --
 
     private fun blockStringsFor(vararg entries: Pair<String, BlockLocalizedStrings>) =
         CascadeEditorBlockStrings(blocks = mapOf(*entries))
+
+    private fun codeDescriptor() = BlockDescriptor(
+        typeId = "code",
+        displayName = "Code",
+        description = "Plain code block",
+        keywords = listOf("code", "snippet", "monospace"),
+        slash = BuiltInSlashCommandSpec(behavior = BuiltInBlockSlashBehavior.ConvertInPlace),
+        factory = { id -> Block(id, BlockType.Code, BlockContent.Text("")) },
+    )
 
     private fun paragraphDescriptor() = BlockDescriptor(
         typeId = "paragraph",

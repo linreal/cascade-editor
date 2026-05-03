@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -37,6 +38,7 @@ import io.github.linreal.cascade.editor.action.ConvertBlockType
 import io.github.linreal.cascade.editor.action.UpdateBlockContent
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.richtext.SpanMapper
+import io.github.linreal.cascade.editor.richtext.LinkHitTester
 import io.github.linreal.cascade.editor.richtext.SpanMaintenanceTextObserver
 import io.github.linreal.cascade.editor.slash.SlashCommandTextObserver
 import io.github.linreal.cascade.editor.ui.observers.ListAutoDetectObserver
@@ -48,6 +50,7 @@ import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
 import io.github.linreal.cascade.editor.ui.LocalEditorStateHolder
 import io.github.linreal.cascade.editor.ui.LocalFormattingActions
+import io.github.linreal.cascade.editor.ui.LocalLinkOpener
 import io.github.linreal.cascade.editor.ui.LocalSlashCaretRect
 import io.github.linreal.cascade.editor.ui.LocalSlashCommandExecutor
 import io.github.linreal.cascade.editor.ui.LocalSlashHighlightedCommandId
@@ -104,36 +107,88 @@ internal fun TextBlockField(
     val slashHighlightedCommandId = LocalSlashHighlightedCommandId.current
     val slashCaretRectHolder = LocalSlashCaretRect.current
     val slashPopupItems = LocalSlashPopupItems.current
+    // rememberUpdatedState keeps the latest opener available to the unfocused-tap
+    // pointerInput without re-keying it. This matters because consumers commonly
+    // pass an unstable lambda for onOpenLink, which would otherwise cancel and
+    // restart the pointer-input coroutine on every recomposition of CascadeEditor.
+    val currentLinkOpener by rememberUpdatedState(LocalLinkOpener.current)
+
+    // Block types may opt out of spans (e.g. BlockType.Code). When opted out, span
+    // state init, OutputTransformation, and the span maintenance observer all
+    // collapse to span-free no-ops. Adding `supportsSpans` to the remember keys
+    // forces fresh runtime state on same-id conversion (Paragraph -> Code or back).
+    val supportsSpans = block.type.supportsSpans
 
     // Get span state from the shared holder — same generation-key rationale.
     val spanStates = LocalBlockSpanStates.current
-    val spanState = remember(block.id, spanStates.generation) {
-        spanStates.getOrCreate(block.id, textContent.spans, textContent.text.length)
+    val spanState = remember(block.id, spanStates.generation, supportsSpans) {
+        val initialSpans = if (supportsSpans) textContent.spans else emptyList()
+        val state = spanStates.getOrCreate(block.id, initialSpans, textContent.text.length)
+        if (!supportsSpans) {
+            // Same-id conversion (Paragraph -> Code) keeps the existing State entry,
+            // so getOrCreate returns the previous paragraph spans untouched. Reset them
+            // here, and drop any pending styles so a later conversion back to a
+            // spans-supporting type doesn't re-introduce stale toggles.
+            spanStates.set(block.id, emptyList(), textContent.text.length)
+            spanStates.clearPendingStyles(block.id)
+        }
+        state
     }
     val inlineCodeBackground = colors.inlineCodeBackground
     val highlightBackground = colors.highlight
+    val linkText = colors.linkText
     val baseDecoration = textStyle.textDecoration
-    val outputTransformation = remember(block.id, spanState, inlineCodeBackground, highlightBackground, baseDecoration) {
-        OutputTransformation {
-            SpanMapper.run { applyStyles(spanState.value, inlineCodeBackground, highlightBackground, baseDecoration) }
+    val outputTransformation: OutputTransformation? = remember(
+        block.id,
+        spanState,
+        supportsSpans,
+        inlineCodeBackground,
+        highlightBackground,
+        linkText,
+        baseDecoration,
+    ) {
+        if (!supportsSpans) {
+            null
+        } else {
+            OutputTransformation {
+                SpanMapper.run { applyStyles(spanState.value, inlineCodeBackground, highlightBackground, linkText, baseDecoration) }
+            }
         }
     }
-    val spanTextObserver = remember(block.id, textStates, spanStates) {
-        SpanMaintenanceTextObserver(
-            blockId = block.id,
-            textStates = textStates,
-            spanStates = spanStates,
-            initialVisibleText = textFieldState.visibleText(),
-        )
+    val spanTextObserver: SpanMaintenanceTextObserver? = remember(block.id, textStates, spanStates, supportsSpans) {
+        if (!supportsSpans) {
+            null
+        } else {
+            SpanMaintenanceTextObserver(
+                blockId = block.id,
+                textStates = textStates,
+                spanStates = spanStates,
+                initialVisibleText = textFieldState.visibleText(),
+            )
+        }
     }
-    val slashTextObserver = remember(block.id, callbacks, textStates.generation) {
-        SlashCommandTextObserver(
-            blockId = block.id,
-            onOpen = { id, range, query -> callbacks.onSlashCommand(id, range, query) },
-            onUpdate = { query, range -> callbacks.dispatch(UpdateSlashCommandSession(query, range)) },
-            onClose = { callbacks.dispatch(CloseSlashCommand) },
-            initialVisibleText = textFieldState.visibleText(),
-        )
+    // Code blocks suppress slash-menu detection: typing `/` in code is treated as
+    // literal text. Suppression lives at the call site (no construction) so a stale
+    // observer cannot emit UpdateSlashCommandSession / CloseSlashCommand after a
+    // same-id Paragraph -> Code conversion.
+    val slashSuppressed = block.type is BlockType.Code
+    val slashTextObserver: SlashCommandTextObserver? = remember(
+        block.id,
+        callbacks,
+        textStates.generation,
+        slashSuppressed,
+    ) {
+        if (slashSuppressed) {
+            null
+        } else {
+            SlashCommandTextObserver(
+                blockId = block.id,
+                onOpen = { id, range, query -> callbacks.onSlashCommand(id, range, query) },
+                onUpdate = { query, range -> callbacks.dispatch(UpdateSlashCommandSession(query, range)) },
+                onClose = { callbacks.dispatch(CloseSlashCommand) },
+                initialVisibleText = textFieldState.visibleText(),
+            )
+        }
     }
     val textHistoryTracker = remember(block.id, stateHolder, textStates.generation, spanStates.generation) {
         // Generation only changes on hard runtime resets (load/replay clear paths).
@@ -152,16 +207,21 @@ internal fun TextBlockField(
         }
     }
     val isCurrentlyList = block.type is BlockType.BulletList || block.type is BlockType.NumberedList
+    // Treat code blocks as already-list to short-circuit list auto-detect: typing
+    // `- ` or `1. ` inside code is literal text. Same-id Paragraph -> Code drops the
+    // old observer through the remember key, so a stale paragraph observer cannot
+    // convert the new code block.
+    val suppressListAutoDetect = isCurrentlyList || block.type is BlockType.Code
     val listAutoDetectObserver = remember(
         block.id,
-        isCurrentlyList,
+        suppressListAutoDetect,
         callbacks,
         textStates,
         spanStates,
         textHistoryTracker,
     ) {
         ListAutoDetectObserver(
-            isListBlock = { isCurrentlyList },
+            isListBlock = { suppressListAutoDetect },
             onListDetected = { newType, prefixLength ->
                 stateHolder.runStructuralHistoryTransaction(textStates, spanStates) {
                     textHistoryTracker.noteBatchBreaker()
@@ -206,8 +266,9 @@ internal fun TextBlockField(
 
     // Keep observer tracking in sync when slash session closes or moves externally.
     LaunchedEffect(slashSessionAnchorBlockId, slashTextObserver, block.id) {
-        if (slashSessionAnchorBlockId != block.id && slashTextObserver.isTracking) {
-            slashTextObserver.notifySessionClosed()
+        val observer = slashTextObserver ?: return@LaunchedEffect
+        if (slashSessionAnchorBlockId != block.id && observer.isTracking) {
+            observer.notifySessionClosed()
         }
     }
 
@@ -228,7 +289,7 @@ internal fun TextBlockField(
                 selection = selection,
                 ui = captureFocusedEditingUiState(stateHolder.state, textStates, spanStates),
             )
-            slashTextObserver.onSelectionChanged(selection.start, selection.end)
+            slashTextObserver?.onSelectionChanged(selection.start, selection.end)
         }
 
         snapshotFlow {
@@ -259,8 +320,15 @@ internal fun TextBlockField(
                 val isProgrammatic = textStates.hasPendingProgrammaticCommit(block.id)
                 val cursor = if (selection.collapsed) selection.start else -1
                 if (currentVisibleText != lastObservedVisibleText) {
-                    slashTextObserver.onTextChanged(currentVisibleText, isProgrammatic, cursor)
-                    spanTextObserver.onCommittedVisibleText(currentVisibleText)
+                    slashTextObserver?.onTextChanged(currentVisibleText, isProgrammatic, cursor)
+                    spanTextObserver?.onCommittedVisibleText(currentVisibleText)
+                    // SpanMaintenanceTextObserver is the canonical consumer. When the
+                    // block opts out of spans (e.g. Code) the observer is null, so the
+                    // pending entry would persist and misclassify the next real user
+                    // edit as programmatic. Consume here when no observer owns it.
+                    if (isProgrammatic && spanTextObserver == null) {
+                        textStates.consumeProgrammaticCommit(block.id)
+                    }
                     if (isProgrammatic) {
                         textHistoryTracker.onProgrammaticCommit(
                             stateHolder.captureCheckpoint(textStates, spanStates)
@@ -413,7 +481,7 @@ internal fun TextBlockField(
                         callbacks.onFocus(block.id)
                     }
                     if (!focusState.isFocused && wasFocused) {
-                        slashTextObserver.onFocusLost()
+                        slashTextObserver?.onFocusLost()
                         // KeyUp after a split lands on the new block (focus has already
                         // migrated), so it never clears this block's KeyDown marker.
                         // Reset on focus loss so a later re-focus can handle Enter again.
@@ -438,17 +506,46 @@ internal fun TextBlockField(
             Box(
                 modifier = Modifier
                     .matchParentSize()
+                    // Keys deliberately exclude the link opener: the opener is read
+                    // through the captured State, which always returns the latest
+                    // value without restarting the pointer-input coroutine.
                     .pointerInput(block.id) {
                         detectTapGestures(
                             onTap = { offset ->
-                                val cursorIndex = textLayoutResult?.getOffsetForPosition(offset)
+                                val layout = textLayoutResult
+                                val cursorIndex = layout?.getOffsetForPosition(offset)
                                     ?: textFieldState.text.length
-                                textFieldState.edit {
-                                    selection = TextRange(cursorIndex)
+                                val currentEditorState = stateHolder.state
+                                val hasTextSelection = currentEditorState.focusedBlockId?.let { focusedBlockId ->
+                                    textStates.getSelection(focusedBlockId)?.collapsed == false
+                                } == true
+                                // The overlay is only mounted when the block is unfocused, so we
+                                // pass `isFocused = false` literally. LinkHitTester still validates
+                                // drag / block-selection / text-selection gating internally.
+                                val linkUrl = LinkHitTester.linkUrlForTap(
+                                    isFocused = false,
+                                    isDragging = currentEditorState.dragState != null,
+                                    hasBlockSelection = currentEditorState.hasSelection,
+                                    hasTextSelection = hasTextSelection,
+                                    visibleOffset = layout?.let {
+                                        visibleOffsetForRawOffset(textFieldState.text, cursorIndex)
+                                    },
+                                    // Non-spans block types cannot host links. Hand the hit
+                                    // tester an empty list so a malformed runtime span list
+                                    // (left over from a prior type) cannot surface a tappable link.
+                                    spans = if (supportsSpans) spanState.value else emptyList(),
+                                )
+                                val opener = currentLinkOpener
+                                if (linkUrl != null && opener != null) {
+                                    opener(linkUrl)
+                                } else {
+                                    textFieldState.edit {
+                                        selection = TextRange(cursorIndex)
+                                    }
+                                    // Route focus through editor callbacks so selection mode
+                                    // can veto focus (focus/selection are mutually exclusive).
+                                    callbacks.onFocus(block.id)
                                 }
-                                // Route focus through editor callbacks so selection mode
-                                // can veto focus (focus/selection are mutually exclusive).
-                                callbacks.onFocus(block.id)
                             }
                         )
                     }
@@ -466,4 +563,14 @@ private fun visibleTextFromSnapshot(text: CharSequence): String {
     } else {
         text.toString()
     }
+}
+
+/**
+ * Converts a BasicTextField buffer offset, which includes the invisible leading
+ * sentinel when present, into the editor's public visible-text coordinate space.
+ */
+private fun visibleOffsetForRawOffset(text: CharSequence, rawOffset: Int): Int {
+    val sentinelOffset = if (text.isNotEmpty() && text[0] == ZWSP_SENTINEL) 1 else 0
+    val visibleLength = (text.length - sentinelOffset).coerceAtLeast(0)
+    return (rawOffset - sentinelOffset).coerceIn(0, visibleLength)
 }

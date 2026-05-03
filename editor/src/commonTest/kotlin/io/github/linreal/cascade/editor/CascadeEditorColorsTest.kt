@@ -26,6 +26,91 @@ class CascadeEditorColorsTest {
     }
 
     @Test
+    fun `light linkText is non-transparent`() {
+        val colors = CascadeEditorColors.light()
+        assertNotEquals(Color.Unspecified, colors.linkText)
+    }
+
+    @Test
+    fun `light error is non-transparent`() {
+        val colors = CascadeEditorColors.light()
+        assertNotEquals(Color.Unspecified, colors.error)
+    }
+
+    @Test
+    fun `light codeBlockBackground is non-transparent`() {
+        val colors = CascadeEditorColors.light()
+        assertNotEquals(Color.Unspecified, colors.codeBlockBackground)
+    }
+
+    @Test
+    fun `dark codeBlockBackground is non-transparent`() {
+        val colors = CascadeEditorColors.dark()
+        assertNotEquals(Color.Unspecified, colors.codeBlockBackground)
+    }
+
+    @Test
+    fun `light codeBlockBackground is distinct from inlineCodeBackground`() {
+        val colors = CascadeEditorColors.light()
+        assertNotEquals(colors.inlineCodeBackground, colors.codeBlockBackground)
+    }
+
+    @Test
+    fun `dark codeBlockBackground is distinct from inlineCodeBackground`() {
+        val colors = CascadeEditorColors.dark()
+        assertNotEquals(colors.inlineCodeBackground, colors.codeBlockBackground)
+    }
+
+    @Test
+    fun `light and dark differ on codeBlockBackground`() {
+        assertNotEquals(
+            CascadeEditorColors.light().codeBlockBackground,
+            CascadeEditorColors.dark().codeBlockBackground,
+        )
+    }
+
+    @Test
+    fun `copy with codeBlockBackground differs from original`() {
+        val original = CascadeEditorColors.light()
+        val modified = original.copy(codeBlockBackground = Color.Red)
+        assertNotEquals(original, modified)
+        assertEquals(Color.Red, modified.codeBlockBackground)
+    }
+
+    @Test
+    fun `codeBlockBackground falls back to inlineCodeBackground when omitted in constructor`() {
+        val sentinel = Color(0xFF00FF99)
+        val colors = CascadeEditorColors(
+            primary = Color.Blue,
+            onPrimary = Color.White,
+            text = Color.Black,
+            popupBackground = Color.White,
+            unknownBlockBackground = Color.Gray,
+            toolbarIcon = Color.DarkGray,
+            toolbarIconDisabled = Color.LightGray,
+            slashItemTitle = Color.Black,
+            slashChevron = Color.Gray,
+            unknownBlockText = Color.Gray,
+            uiDivider = Color.LightGray,
+            contentDivider = Color.LightGray,
+            slashSelectedItem = Color.Cyan,
+            inlineCodeBackground = sentinel,
+            highlight = Color.Yellow,
+            cursor = Color.Blue,
+            textSelectionBackground = Color.Cyan,
+            quoteBorder = Color.Gray,
+            quoteBackground = Color.LightGray,
+            selectionOverlay = Color.Cyan,
+        )
+        assertEquals(sentinel, colors.codeBlockBackground)
+    }
+
+    @Test
+    fun `light and dark differ on error`() {
+        assertNotEquals(CascadeEditorColors.light().error, CascadeEditorColors.dark().error)
+    }
+
+    @Test
     fun `light onPrimary is white`() {
         assertEquals(Color.White, CascadeEditorColors.light().onPrimary)
     }
@@ -127,5 +212,8 @@ class CascadeEditorColorsTest {
         "quoteBorder" to c.quoteBorder,
         "quoteBackground" to c.quoteBackground,
         "selectionOverlay" to c.selectionOverlay,
+        "linkText" to c.linkText,
+        "error" to c.error,
+        "codeBlockBackground" to c.codeBlockBackground,
     )
 }

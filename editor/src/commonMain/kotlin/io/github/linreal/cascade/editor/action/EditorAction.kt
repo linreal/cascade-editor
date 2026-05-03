@@ -182,6 +182,9 @@ public data class UpdateBlockText(
 
 /**
  * Converts a block to a different type, preserving its content if compatible.
+ *
+ * When [newType] opts out of rich-text spans (`supportsSpans = false`), any spans
+ * stored on a `BlockContent.Text` source are dropped. Plain text is preserved.
  */
 public data class ConvertBlockType(
     val blockId: BlockId,
@@ -190,9 +193,19 @@ public data class ConvertBlockType(
     override fun reduce(state: EditorState): EditorState {
         val newBlocks = state.blocks.map { block ->
             if (block.id == blockId) {
-                block
+                val converted = block
                     .withType(newType)
                     .withAttributes(block.attributes.forType(newType))
+                if (!newType.supportsSpans) {
+                    val text = converted.content as? BlockContent.Text
+                    if (text != null && text.spans.isNotEmpty()) {
+                        converted.withContent(text.copy(spans = emptyList()))
+                    } else {
+                        converted
+                    }
+                } else {
+                    converted
+                }
             } else {
                 block
             }
@@ -303,11 +316,17 @@ public data class MergeBlocks(
         val targetContent = targetBlock.content as? BlockContent.Text ?: return state
 
         val mergedText = targetContent.text + sourceContent.text
-        val mergedSpans = SpanAlgorithms.mergeSpans(
-            firstSpans = targetContent.spans,
-            secondSpans = sourceContent.spans,
-            firstTextLength = targetContent.text.length,
-        )
+        // Drop spans entirely when the merged target type opts out of spans (e.g. Code).
+        // Otherwise stitch the source spans onto the end of target spans.
+        val mergedSpans = if (targetBlock.type.supportsSpans) {
+            SpanAlgorithms.mergeSpans(
+                firstSpans = targetContent.spans,
+                secondSpans = sourceContent.spans,
+                firstTextLength = targetContent.text.length,
+            )
+        } else {
+            emptyList()
+        }
 
         // Update target with merged content
         val newBlocks = state.blocks
@@ -895,6 +914,7 @@ public data class ApplySpanStyle(
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val block = state.getBlock(blockId) ?: return state
+        if (!block.type.supportsSpans) return state
         val textContent = block.content as? BlockContent.Text ?: return state
         val newSpans = SpanAlgorithms.applyStyle(
             spans = textContent.spans,
@@ -932,6 +952,7 @@ public data class RemoveSpanStyle(
 ) : EditorAction {
     override fun reduce(state: EditorState): EditorState {
         val block = state.getBlock(blockId) ?: return state
+        if (!block.type.supportsSpans) return state
         val textContent = block.content as? BlockContent.Text ?: return state
         val removed = SpanAlgorithms.removeStyle(
             spans = textContent.spans,

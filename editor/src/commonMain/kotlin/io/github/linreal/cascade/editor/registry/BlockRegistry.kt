@@ -6,6 +6,7 @@ import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.UnknownBlockType
 import io.github.linreal.cascade.editor.slash.BuiltInBlockSlashBehavior
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandSpec
+import io.github.linreal.cascade.editor.slash.SlashCommandIconKey
 
 /**
  * Central registry for block types, descriptors, and renderers.
@@ -220,6 +221,23 @@ private fun BlockRegistry.registerBuiltInDescriptors() {
             ),
             factory = { id ->
                 Block(id, BlockType.Quote, BlockContent.Text(""))
+            }
+        )
+    )
+
+    // Code — text-capable convertible (spans-disabled), ConvertInPlace
+    registerDescriptor(
+        BlockDescriptor(
+            typeId = "code",
+            displayName = "Code",
+            description = "Plain code block",
+            keywords = listOf("code", "snippet", "monospace"),
+            slash = BuiltInSlashCommandSpec(
+                behavior = BuiltInBlockSlashBehavior.ConvertInPlace,
+                icon = SlashCommandIconKey("ic_code"),
+            ),
+            factory = { id ->
+                Block(id, BlockType.Code, BlockContent.Text(""))
             }
         )
     )

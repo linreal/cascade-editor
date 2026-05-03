@@ -1,9 +1,22 @@
 package io.github.linreal.cascade.editor.theme
 
 import androidx.compose.runtime.Immutable
+import io.github.linreal.cascade.editor.richtext.LinkValidationError
 
 private const val DEFAULT_INDENT_FORWARD_LABEL = "Indent Forward"
 private const val DEFAULT_INDENT_BACKWARD_LABEL = "Indent Backward"
+private const val DEFAULT_LINK_LABEL = "Link"
+private const val DEFAULT_LINK_APPLY_LABEL = "Apply Link"
+private const val DEFAULT_LINK_CANCEL_LABEL = "Cancel"
+private const val DEFAULT_LINK_REMOVE_LABEL = "Remove Link"
+private const val DEFAULT_LINK_TITLE_LABEL = "Title"
+private const val DEFAULT_LINK_URL_LABEL = "URL"
+
+private val DEFAULT_LINK_VALIDATION_ERROR_LABEL: (LinkValidationError) -> String = { error ->
+    when (error) {
+        LinkValidationError.Blank -> "Enter a URL."
+    }
+}
 
 /**
  * User-facing strings for the CascadeEditor UI chrome.
@@ -39,6 +52,20 @@ public data class CascadeEditorStrings(
     val indentForward: String = DEFAULT_INDENT_FORWARD_LABEL,
     /** Toolbar accessibility label for the Indent Backward button. */
     val indentBackward: String = DEFAULT_INDENT_BACKWARD_LABEL,
+    /** Toolbar accessibility label for the Link button. */
+    val link: String = DEFAULT_LINK_LABEL,
+    /** Label for applying a link from link popup UI. */
+    val linkApply: String = DEFAULT_LINK_APPLY_LABEL,
+    /** Label for canceling link popup UI. */
+    val linkCancel: String = DEFAULT_LINK_CANCEL_LABEL,
+    /** Label for removing a link from link popup UI. */
+    val linkRemove: String = DEFAULT_LINK_REMOVE_LABEL,
+    /** Label for the link title field in link popup UI. */
+    val linkTitle: String = DEFAULT_LINK_TITLE_LABEL,
+    /** Label for the link URL field in link popup UI. */
+    val linkUrl: String = DEFAULT_LINK_URL_LABEL,
+    /** Maps stable link validation errors to localized UI text. */
+    val linkValidationError: (LinkValidationError) -> String = DEFAULT_LINK_VALIDATION_ERROR_LABEL,
 ) {
     public companion object {
         /** Default [unsupportedBlock] lambda — extracted as a singleton for stable equality. */
@@ -60,6 +87,13 @@ public data class CascadeEditorStrings(
             hideKeyboard = "Hide Keyboard",
             indentForward = DEFAULT_INDENT_FORWARD_LABEL,
             indentBackward = DEFAULT_INDENT_BACKWARD_LABEL,
+            link = DEFAULT_LINK_LABEL,
+            linkApply = DEFAULT_LINK_APPLY_LABEL,
+            linkCancel = DEFAULT_LINK_CANCEL_LABEL,
+            linkRemove = DEFAULT_LINK_REMOVE_LABEL,
+            linkTitle = DEFAULT_LINK_TITLE_LABEL,
+            linkUrl = DEFAULT_LINK_URL_LABEL,
+            linkValidationError = DEFAULT_LINK_VALIDATION_ERROR_LABEL,
         )
     }
 }

@@ -33,6 +33,21 @@ public sealed interface BlockType {
     public val supportsIndentation: Boolean get() = false
 
     /**
+     * Whether this block type supports rich-text spans (bold, italic, link, inline code, etc.).
+     *
+     * Defaults to [supportsText] so existing text-supporting block types remain spans-capable
+     * without explicit overrides. Non-text blocks remain spans-incapable for free.
+     *
+     * Override to `false` for text-supporting blocks that should opt out of spans
+     * (e.g. [Code], where the body is treated as plain monospace text).
+     *
+     * Span state initialization, formatting toolbar gates, link gates, span reducers,
+     * and serialization paths all key on this flag — see Task 2 in
+     * `docs/tasks-code-block-support.md` for the gating wiring.
+     */
+    public val supportsSpans: Boolean get() = supportsText
+
+    /**
      * Standard paragraph block.
      */
     public data object Paragraph : BlockType {
@@ -96,6 +111,22 @@ public sealed interface BlockType {
         override val typeId: String = "quote"
         override val displayName: String = "Quote"
         override val supportsText: Boolean = true
+    }
+
+    /**
+     * Plain code block. Hosts multi-line monospace text without rich-text spans.
+     *
+     * Opt-out of spans is the only capability difference from a Paragraph: span state,
+     * formatting actions, link actions, and span persistence are all gated off via
+     * [supportsSpans] = `false`. Indentation is also disabled because code bodies
+     * are flat and managed in-text via newlines.
+     */
+    public data object Code : BlockType {
+        override val typeId: String = "code"
+        override val displayName: String = "Code"
+        override val supportsText: Boolean = true
+        override val supportsIndentation: Boolean = false
+        override val supportsSpans: Boolean = false
     }
 
     /**

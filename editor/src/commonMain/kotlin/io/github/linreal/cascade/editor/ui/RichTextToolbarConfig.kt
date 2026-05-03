@@ -6,6 +6,10 @@ import io.github.linreal.cascade.editor.core.SpanStyle
 /**
  * Specification for a single toolbar button.
  *
+ * Links are not valid toggle-button styles because link editing requires URL
+ * validation, target capture, and popup/session state. Configure the dedicated
+ * link entry point with [RichTextToolbarConfig.showLink] and [LinkPopupSlot].
+ *
  * @param style The [SpanStyle] this button toggles.
  * @param label Accessibility label for the button.
  */
@@ -13,7 +17,13 @@ import io.github.linreal.cascade.editor.core.SpanStyle
 public data class ToolbarButtonSpec(
     val style: SpanStyle,
     val label: String,
-)
+) {
+    init {
+        require(style !is SpanStyle.Link) {
+            "SpanStyle.Link cannot be used with ToolbarButtonSpec; use RichTextToolbarConfig.showLink instead."
+        }
+    }
+}
 
 /**
  * Configuration for the default rich text toolbar.
@@ -21,11 +31,13 @@ public data class ToolbarButtonSpec(
  *
  * @param buttons Text formatting buttons to render in order.
  * @param showIndentation Whether the default toolbar renders indent/outdent buttons.
+ * @param showLink Whether the default toolbar renders the link editing entry point.
  */
 @Immutable
 public data class RichTextToolbarConfig(
     val buttons: List<ToolbarButtonSpec>,
     val showIndentation: Boolean = true,
+    val showLink: Boolean = true,
 ) {
     public companion object {
         /** Default V1 toolbar buttons. */

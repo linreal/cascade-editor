@@ -5,6 +5,7 @@ import androidx.compose.foundation.text.input.delete
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import io.github.linreal.cascade.editor.core.BlockId
@@ -21,7 +22,11 @@ private const val ZWSP = "\u200B"
  */
 @Stable
 public class BlockTextStates {
-    private val states = mutableMapOf<BlockId, TextFieldState>()
+    // Snapshot-aware so derived state observers (e.g. rememberLinkState) re-evaluate
+    // when a new block's TextFieldState is registered after a focus change. A plain
+    // map would silently miss insertions because reading an absent key would not
+    // record a snapshot subscription.
+    private val states = mutableStateMapOf<BlockId, TextFieldState>()
     /**
      * Monotonically increasing counter, incremented on [clear].
      * Used as a `remember` key so composables re-fetch from the map after a bulk reset.

@@ -76,6 +76,116 @@ class StructuralHistoryIntegrationTest {
     }
 
     @Test
+    fun `code enter inserts newline as one structural entry that closes typing batch`() {
+        val blockId = BlockId("c")
+        val harness = Harness(
+            EditorState.withBlocks(listOf(code(blockId, "ab"))).copy(
+                focusedBlockId = blockId,
+            )
+        )
+        val tracker = TextEditHistoryTracker(
+            initialCheckpoint = harness.stateHolder.captureCheckpoint(harness.textStates, harness.spanStates),
+        )
+        harness.stateHolder.registerTextHistoryTracker(blockId, tracker)
+
+        try {
+            // Simulate the user typing one character first.
+            harness.setRuntimeText(blockId, "abc", cursorPosition = 3)
+            harness.stateHolder.pushFrom(
+                tracker.onUserTextCommit(
+                    harness.stateHolder.captureCheckpoint(harness.textStates, harness.spanStates)
+                )
+            )
+
+            // Code Enter at end without trailing newline: insert `\n`, stay in code.
+            harness.callbacks.onEnter(blockId, cursorPosition = 3)
+
+            assertEquals(listOf("abc\n"), harness.visibleTexts())
+            assertEquals(listOf(BlockType.Code), harness.stateHolder.state.blocks.map { it.type })
+            assertTrue(harness.stateHolder.canUndo)
+
+            // First undo rewinds the structural Enter, leaving the typed character intact.
+            harness.stateHolder.undo()
+            assertEquals(listOf("abc"), harness.visibleTexts())
+            assertEquals(listOf(BlockType.Code), harness.stateHolder.state.blocks.map { it.type })
+            assertTrue(harness.stateHolder.canUndo)
+            assertTrue(harness.stateHolder.canRedo)
+
+            // Second undo rewinds the prior typing batch.
+            harness.stateHolder.undo()
+            assertEquals(listOf("ab"), harness.visibleTexts())
+            assertFalse(harness.stateHolder.canUndo)
+        } finally {
+            harness.stateHolder.unregisterTextHistoryTracker(blockId, tracker)
+        }
+    }
+
+    @Test
+    fun `code trailing-newline enter exits to paragraph as one structural entry`() {
+        val blockId = BlockId("c")
+        val harness = Harness(
+            EditorState.withBlocks(listOf(code(blockId, "line1\n"))).copy(
+                focusedBlockId = blockId,
+            )
+        )
+
+        // Cursor at end (offset 6) on a code block whose visible text ends with `\n`.
+        // The Code branch reads the live runtime selection, so the cursor must be moved
+        // before calling onEnter to exercise the trailing-blank-line branch.
+        harness.textStates.setCursorPosition(blockId, 6)
+        harness.callbacks.onEnter(blockId, cursorPosition = 6)
+
+        val blocks = harness.stateHolder.state.blocks
+        assertEquals(2, blocks.size)
+        assertEquals(BlockType.Code, blocks[0].type)
+        assertEquals(BlockType.Paragraph, blocks[1].type)
+        assertEquals(listOf("line1", ""), harness.visibleTexts())
+        assertEquals(blocks[1].id, harness.stateHolder.state.focusedBlockId)
+        assertTrue(harness.stateHolder.canUndo)
+
+        // Undo restores the original code block with the trailing newline intact.
+        harness.stateHolder.undo()
+        assertEquals(1, harness.stateHolder.state.blocks.size)
+        assertEquals(BlockType.Code, harness.stateHolder.state.blocks[0].type)
+        assertEquals(listOf("line1\n"), harness.visibleTexts())
+        assertFalse(harness.stateHolder.canUndo)
+
+        // Redo re-applies the exit in one step.
+        harness.stateHolder.redo()
+        assertEquals(2, harness.stateHolder.state.blocks.size)
+        assertEquals(listOf("line1", ""), harness.visibleTexts())
+    }
+
+    @Test
+    fun `code backspace at start converts to paragraph as one structural entry`() {
+        val blockId = BlockId("c")
+        val harness = Harness(
+            EditorState.withBlocks(listOf(code(blockId, "line1\nline2"))).copy(
+                focusedBlockId = blockId,
+            )
+        )
+
+        harness.callbacks.onBackspaceAtStart(blockId)
+
+        // Same id, type flipped to Paragraph, multi-line text preserved verbatim.
+        val blocks = harness.stateHolder.state.blocks
+        assertEquals(1, blocks.size)
+        assertEquals(blockId, blocks[0].id)
+        assertEquals(BlockType.Paragraph, blocks[0].type)
+        assertEquals(listOf("line1\nline2"), harness.visibleTexts())
+        assertTrue(harness.stateHolder.canUndo)
+
+        harness.stateHolder.undo()
+        assertEquals(BlockType.Code, harness.stateHolder.state.blocks[0].type)
+        assertEquals(listOf("line1\nline2"), harness.visibleTexts())
+        assertFalse(harness.stateHolder.canUndo)
+
+        harness.stateHolder.redo()
+        assertEquals(BlockType.Paragraph, harness.stateHolder.state.blocks[0].type)
+        assertEquals(listOf("line1\nline2"), harness.visibleTexts())
+    }
+
+    @Test
     fun `backspace merge is undoable through structural history`() {
         val firstId = BlockId("a")
         val secondId = BlockId("b")
@@ -564,6 +674,14 @@ class StructuralHistoryIntegrationTest {
         return Block(
             id = id,
             type = BlockType.Paragraph,
+            content = BlockContent.Text(text),
+        )
+    }
+
+    private fun code(id: BlockId, text: String): Block {
+        return Block(
+            id = id,
+            type = BlockType.Code,
             content = BlockContent.Text(text),
         )
     }

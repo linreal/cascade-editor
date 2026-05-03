@@ -76,6 +76,80 @@ class SpanAlgorithmsTest {
     }
 
     @Test
+    fun `normalize - merges adjacent links with same URL`() {
+        val link = SpanStyle.Link("https://example.com")
+        val spans = listOf(
+            TextSpan(0, 3, link),
+            TextSpan(3, 6, link),
+        )
+
+        val result = SpanAlgorithms.normalize(spans, 10)
+
+        assertEquals(listOf(TextSpan(0, 6, link)), result)
+    }
+
+    @Test
+    fun `normalize - keeps adjacent links with different URLs distinct`() {
+        val first = SpanStyle.Link("https://one.example")
+        val second = SpanStyle.Link("https://two.example")
+        val spans = listOf(
+            TextSpan(0, 3, first),
+            TextSpan(3, 6, second),
+        )
+
+        val result = SpanAlgorithms.normalize(spans, 10)
+
+        assertEquals(
+            listOf(
+                TextSpan(0, 3, first),
+                TextSpan(3, 6, second),
+            ),
+            result
+        )
+    }
+
+    @Test
+    fun `normalize - clips overlapping different-URL links so later link wins overlap`() {
+        val first = SpanStyle.Link("https://one.example")
+        val second = SpanStyle.Link("https://two.example")
+        val spans = listOf(
+            TextSpan(0, 8, first),
+            TextSpan(3, 5, second),
+        )
+
+        val result = SpanAlgorithms.normalize(spans, 10)
+
+        assertEquals(
+            listOf(
+                TextSpan(0, 3, first),
+                TextSpan(3, 5, second),
+                TextSpan(5, 8, first),
+            ),
+            result
+        )
+    }
+
+    @Test
+    fun `normalize - later link wins overlap even when it starts earlier`() {
+        val first = SpanStyle.Link("https://one.example")
+        val second = SpanStyle.Link("https://two.example")
+        val spans = listOf(
+            TextSpan(3, 8, first),
+            TextSpan(0, 5, second),
+        )
+
+        val result = SpanAlgorithms.normalize(spans, 10)
+
+        assertEquals(
+            listOf(
+                TextSpan(0, 5, second),
+                TextSpan(5, 8, first),
+            ),
+            result
+        )
+    }
+
+    @Test
     fun `normalize - preserves different-style overlaps`() {
         val spans = listOf(
             TextSpan(0, 5, SpanStyle.Bold),
@@ -370,6 +444,17 @@ class SpanAlgorithmsTest {
     }
 
     @Test
+    fun `splitAt - link crossing split point keeps same URL on both sides`() {
+        val link = SpanStyle.Link("https://example.com")
+        val spans = listOf(TextSpan(2, 8, link))
+
+        val (first, second) = SpanAlgorithms.splitAt(spans, position = 5)
+
+        assertEquals(listOf(TextSpan(2, 5, link)), first)
+        assertEquals(listOf(TextSpan(0, 3, link)), second)
+    }
+
+    @Test
     fun `splitAt - span ending exactly at split point stays in first`() {
         val spans = listOf(TextSpan(0, 5, SpanStyle.Bold))
         val (first, second) = SpanAlgorithms.splitAt(spans, position = 5)
@@ -450,6 +535,35 @@ class SpanAlgorithmsTest {
         val second = listOf(TextSpan(0, 3, SpanStyle.Bold))
         val result = SpanAlgorithms.mergeSpans(first, second, firstTextLength = 5)
         assertEquals(listOf(TextSpan(0, 8, SpanStyle.Bold)), result)
+    }
+
+    @Test
+    fun `mergeSpans - adjacent same-URL links at boundary are merged`() {
+        val link = SpanStyle.Link("https://example.com")
+        val first = listOf(TextSpan(0, 5, link))
+        val second = listOf(TextSpan(0, 3, link))
+
+        val result = SpanAlgorithms.mergeSpans(first, second, firstTextLength = 5)
+
+        assertEquals(listOf(TextSpan(0, 8, link)), result)
+    }
+
+    @Test
+    fun `mergeSpans - adjacent different-URL links at boundary stay distinct`() {
+        val firstLink = SpanStyle.Link("https://one.example")
+        val secondLink = SpanStyle.Link("https://two.example")
+        val first = listOf(TextSpan(0, 5, firstLink))
+        val second = listOf(TextSpan(0, 3, secondLink))
+
+        val result = SpanAlgorithms.mergeSpans(first, second, firstTextLength = 5)
+
+        assertEquals(
+            listOf(
+                TextSpan(0, 5, firstLink),
+                TextSpan(5, 8, secondLink),
+            ),
+            result
+        )
     }
 
     @Test
@@ -557,6 +671,28 @@ class SpanAlgorithmsTest {
         assertEquals(listOf(TextSpan(0, 3, SpanStyle.Bold)), result)
     }
 
+    @Test
+    fun `applyStyle - applying link clips intersecting links and preserves non-link spans`() {
+        val oldLink = SpanStyle.Link("https://old.example")
+        val newLink = SpanStyle.Link("https://new.example")
+        val spans = listOf(
+            TextSpan(0, 8, oldLink),
+            TextSpan(2, 6, SpanStyle.Bold),
+        )
+
+        val result = SpanAlgorithms.applyStyle(spans, 3, 5, newLink, textLength = 10)
+
+        assertEquals(
+            listOf(
+                TextSpan(0, 3, oldLink),
+                TextSpan(2, 6, SpanStyle.Bold),
+                TextSpan(3, 5, newLink),
+                TextSpan(5, 8, oldLink),
+            ),
+            result
+        )
+    }
+
     // ╔══════════════════════════════════════════════════════════════════╗
     // ║  Remove Style                                                   ║
     // ╚══════════════════════════════════════════════════════════════════╝
@@ -650,6 +786,47 @@ class SpanAlgorithmsTest {
         // Removing any Highlight removes all Highlights (kind-based matching)
         val result = SpanAlgorithms.removeStyle(spans, 0, 5, yellow)
         assertTrue(result.isEmpty(), "Both highlight spans should be removed via kind-matching")
+    }
+
+    @Test
+    fun `removeStyle - link removal matches every URL and preserves non-link spans`() {
+        val firstLink = SpanStyle.Link("https://one.example")
+        val secondLink = SpanStyle.Link("https://two.example")
+        val spans = listOf(
+            TextSpan(0, 5, firstLink),
+            TextSpan(5, 10, secondLink),
+            TextSpan(2, 8, SpanStyle.Bold),
+        )
+
+        val result = SpanAlgorithms.removeStyle(
+            spans = spans,
+            rangeStart = 0,
+            rangeEnd = 10,
+            style = SpanStyle.Link("https://other.example"),
+        )
+
+        assertEquals(listOf(TextSpan(2, 8, SpanStyle.Bold)), result)
+    }
+
+    @Test
+    fun `removeStyle - link removal clips matching links while preserving original URLs`() {
+        val link = SpanStyle.Link("https://old.example")
+        val spans = listOf(TextSpan(0, 10, link))
+
+        val result = SpanAlgorithms.removeStyle(
+            spans = spans,
+            rangeStart = 3,
+            rangeEnd = 7,
+            style = SpanStyle.Link("https://new.example"),
+        )
+
+        assertEquals(
+            listOf(
+                TextSpan(0, 3, link),
+                TextSpan(7, 10, link),
+            ),
+            result
+        )
     }
 
     // ╔══════════════════════════════════════════════════════════════════╗
@@ -841,6 +1018,19 @@ class SpanAlgorithmsTest {
         )
     }
 
+    @Test
+    fun `queryStyleStatus - link query matches any URL`() {
+        val spans = listOf(
+            TextSpan(0, 4, SpanStyle.Link("https://one.example")),
+            TextSpan(4, 8, SpanStyle.Link("https://two.example")),
+        )
+
+        assertEquals(
+            StyleStatus.FullyActive,
+            SpanAlgorithms.queryStyleStatus(spans, 0, 8, SpanStyle.Link("https://other.example"))
+        )
+    }
+
     // ╔══════════════════════════════════════════════════════════════════╗
     // ║  Query: Active Styles At                                        ║
     // ╚══════════════════════════════════════════════════════════════════╝
@@ -944,6 +1134,16 @@ class SpanAlgorithmsTest {
         // Delete char at position 1 (backspace within bold)
         spans = SpanAlgorithms.adjustForEdit(spans, editStart = 1, deletedLength = 1, insertedLength = 0)
         assertEquals(listOf(TextSpan(0, 6, SpanStyle.Bold)), spans)
+    }
+
+    @Test
+    fun `typing sequence within linked text keeps inserted text linked`() {
+        val link = SpanStyle.Link("https://example.com")
+        val spans = listOf(TextSpan(2, 8, link))
+
+        val result = SpanAlgorithms.adjustForEdit(spans, editStart = 5, deletedLength = 0, insertedLength = 2)
+
+        assertEquals(listOf(TextSpan(2, 10, link)), result)
     }
 
     @Test

@@ -2,6 +2,7 @@ package io.github.linreal.cascade.editor.theme
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import io.github.linreal.cascade.editor.core.SpanStyle
 
 /**
  * Color palette for the CascadeEditor.
@@ -55,6 +56,35 @@ public data class CascadeEditorColors(
     val quoteBackground: Color,
     /** Semi-transparent overlay drawn behind selected blocks. */
     val selectionOverlay: Color,
+    /**
+     * Link text color used by [SpanStyle.Link] rendering.
+     *
+     * Defaults to [primary] only when constructing [CascadeEditorColors];
+     * data-class [copy] retains the existing link color unless set explicitly.
+     */
+    val linkText: Color = primary,
+    /**
+     * Error/validation message color (link popup URL validation errors, etc.).
+     *
+     * Defaults to a Material-flavored red only when constructing
+     * [CascadeEditorColors]; data-class [copy] retains the existing value
+     * unless set explicitly.
+     */
+    val error: Color = Color(0xFFB3261E),
+    /**
+     * Block-level code surface tint used by `BlockType.Code` rendering.
+     *
+     * Distinct from [inlineCodeBackground] because the inline pill and the
+     * full block surface typically want different shades — the inline pill
+     * needs more visual punch to stand out within prose, while the larger
+     * block surface reads better with a softer tint that doesn't compete
+     * with the code text contrast.
+     *
+     * Defaults to [inlineCodeBackground] only when constructing
+     * [CascadeEditorColors]; data-class [copy] retains the existing value
+     * unless set explicitly.
+     */
+    val codeBlockBackground: Color = inlineCodeBackground,
 ) {
     public companion object {
         /**
@@ -84,6 +114,9 @@ public data class CascadeEditorColors(
             quoteBorder = Color(0xFFBDBDBD),
             quoteBackground = Color(0x0A000000),
             selectionOverlay = Color(0x221A73E8),
+            linkText = Color(0xFF1A73E8),
+            error = Color(0xFFB3261E),
+            codeBlockBackground = Color(0x0F000000),
         )
 
         /**
@@ -113,6 +146,9 @@ public data class CascadeEditorColors(
             quoteBorder = Color(0xFF757575),
             quoteBackground = Color(0x14FFFFFF),
             selectionOverlay = Color(0x8000e2ff),
+            linkText = Color(0xFF8AB4F8),
+            error = Color(0xFFF2B8B5),
+            codeBlockBackground = Color(0x1FFFFFFF),
         )
     }
 }

@@ -131,6 +131,26 @@ class EditorStateTest {
     }
 
     @Test
+    fun `convert text-supporting block types preserves link spans`() {
+        val link = SpanStyle.Link("https://example.com")
+        val block = Block(
+            id = BlockId("1"),
+            type = BlockType.Paragraph,
+            content = BlockContent.Text("Link", listOf(TextSpan(0, 4, link))),
+        )
+        val paragraphState = EditorState.withBlocks(listOf(block))
+
+        val headingState = ConvertBlockType(BlockId("1"), BlockType.Heading(2)).reduce(paragraphState)
+        val todoState = ConvertBlockType(BlockId("1"), BlockType.Todo()).reduce(headingState)
+        val finalState = ConvertBlockType(BlockId("1"), BlockType.Paragraph).reduce(todoState)
+
+        val content = finalState.blocks[0].content as BlockContent.Text
+        assertEquals(BlockType.Paragraph, finalState.blocks[0].type)
+        assertEquals("Link", content.text)
+        assertEquals(listOf(TextSpan(0, 4, link)), content.spans)
+    }
+
+    @Test
     fun `select block clears previous selection`() {
         val block1 = createTestBlock("1")
         val block2 = createTestBlock("2")
@@ -644,6 +664,89 @@ class EditorStateTest {
         assertEquals("HelloWorld", content.text)
         assertEquals(1, content.spans.size)
         assertEquals(TextSpan(0, 5, SpanStyle.Bold), content.spans[0])
+    }
+
+ // supportsSpans gating
+
+    @Test
+    fun `ConvertBlockType to Code drops spans but preserves text`() {
+        val block = createTestBlockWithSpans(
+            "1",
+            "println(x)",
+            listOf(
+                TextSpan(0, 7, SpanStyle.Bold),
+                TextSpan(0, 7, SpanStyle.Italic),
+            ),
+        )
+        val state = EditorState.withBlocks(listOf(block))
+
+        val newState = ConvertBlockType(BlockId("1"), BlockType.Code).reduce(state)
+
+        val converted = newState.blocks[0]
+        assertEquals(BlockType.Code, converted.type)
+        val content = converted.content as BlockContent.Text
+        assertEquals("println(x)", content.text)
+        assertTrue(content.spans.isEmpty())
+    }
+
+    @Test
+    fun `ApplySpanStyle is a no-op on Code blocks`() {
+        val block = Block(
+            id = BlockId("c"),
+            type = BlockType.Code,
+            content = BlockContent.Text("hello", emptyList()),
+        )
+        val state = EditorState.withBlocks(listOf(block))
+
+        val newState = ApplySpanStyle(BlockId("c"), 0, 5, SpanStyle.Bold).reduce(state)
+
+        val content = newState.blocks[0].content as BlockContent.Text
+        assertTrue(content.spans.isEmpty())
+        assertEquals(state, newState)
+    }
+
+    @Test
+    fun `RemoveSpanStyle is a no-op on Code blocks even with stale spans`() {
+        // Defensive: a Code block should never have non-empty spans, but if it
+        // does (malformed snapshot, stale runtime state), RemoveSpanStyle must
+        // still no-op rather than mutate the block.
+        val block = Block(
+            id = BlockId("c"),
+            type = BlockType.Code,
+            content = BlockContent.Text(
+                "hello",
+                listOf(TextSpan(0, 5, SpanStyle.Bold)),
+            ),
+        )
+        val state = EditorState.withBlocks(listOf(block))
+
+        val newState = RemoveSpanStyle(BlockId("c"), 0, 5, SpanStyle.Bold).reduce(state)
+
+        assertEquals(state, newState)
+    }
+
+    @Test
+    fun `MergeBlocks into Code target drops spans from both sides`() {
+        val target = Block(
+            id = BlockId("t"),
+            type = BlockType.Code,
+            content = BlockContent.Text("foo", emptyList()),
+        )
+        val source = createTestBlockWithSpans(
+            "s",
+            "bar",
+            listOf(TextSpan(0, 3, SpanStyle.Bold)),
+        )
+        val state = EditorState.withBlocks(listOf(target, source))
+
+        val newState = MergeBlocks(sourceId = BlockId("s"), targetId = BlockId("t")).reduce(state)
+
+        assertEquals(1, newState.blocks.size)
+        val merged = newState.blocks[0]
+        assertEquals(BlockType.Code, merged.type)
+        val content = merged.content as BlockContent.Text
+        assertEquals("foobar", content.text)
+        assertTrue(content.spans.isEmpty())
     }
 
  // UpdateBlockText span policy

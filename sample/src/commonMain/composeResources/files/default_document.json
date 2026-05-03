@@ -115,11 +115,11 @@
                         }
                     },
                     {
-                        "start": 66,
+                        "start": 65,
                         "end": 71,
                         "style": {
                             "type": "link",
-                            "url": "https://github.com/nickalc/CascadeEditor"
+                            "url": "https://github.com/linreal/cascade-editor"
                         }
                     }
                 ]
@@ -403,6 +403,18 @@
                 "kind": "text",
                 "version": 1,
                 "text": "The best way to predict the future is to invent it. \u2014 Alan Kay",
+                "spans": []
+            }
+        },
+        {
+            "id": "blocks-code-1",
+            "type": {
+                "typeId": "code"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "fun greet(name: String) {\n    println(\"Hello, $name!\")\n}",
                 "spans": []
             }
         },

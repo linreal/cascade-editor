@@ -87,4 +87,19 @@ class SpanLifecycleIntegrationTest {
 
         assertEquals(listOf(TextSpan(1, 4, SpanStyle.Italic)), restoredState.value)
     }
+
+    @Test
+    fun `text block runtime span state initializes link spans from snapshot`() {
+        val blockId = BlockId("block-1")
+        val holder = BlockSpanStates()
+        val link = TextSpan(0, 4, SpanStyle.Link("https://example.com"))
+
+        val restoredState = holder.getOrCreate(
+            blockId = blockId,
+            initialSpans = listOf(link),
+            textLength = 4,
+        )
+
+        assertEquals(listOf(link), restoredState.value)
+    }
 }

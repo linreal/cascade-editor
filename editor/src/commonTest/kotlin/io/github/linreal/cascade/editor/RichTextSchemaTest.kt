@@ -4,9 +4,13 @@ import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
 import io.github.linreal.cascade.editor.serialization.RichTextSchema
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class RichTextSchemaTest {
@@ -110,6 +114,96 @@ class RichTextSchemaTest {
         val decoded = RichTextSchema.decodeFromString(RichTextSchema.encodeToString(original))
 
         assertEquals(original, decoded)
+    }
+
+    // -- Round-trip: links --
+
+    @Test
+    fun `encode link span writes link type and normalized url`() {
+        val content = BlockContent.Text(
+            text = "Open example",
+            spans = listOf(TextSpan(5, 12, SpanStyle.Link("https://example.com/path")))
+        )
+
+        val encoded = RichTextSchema.encode(content)
+        val style = encoded["spans"]!!
+            .jsonArray[0]
+            .jsonObject["style"]!!
+            .jsonObject
+
+        assertEquals("link", style["type"]?.jsonPrimitive?.content)
+        assertEquals("https://example.com/path", style["url"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `decode valid link span normalizes bare domain url`() {
+        val json = """{"version":1,"text":"Open example","spans":[{"start":5,"end":12,"style":{"type":"link","url":"example.com/path"}}]}"""
+
+        val decoded = RichTextSchema.decodeFromString(json)
+
+        assertEquals(listOf(TextSpan(5, 12, SpanStyle.Link("https://example.com/path"))), decoded.spans)
+    }
+
+    @Test
+    fun `link span with missing url is dropped`() {
+        val json = """
+            {"version":1,"text":"Hello","spans":[
+                {"start":0,"end":5,"style":{"type":"bold"}},
+                {"start":0,"end":3,"style":{"type":"link"}}
+            ]}
+        """.trimIndent()
+
+        val decoded = RichTextSchema.decodeFromString(json)
+
+        assertEquals(listOf(TextSpan(0, 5, SpanStyle.Bold)), decoded.spans)
+    }
+
+    @Test
+    fun `blank link urls are dropped`() {
+        val json = """
+            {"version":1,"text":"Hello World","spans":[
+                {"start":0,"end":5,"style":{"type":"bold"}},
+                {"start":0,"end":5,"style":{"type":"link","url":"   "}}
+            ]}
+        """.trimIndent()
+
+        val decoded = RichTextSchema.decodeFromString(json)
+
+        assertEquals(listOf(TextSpan(0, 5, SpanStyle.Bold)), decoded.spans)
+    }
+
+    @Test
+    fun `round-trip bold and link spans together`() {
+        val original = BlockContent.Text(
+            text = "Open example",
+            spans = listOf(
+                TextSpan(0, 4, SpanStyle.Bold),
+                TextSpan(5, 12, SpanStyle.Link("https://example.com/path")),
+            )
+        )
+
+        val decoded = RichTextSchema.decodeFromString(RichTextSchema.encodeToString(original))
+
+        assertEquals(original, decoded)
+    }
+
+    @Test
+    fun `sample default document link span decodes as link`() {
+        val json = """
+            {
+                "version": 1,
+                "text": "Mix bold, italic, underline, strikethrough, code, and highlights in any block.",
+                "spans": [
+                    {"start":4,"end":8,"style":{"type":"bold"}},
+                    {"start":66,"end":71,"style":{"type":"link","url":"https://github.com/linreal/cascade-editor"}}
+                ]
+            }
+        """.trimIndent()
+
+        val decoded = RichTextSchema.decodeFromString(json)
+        val linkStyle = assertIs<SpanStyle.Link>(decoded.spans.single { it.style is SpanStyle.Link }.style)
+
+        assertEquals("https://github.com/linreal/cascade-editor", linkStyle.url)
     }
 
     // -- Round-trip: custom styles --
@@ -250,8 +344,16 @@ class RichTextSchemaTest {
     }
 
     @Test
-    fun `unknown style type link is dropped`() {
+    fun `link style with missing url is dropped`() {
         val json = """{"version":1,"text":"Hello","spans":[{"start":0,"end":3,"style":{"type":"link"}}]}"""
+        val decoded = RichTextSchema.decodeFromString(json)
+
+        assertTrue(decoded.spans.isEmpty())
+    }
+
+    @Test
+    fun `link style with non-string url primitive is dropped`() {
+        val json = """{"version":1,"text":"Hello","spans":[{"start":0,"end":3,"style":{"type":"link","url":42}}]}"""
         val decoded = RichTextSchema.decodeFromString(json)
 
         assertTrue(decoded.spans.isEmpty())

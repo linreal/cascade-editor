@@ -198,6 +198,52 @@ class DefaultFormattingActionsTest {
         assertTrue(dispatchedActions.isEmpty())
     }
 
+ // No-op: non-spans block (Code)
+
+    @Test
+    fun `toggleStyle no-op when focused block opts out of spans`() {
+        setupFocusedBlock(
+            "println(x)",
+            blockType = BlockType.Code,
+            selectionStart = 0,
+            selectionEnd = 7,
+        )
+
+        actions.toggleStyle(SpanStyle.Bold)
+
+        assertTrue(dispatchedActions.isEmpty())
+        assertTrue(spanStates.getSpans(blockId).isEmpty())
+    }
+
+    @Test
+    fun `applyStyle no-op when focused block opts out of spans`() {
+        setupFocusedBlock(
+            "println(x)",
+            blockType = BlockType.Code,
+            selectionStart = 0,
+            selectionEnd = 7,
+        )
+
+        actions.applyStyle(SpanStyle.Italic)
+
+        assertTrue(dispatchedActions.isEmpty())
+        assertTrue(spanStates.getSpans(blockId).isEmpty())
+    }
+
+    @Test
+    fun `removeStyle no-op when focused block opts out of spans`() {
+        setupFocusedBlock(
+            "println(x)",
+            blockType = BlockType.Code,
+            selectionStart = 0,
+            selectionEnd = 7,
+        )
+
+        actions.removeStyle(SpanStyle.Bold)
+
+        assertTrue(dispatchedActions.isEmpty())
+    }
+
  // Fresh selection resolution
 
     @Test

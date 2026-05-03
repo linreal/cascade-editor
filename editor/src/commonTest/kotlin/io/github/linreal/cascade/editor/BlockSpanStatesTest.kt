@@ -297,6 +297,18 @@ class BlockSpanStatesTest {
     }
 
     @Test
+    fun `split - crossing link keeps same URL on both blocks`() {
+        val holder = BlockSpanStates()
+        val link = SpanStyle.Link("https://example.com")
+        holder.create(blockA, listOf(TextSpan(2, 8, link)))
+
+        holder.split(blockA, blockB, position = 5)
+
+        assertEquals(listOf(TextSpan(2, 5, link)), holder.getSpans(blockA))
+        assertEquals(listOf(TextSpan(0, 3, link)), holder.getSpans(blockB))
+    }
+
+    @Test
     fun `split - new block state is created`() {
         val holder = BlockSpanStates()
         holder.create(blockA, listOf(TextSpan(0, 10, SpanStyle.Bold)))
@@ -398,6 +410,37 @@ class BlockSpanStatesTest {
     }
 
     @Test
+    fun `mergeInto - boundary merges same-URL links`() {
+        val holder = BlockSpanStates()
+        val link = SpanStyle.Link("https://example.com")
+        holder.create(blockA, listOf(TextSpan(0, 5, link)))
+        holder.create(blockB, listOf(TextSpan(0, 5, link)))
+
+        holder.mergeInto(sourceId = blockB, targetId = blockA, targetTextLength = 5)
+
+        assertEquals(listOf(TextSpan(0, 10, link)), holder.getSpans(blockA))
+    }
+
+    @Test
+    fun `mergeInto - boundary keeps different-URL links distinct`() {
+        val holder = BlockSpanStates()
+        val firstLink = SpanStyle.Link("https://one.example")
+        val secondLink = SpanStyle.Link("https://two.example")
+        holder.create(blockA, listOf(TextSpan(0, 5, firstLink)))
+        holder.create(blockB, listOf(TextSpan(0, 5, secondLink)))
+
+        holder.mergeInto(sourceId = blockB, targetId = blockA, targetTextLength = 5)
+
+        assertEquals(
+            listOf(
+                TextSpan(0, 5, firstLink),
+                TextSpan(5, 10, secondLink),
+            ),
+            holder.getSpans(blockA)
+        )
+    }
+
+    @Test
     fun `mergeInto - source state is removed`() {
         val holder = BlockSpanStates()
         holder.create(blockA)
@@ -471,6 +514,33 @@ class BlockSpanStatesTest {
     }
 
     @Test
+    fun `applyStyle - applying link clips intersecting links and preserves non-link spans`() {
+        val holder = BlockSpanStates()
+        val oldLink = SpanStyle.Link("https://old.example")
+        val newLink = SpanStyle.Link("https://new.example")
+        holder.create(
+            blockA,
+            listOf(
+                TextSpan(0, 8, oldLink),
+                TextSpan(2, 6, SpanStyle.Bold),
+            ),
+            textLength = 10,
+        )
+
+        holder.applyStyle(blockA, rangeStart = 3, rangeEnd = 5, newLink, textLength = 10)
+
+        assertEquals(
+            listOf(
+                TextSpan(0, 3, oldLink),
+                TextSpan(2, 6, SpanStyle.Bold),
+                TextSpan(3, 5, newLink),
+                TextSpan(5, 8, oldLink),
+            ),
+            holder.getSpans(blockA)
+        )
+    }
+
+    @Test
     fun `applyStyle - no-op for absent block`() {
         val holder = BlockSpanStates()
         holder.applyStyle(blockA, rangeStart = 0, rangeEnd = 5, SpanStyle.Bold, textLength = 10)
@@ -491,6 +561,51 @@ class BlockSpanStatesTest {
             ),
             holder.getSpans(blockA)
         )
+    }
+
+    @Test
+    fun `removeStyle - link removal matches every URL and preserves non-link spans`() {
+        val holder = BlockSpanStates()
+        holder.create(
+            blockA,
+            listOf(
+                TextSpan(0, 5, SpanStyle.Link("https://one.example")),
+                TextSpan(5, 10, SpanStyle.Link("https://two.example")),
+                TextSpan(2, 8, SpanStyle.Bold),
+            ),
+            textLength = 10,
+        )
+
+        holder.removeStyle(
+            blockA,
+            rangeStart = 0,
+            rangeEnd = 10,
+            style = SpanStyle.Link("https://other.example"),
+        )
+
+        assertEquals(listOf(TextSpan(2, 8, SpanStyle.Bold)), holder.getSpans(blockA))
+    }
+
+    @Test
+    fun `removeLinkSpans - removes every URL and preserves non-link spans`() {
+        val holder = BlockSpanStates()
+        holder.create(
+            blockA,
+            listOf(
+                TextSpan(0, 5, SpanStyle.Link("https://one.example")),
+                TextSpan(5, 10, SpanStyle.Link("https://two.example")),
+                TextSpan(2, 8, SpanStyle.Bold),
+            ),
+            textLength = 10,
+        )
+
+        holder.removeLinkSpans(
+            blockA,
+            rangeStart = 0,
+            rangeEnd = 10,
+        )
+
+        assertEquals(listOf(TextSpan(2, 8, SpanStyle.Bold)), holder.getSpans(blockA))
     }
 
     @Test
@@ -685,6 +800,36 @@ class BlockSpanStatesTest {
 
         val resolved = holder.resolveStylesForInsertion(blockA, position = 5)
         assertEquals(setOf(SpanStyle.Bold), resolved)
+    }
+
+    @Test
+    fun `resolveStylesForInsertion - excludes link from boundary continuation`() {
+        val holder = BlockSpanStates()
+        val link = SpanStyle.Link("https://example.com")
+        holder.create(
+            blockA,
+            listOf(
+                TextSpan(0, 5, link),
+                TextSpan(0, 5, SpanStyle.Bold),
+            )
+        )
+
+        val resolved = holder.resolveStylesForInsertion(blockA, position = 5)
+
+        assertEquals(setOf(SpanStyle.Bold), resolved)
+    }
+
+    @Test
+    fun `resolveStylesForInsertion - excludes link from explicit pending styles`() {
+        val holder = BlockSpanStates()
+        val link = SpanStyle.Link("https://example.com")
+        holder.create(blockA, textLength = 5)
+        holder.setPendingStyles(blockA, setOf(link, SpanStyle.Bold))
+
+        val resolved = holder.resolveStylesForInsertion(blockA, position = 3)
+
+        assertEquals(setOf(SpanStyle.Bold), resolved)
+        assertNull(holder.getPendingStyles(blockA))
     }
 
     @Test

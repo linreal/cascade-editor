@@ -96,8 +96,8 @@ public data class CascadeEditorBlockStrings(
                 ),
                 "code" to BlockLocalizedStrings(
                     displayName = "Code",
-                    description = "Code block with syntax highlighting",
-                    keywords = listOf("code", "snippet", "programming"),
+                    description = "Plain code block",
+                    keywords = listOf("code", "snippet", "monospace"),
                 ),
                 "divider" to BlockLocalizedStrings(
                     displayName = "Divider",

@@ -12,6 +12,7 @@ import io.github.linreal.cascade.editor.serialization.BlockTypeCodec
 import io.github.linreal.cascade.editor.serialization.DocumentDecodeWarning
 import io.github.linreal.cascade.editor.serialization.DocumentSchema
 import io.github.linreal.cascade.editor.serialization.loadFromJson
+import io.github.linreal.cascade.editor.serialization.resolveCurrentBlocks
 import io.github.linreal.cascade.editor.serialization.toJson
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
@@ -91,6 +92,26 @@ class DocumentSerializationExtTest {
     }
 
     @Test
+    fun `toJson runtime span override - captures runtime link spans`() {
+        val blockId = BlockId("b1")
+        val runtimeLink = TextSpan(0, 4, SpanStyle.Link("https://example.com"))
+        val blocks = listOf(
+            Block(blockId, BlockType.Paragraph, BlockContent.Text("link")),
+        )
+        val holder = EditorStateHolder(EditorState.withBlocks(blocks))
+        val textStates = BlockTextStates()
+        val spanStates = BlockSpanStates()
+
+        spanStates.getOrCreate(blockId, listOf(runtimeLink), textLength = 4)
+
+        val json = holder.toJson(textStates, spanStates)
+        val decoded = DocumentSchema.decodeFromString(json)
+        val text = assertIs<BlockContent.Text>(decoded[0].content)
+
+        assertEquals(listOf(runtimeLink), text.spans)
+    }
+
+    @Test
     fun `toJson snapshot fallback - no runtime entry uses snapshot`() {
         val blockId = BlockId("b1")
         val spans = listOf(TextSpan(0, 5, SpanStyle.Bold))
@@ -108,6 +129,52 @@ class DocumentSerializationExtTest {
         assertEquals("Hello", text.text)
         assertEquals(1, text.spans.size)
         assertEquals(SpanStyle.Bold, text.spans[0].style)
+    }
+
+    @Test
+    fun `resolveCurrentBlocks strips spans from non-spans block types`() {
+        // A Code block (supportsSpans = false) should never persist spans, even
+        // if a malformed snapshot or stale runtime state still carries some.
+        val blockId = BlockId("c1")
+        val staleSpans = listOf(TextSpan(0, 5, SpanStyle.Bold))
+        val blocks = listOf(
+            Block(blockId, BlockType.Code, BlockContent.Text("hello", staleSpans)),
+        )
+        val holder = EditorStateHolder(EditorState.withBlocks(blocks))
+        val textStates = BlockTextStates()
+        val spanStates = BlockSpanStates()
+
+        // Without runtime entries: snapshot spans must be stripped on resolve.
+        val resolved = resolveCurrentBlocks(holder, textStates, spanStates)
+        val resolvedContent = assertIs<BlockContent.Text>(resolved[0].content)
+        assertEquals("hello", resolvedContent.text)
+        assertTrue(resolvedContent.spans.isEmpty())
+    }
+
+    @Test
+    fun `resolveCurrentBlocks strips runtime spans for non-spans block types`() {
+        // Defensive: even if runtime span state is non-empty (e.g. a same-id
+        // conversion left stale state behind), the resolved block has empty spans.
+        val blockId = BlockId("c1")
+        val blocks = listOf(
+            Block(blockId, BlockType.Code, BlockContent.Text("hello")),
+        )
+        val holder = EditorStateHolder(EditorState.withBlocks(blocks))
+        val textStates = BlockTextStates()
+        val spanStates = BlockSpanStates()
+
+        textStates.getOrCreate(blockId, "hello")
+        // Bypass type-aware gating to seed defensive coverage.
+        spanStates.getOrCreate(
+            blockId,
+            listOf(TextSpan(0, 5, SpanStyle.Italic)),
+            textLength = 5,
+        )
+
+        val resolved = resolveCurrentBlocks(holder, textStates, spanStates)
+        val resolvedContent = assertIs<BlockContent.Text>(resolved[0].content)
+        assertEquals("hello", resolvedContent.text)
+        assertTrue(resolvedContent.spans.isEmpty())
     }
 
     @Test

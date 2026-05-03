@@ -48,6 +48,7 @@ public class SpanActionDispatcher(
         rangeEnd: Int,
         style: SpanStyle,
     ) {
+        if (targetBlockBlocksSpanMutation(blockId)) return
         mutateFormatting(
             blockId = blockId,
             captureHistory = rangeStart != rangeEnd,
@@ -69,6 +70,7 @@ public class SpanActionDispatcher(
         rangeEnd: Int,
         style: SpanStyle,
     ) {
+        if (targetBlockBlocksSpanMutation(blockId)) return
         mutateFormatting(
             blockId = blockId,
             captureHistory = rangeStart != rangeEnd,
@@ -96,6 +98,7 @@ public class SpanActionDispatcher(
         style: SpanStyle,
     ) {
         if (textStates.getVisibleText(blockId) == null) return
+        if (targetBlockBlocksSpanMutation(blockId)) return
 
         // Collapsed cursor: toggle pending style for next insertion
         if (rangeStart == rangeEnd) {
@@ -173,5 +176,17 @@ public class SpanActionDispatcher(
     private fun syncSnapshot(blockId: BlockId, visibleText: String) {
         val spans = spanStates.getSpans(blockId)
         dispatchFn(UpdateBlockContent(blockId, BlockContent.Text(visibleText, spans)))
+    }
+
+    /**
+     * True only when we can prove the target block's current type opts out of spans
+     * (e.g. [io.github.linreal.cascade.editor.core.BlockType.Code]). Without a state
+     * holder (e.g. unit tests that exercise the dispatcher directly) or if the block
+     * is no longer in the snapshot, conservatively allow the mutation — runtime
+     * holder no-ops still protect missing blocks.
+     */
+    private fun targetBlockBlocksSpanMutation(blockId: BlockId): Boolean {
+        val type = stateHolder?.state?.getBlock(blockId)?.type ?: return false
+        return !type.supportsSpans
     }
 }

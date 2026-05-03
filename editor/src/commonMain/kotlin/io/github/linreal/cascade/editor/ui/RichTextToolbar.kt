@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,18 +26,19 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import cascadeeditor.editor.generated.resources.Res
 import cascadeeditor.editor.generated.resources.ic_format_indent_decrease
 import cascadeeditor.editor.generated.resources.ic_format_indent_increase
+import cascadeeditor.editor.generated.resources.ic_link
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.indentation.IndentationActions
 import io.github.linreal.cascade.editor.indentation.IndentationState
 import io.github.linreal.cascade.editor.richtext.FormattingActions
 import io.github.linreal.cascade.editor.richtext.FormattingState
+import io.github.linreal.cascade.editor.richtext.LinkState
 import io.github.linreal.cascade.editor.richtext.StyleStatus
 import io.github.linreal.cascade.editor.theme.CascadeEditorColors
 import io.github.linreal.cascade.editor.theme.CascadeEditorStrings
@@ -51,7 +53,7 @@ import org.jetbrains.compose.resources.painterResource
  * Default config-driven rich text toolbar.
  *
  * Renders toggle buttons for each style in [config], plus structural indent
- * controls driven by [indentationState] and [indentationActions].
+ * controls and the link editing entry point when enabled by [config].
  *
  * Buttons use [Modifier.focusProperties] to prevent stealing focus from the
  * text field. The toolbar supports horizontal scrolling for overflow.
@@ -62,8 +64,10 @@ internal fun RichTextToolbar(
     actions: FormattingActions,
     indentationState: State<IndentationState>,
     indentationActions: IndentationActions,
+    linkState: State<LinkState>,
     config: RichTextToolbarConfig,
     onSlashInsert: () -> Unit,
+    onLinkClick: () -> Unit,
     onHideKeyboard: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -115,6 +119,18 @@ internal fun RichTextToolbar(
                     )
                 }
 
+                if (config.showLink) {
+                    val linkPresentation = linkToolbarButtonPresentation(linkState.value)
+                    ToolbarIconButton(
+                        icon = Res.drawable.ic_link,
+                        label = strings.link,
+                        enabled = linkPresentation.enabled,
+                        status = linkPresentation.status,
+                        colors = colors,
+                        onClick = onLinkClick,
+                    )
+                }
+
                 config.buttons.forEach { spec ->
                     ToolbarToggleButton(
                         spec = spec,
@@ -139,16 +155,27 @@ private fun ToolbarIconButton(
     icon: DrawableResource,
     label: String,
     enabled: Boolean,
+    status: StyleStatus = StyleStatus.Absent,
     colors: CascadeEditorColors,
     onClick: () -> Unit,
 ) {
-    val contentColor = if (enabled) colors.toolbarIcon else colors.toolbarIconDisabled
+    val backgroundColor = toolbarButtonBackgroundColor(
+        enabled = enabled,
+        status = status,
+        colors = colors,
+    )
+    val contentColor = toolbarButtonContentColor(
+        enabled = enabled,
+        status = status,
+        colors = colors,
+    )
     val shape = RoundedCornerShape(6.dp)
 
     Box(
         modifier = Modifier
             .sizeIn(minWidth = 44.dp, minHeight = 44.dp)
             .clip(shape)
+            .background(backgroundColor)
             .nonFocusableTap(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
@@ -198,21 +225,8 @@ private fun ToolbarToggleButton(
     strings: CascadeEditorStrings,
     onClick: () -> Unit,
 ) {
-    val active = status == StyleStatus.FullyActive
-    val partial = status == StyleStatus.Partial
-
-    val backgroundColor = when {
-        !enabled -> Color.Transparent
-        active -> colors.primary
-        partial -> colors.primary.copy(alpha = 0.15f)
-        else -> Color.Transparent
-    }
-
-    val contentColor = when {
-        !enabled -> colors.toolbarIconDisabled
-        active -> colors.onPrimary
-        else -> colors.toolbarIcon
-    }
+    val backgroundColor = toolbarButtonBackgroundColor(enabled, status, colors)
+    val contentColor = toolbarButtonContentColor(enabled, status, colors)
 
     val shape = RoundedCornerShape(6.dp)
 
@@ -232,6 +246,63 @@ private fun ToolbarToggleButton(
     }
 }
 
+@Immutable
+internal data class LinkToolbarButtonPresentation(
+    val enabled: Boolean,
+    val status: StyleStatus,
+)
+
+/**
+ * Maps link editing state onto the default toolbar button's enabled and visual
+ * status contract.
+ */
+internal fun linkToolbarButtonPresentation(linkState: LinkState): LinkToolbarButtonPresentation {
+    if (!linkState.canLink) {
+        return LinkToolbarButtonPresentation(
+            enabled = false,
+            status = StyleStatus.Absent,
+        )
+    }
+
+    val status = when {
+        linkState.existingUrl != null -> StyleStatus.FullyActive
+        linkState.intersectsLink -> StyleStatus.Partial
+        else -> StyleStatus.Absent
+    }
+    return LinkToolbarButtonPresentation(
+        enabled = true,
+        status = status,
+    )
+}
+
+private fun toolbarButtonBackgroundColor(
+    enabled: Boolean,
+    status: StyleStatus,
+    colors: CascadeEditorColors,
+): Color {
+    val active = status == StyleStatus.FullyActive
+    val partial = status == StyleStatus.Partial
+    return when {
+        !enabled -> Color.Transparent
+        active -> colors.primary
+        partial -> colors.primary.copy(alpha = 0.15f)
+        else -> Color.Transparent
+    }
+}
+
+private fun toolbarButtonContentColor(
+    enabled: Boolean,
+    status: StyleStatus,
+    colors: CascadeEditorColors,
+): Color {
+    val active = status == StyleStatus.FullyActive
+    return when {
+        !enabled -> colors.toolbarIconDisabled
+        active -> colors.onPrimary
+        else -> colors.toolbarIcon
+    }
+}
+
 /**
  * Short display label that visually represents the style.
  */
@@ -242,6 +313,7 @@ private fun buttonDisplayText(style: SpanStyle): String = when (style) {
     SpanStyle.StrikeThrough -> "S"
     SpanStyle.InlineCode -> "<>"
     is SpanStyle.Highlight -> "H"
+    is SpanStyle.Link -> error("Links use RichTextToolbarConfig.showLink, not ToolbarButtonSpec.")
     is SpanStyle.Custom -> style.typeId.take(2).uppercase()
 }
 
@@ -257,6 +329,7 @@ private fun localizedLabel(spec: ToolbarButtonSpec, strings: CascadeEditorString
         SpanStyle.StrikeThrough -> strings.strikethrough
         SpanStyle.InlineCode -> strings.inlineCode
         is SpanStyle.Highlight -> strings.highlight
+        is SpanStyle.Link -> error("Links use RichTextToolbarConfig.showLink, not ToolbarButtonSpec.")
         else -> spec.label
     }
 

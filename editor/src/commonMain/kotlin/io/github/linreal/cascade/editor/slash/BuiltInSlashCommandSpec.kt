@@ -32,7 +32,7 @@ public sealed interface BuiltInBlockSlashBehavior {
 
     /**
      * Always insert a new block below the anchor, regardless of anchor content.
-     * Use for non-convertible types (code, divider, image) or types that should never
+     * Use for non-convertible types (divider, image) or types that should never
      * modify the anchor block.
      */
     public data object AlwaysInsert : BuiltInBlockSlashBehavior
