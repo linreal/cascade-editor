@@ -1,5 +1,7 @@
 # Indentation — Technical Context
 
+> HTML import/export round-trips indentation through nested `<ul>` / `<ol>` for list outlines and `class="cascade-indent-N"` for free/skipped depths and indented non-list blocks. See [`HtmlImportExportFeatureContext.md`](HtmlImportExport.md) (`DefaultListOutlineEncoder`, `openTagWithCascadeIndentation`) for the encoding strategy and the `HtmlProfileSupportSet`-scoped round-trip claim.
+
 ## 1. Feature Overview
 
 Indentation adds flat-outline nesting to CascadeEditor without replacing the document model with a tree. Supported blocks store a bounded `BlockAttributes.indentationLevel`, reducers shift target roots and their descendants as structural operations, and rendering turns depth into a visual leading inset. Numbered lists, serialization, toolbar state, keyboard editing behavior, and drag-and-drop all read the same block attributes, so nested documents remain consistent across editing, save/load, and reorder flows.

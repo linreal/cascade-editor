@@ -2,6 +2,8 @@
 
 This document explains how inline rich text formatting (bold, italic, underline, etc.) works in CascadeEditor. It covers the domain model, algorithms, runtime state management, rendering, edit maintenance, serialization, and the toolbar/formatting API.
 
+> Span emission for HTML uses the same `SpanAlgorithms.normalize(...)` pipeline described here; see [`HtmlImportExportFeatureContext.md`](HtmlImportExport.md) for the HTML-side encode walker (`HtmlEncodeContextImpl.encodeInlineFragment`) and the `SpanEncoder<T>` / span-fallback contract.
+
 All file paths are relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
 
 ---
@@ -131,7 +133,7 @@ When `block.type.supportsSpans == false`:
 
 All gates key on `block.type.supportsSpans` (or `focusedBlockType.supportsSpans`) and never pattern-match on `BlockType.Code` directly. `TextBlockField` includes `block.type.typeId` (or the derived predicate) in the `remember(...)` keys for span-affected observers and the `outputTransformation`, so same-id Paragraph ↔ Code conversion drops the prior runtime constructs entirely. The same observer-key strategy applies to `SlashCommandTextObserver` (suppressed when `block.type is BlockType.Code`) and `ListAutoDetectObserver` (suppressed via the call-site `isCurrentlyList || block.type is BlockType.Code` predicate).
 
-> **Known programmatic-commit consume gap (Code Enter).** Code Enter mutations in `DefaultBlockCallbacks.onEnter` register a programmatic commit via `BlockTextStates.replaceVisibleRange(...)`. For non-Code blocks, `SpanMaintenanceTextObserver` consumes that commit. Code blocks have neither `SpanMaintenanceTextObserver` (suppressed by `supportsSpans`) nor — after Task 9 — a slash observer that would naturally drain it, so a pending commit can linger. The "snapshot identity changed without text change" branch in `TextBlockField` already calls `consumeProgrammaticCommit` defensively. If post-Enter typing in Code is later observed to misclassify the first user character as programmatic, the targeted fix is one extra `consumeProgrammaticCommit(block.id)` next to the `spanTextObserver?.onCommittedVisibleText(...)` call.
+> **Known programmatic-commit consume gap (Code Enter).** Code Enter mutations in `DefaultBlockCallbacks.onEnter` register a programmatic commit via `BlockTextStates.replaceVisibleRange(...)`. For non-Code blocks, `SpanMaintenanceTextObserver` consumes that commit. Code blocks have neither `SpanMaintenanceTextObserver` (suppressed by `supportsSpans`) nor a slash observer that would naturally drain it, so a pending commit can linger. The "snapshot identity changed without text change" branch in `TextBlockField` already calls `consumeProgrammaticCommit` defensively. If post-Enter typing in Code is later observed to misclassify the first user character as programmatic, the targeted fix is one extra `consumeProgrammaticCommit(block.id)` next to the `spanTextObserver?.onCommittedVisibleText(...)` call.
 
 ---
 
