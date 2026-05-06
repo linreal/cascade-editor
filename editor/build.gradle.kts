@@ -89,7 +89,7 @@ mavenPublishing {
     coordinates(
         groupId = "io.github.linreal",
         artifactId = "cascade-editor",
-        version = "1.3.0"
+        version = "1.4.0"
     )
 
     pom {

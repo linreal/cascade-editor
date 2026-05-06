@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-05-06
+
+### Added
+
+- Added experimental HTML import/export support with profile-driven decode/encode APIs, default block/span mappings, parser policies, warnings, and `EditorStateHolder.toHtml()` / `loadFromHtml()` helpers
+- Added link spans with URL validation, serialization, toolbar actions, popup editing, link opening hooks, and custom chrome access through link state/actions
+- Added code block support with plain-text editing semantics, dedicated rendering, serialization, slash-command integration, and span-formatting guards
+
+
 ## [1.3.0] - 2026-04-28
 
 ### Changed

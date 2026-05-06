@@ -53,7 +53,7 @@ If you only need a formatted text area, a single-buffer editor is simpler. Casca
 Create a native block document with an initial heading and paragraph:
 
 ```groovy
-implementation("io.github.linreal:cascade-editor:1.3.0")
+implementation("io.github.linreal:cascade-editor:1.4.0")
 ```
 
 ```kotlin
