@@ -206,7 +206,7 @@ class BlockRegistryTest {
     }
 
 
-    // -- Code descriptor (Task 6) --
+    // -- Code descriptor --
 
     @Test
     fun `default registry has code descriptor with ConvertInPlace behavior`() {

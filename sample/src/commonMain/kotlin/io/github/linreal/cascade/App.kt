@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import io.github.linreal.cascade.navigation.AppScreen
 import io.github.linreal.cascade.screens.CustomBlocksScreen
+import io.github.linreal.cascade.screens.CustomHtmlProfileScreen
 import io.github.linreal.cascade.screens.CustomToolbarScreen
 import io.github.linreal.cascade.screens.EditorDemoScreen
 import io.github.linreal.cascade.screens.LandingScreen
@@ -66,6 +67,11 @@ fun App() {
                     onBack = { currentScreen = AppScreen.Landing },
                 )
                 AppScreen.CustomToolbar -> CustomToolbarScreen(
+                    isDark = isDark,
+                    onToggleTheme = { themeOverride = !isDark },
+                    onBack = { currentScreen = AppScreen.Landing },
+                )
+                AppScreen.CustomHtmlProfile -> CustomHtmlProfileScreen(
                     isDark = isDark,
                     onToggleTheme = { themeOverride = !isDark },
                     onBack = { currentScreen = AppScreen.Landing },

@@ -23,8 +23,8 @@ public data class BlockAttributes(
     }
 
     public companion object {
-        internal const val MIN_INDENTATION_LEVEL: Int = MIN_INDENTATION_LEVEL_VALUE
-        internal const val MAX_INDENTATION_LEVEL: Int = MAX_INDENTATION_LEVEL_VALUE
+        public const val MIN_INDENTATION_LEVEL: Int = MIN_INDENTATION_LEVEL_VALUE
+        public const val MAX_INDENTATION_LEVEL: Int = MAX_INDENTATION_LEVEL_VALUE
         internal const val DEFAULT_INDENTATION_LEVEL: Int = DEFAULT_INDENTATION_LEVEL_VALUE
 
         public val Default: BlockAttributes = BlockAttributes()

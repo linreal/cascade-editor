@@ -42,8 +42,7 @@ public sealed interface BlockType {
      * (e.g. [Code], where the body is treated as plain monospace text).
      *
      * Span state initialization, formatting toolbar gates, link gates, span reducers,
-     * and serialization paths all key on this flag — see Task 2 in
-     * `docs/tasks-code-block-support.md` for the gating wiring.
+     * and serialization paths all key on this flag.
      */
     public val supportsSpans: Boolean get() = supportsText
 

@@ -77,6 +77,18 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Block type codec | `serialization/BlockTypeCodec.kt` | `BlockTypeCodec` |
 | Block content codec | `serialization/BlockContentCodec.kt` | `BlockContentCodec` |
 | Editor serialization ext | `serialization/DocumentSerializationExt.kt` | `EditorStateHolder.toJson()`, `EditorStateHolder.loadFromJson()` |
+| Editor HTML serialization ext | `htmlserialization/HtmlSerializationExt.kt` | `EditorStateHolder.toHtml()`, `EditorStateHolder.loadFromHtml()` |
+| HTML schema entry point | `htmlserialization/HtmlSchema.kt` | `HtmlSchema` (`decode` and `encode` wired through profile-driven engines) |
+| HTML parser internals | `htmlserialization/HtmlParser.kt`, `htmlserialization/HtmlPolicyApplier.kt`, `htmlserialization/HtmlTokenizer.kt`, `htmlserialization/HtmlTreeBuilder.kt`, `htmlserialization/HtmlNode.kt`, `htmlserialization/HtmlToken.kt` | `HtmlParser.parse()` (internal), `HtmlPolicyApplier`, `HtmlNode`, `HtmlToken` |
+| HTML decode engine | `htmlserialization/HtmlDecodeEngine.kt`, `htmlserialization/TagDecodeContextImpl.kt`, `htmlserialization/HtmlNodeViewMapper.kt`, `htmlserialization/DefaultTagDecoders.kt`, `htmlserialization/PreservedHtmlBlockType.kt` | `HtmlDecodeEngine` (internal; normalizes indentation + numbered lists after decode), `TagDecodeContextImpl`, default tag decoders, `PreservedHtmlBlockType`; default list-item decoders honor `class="cascade-indent-N"` as the lossless default-profile list-depth escape hatch, while default `<ul>` / `<ol>` containers delegate to a profile-level custom `<li>` decoder when one is registered |
+| HTML encode engine | `htmlserialization/HtmlEncodeEngine.kt`, `htmlserialization/HtmlEncodeContextImpl.kt`, `htmlserialization/DefaultBlockEncoders.kt`, `htmlserialization/DefaultSpanEncoders.kt`, `htmlserialization/DefaultListOutlineEncoder.kt`, `htmlserialization/DefaultEncoderFallbacks.kt` | `HtmlEncodeEngine` (internal), `HtmlEncodeContextImpl`, canonical default block/span encoders, one default `listOutline` encoder for mixed bullet/numbered runs, default block/span encode fallbacks |
+| HTML profile config | `htmlserialization/HtmlProfile.kt` | `HtmlProfile`, `HtmlProfile.Default` (immutable builder-style with default tag decoders, canonical encode mappings, encode fallbacks, and `withSupportSet`) |
+| HTML support set | `htmlserialization/HtmlProfileSupportSet.kt` | `HtmlProfileSupportSet` (public predicate-based support-set constructor; `supportsBlock`/`supportsSpan`/`supportsDocument`; document checks reject stale numbering, invalid indentation outlines, and non-round-trippable content shapes) |
+| Custom reference HTML profile | `sample/src/commonMain/kotlin/io/github/linreal/cascade/profiles/CustomHtmlProfile.kt` | Sample-only `CustomHtmlProfile.Profile` composed from public HTML APIs; flat `ql-indent-N` lists and custom link attributes |
+| HTML codec contracts | `htmlserialization/HtmlCodecContracts.kt` | `HtmlNodeView`, `TagDecoder`, `TagDecodeContext`, `TagDecodeResult`, `InlineFragment`, `BlockEncoder`, `SpanEncoder`, `BlockGroupEncoder`, `HtmlEncodeContext`, `HtmlEmit`, `HtmlTagPair` |
+| HTML parser policies | `htmlserialization/HtmlPolicies.kt` | `BlockSeparator`, `InlineRoot`, `EntityDecode`, `UnknownTagPolicy` |
+| HTML escaping helpers | `htmlserialization/HtmlEscaping.kt` | `Html.escapeText()`, `Html.escapeAttr()` |
+| HTML decode/encode results | `htmlserialization/HtmlResults.kt`, `htmlserialization/HtmlWarnings.kt` | `HtmlDecodeResult`, `HtmlEncodeResult`, `HtmlDecodeWarning`, `HtmlEncodeWarning` |
 | Span algorithms | `richtext/SpanAlgorithms.kt` | `SpanAlgorithms`, `StyleStatus` |
 | Span mapper | `richtext/SpanMapper.kt` | `SpanMapper` |
 | Span edit observer | `richtext/SpanMaintenanceTextObserver.kt` | `SpanMaintenanceTextObserver` |
@@ -118,7 +130,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Block strings | `theme/CascadeEditorBlockStrings.kt` | `CascadeEditorBlockStrings`, `BlockLocalizedStrings` |
 | Strings locals | `theme/LocalCascadeStrings.kt` | `LocalCascadeStrings`, `LocalCascadeBlockStrings` |
 
-All paths relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
+Unless a row uses an explicit module-root path such as `sample/src/...`, paths are relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
 
 ## Layer Diagram
 
@@ -290,6 +302,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Serialization — rich text spans | Done | `RichTextSchema` encode/decode with version switch and link style persistence |
 | Serialization — doc foundation types | Done | Enums, options, warnings, codecs, `UnknownBlockType` |
 | Serialization — full document | Done | `DocumentSchema` encode/decode, `EditorStateHolder.toJson()`/`loadFromJson()` extensions |
+| HTML import/export | Done | Profile-driven HTML codec under `htmlserialization/`: hand-written common-only parser, generic decode/encode engines, default HTML5-ish profile (canonical block/span/list-outline encoders, default tag decoders, encode fallbacks), `UnknownTagPolicy` (`Strip`/`WarnAndStrip`/`Preserve`/`Custom`), `HtmlProfileSupportSet` round-trip claim with `SupportSetBlockGenerator`, `EditorStateHolder.toHtml()` / `loadFromHtml()` integration, and sample-only `CustomHtmlProfile.Profile` reference dialect. As-shipped behavior documented in `docs/HtmlImportExportFeatureContext.md`; design history in `docs/HtmlImportExportSpec.md` |
 | Undo / Redo | Done | Hybrid linear history is finalized: `BlockTextEntry` handles strict one-block text/span edits, `StructuralEntry` handles semantic or multi-block changes, public `canUndo`/`canRedo`/`undo()`/`redo()` API is live, and Cmd/Ctrl+Z plus Shift+Cmd/Ctrl+Z are implemented |
 | Theming / styling API — data models | Done | `CascadeEditorTheme`, `CascadeEditorColors`, `CascadeEditorTypography`, `LocalCascadeTheme`; light/dark presets |
 | Theming / styling API — color migration | Done | All UI colors read from `LocalCascadeTheme.current.colors` |
@@ -335,6 +348,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `DocumentSchemaEncodeTest.kt` | Document encode: envelope/version, block attributes, all built-in types, content kinds, custom data, codec hooks, UnknownBlockType re-emit |
 | `DocumentSchemaDecodeTest.kt` | Document decode: round-trips, version guard, block attributes, heading/todo/numbered defaults, ID modes, malformed blocks, codecs, depth-aware renumbering, warnings |
 | `DocumentSerializationExtTest.kt` | Editor integration: toJson runtime/snapshot resolution with attributes, loadFromJson state replacement with attributes, runtime clearing, codec pass-through |
+| `HtmlSerializationExtTest.kt` | HTML editor integration: toHtml runtime/snapshot resolution, non-spans runtime span stripping, loadFromHtml runtime clearing/state replacement/warning return, custom profile pass-through |
 | `RichTextSchemaTest.kt` | Span serialization round-trips, normalization, version handling |
 | `SpanAlgorithmsTest.kt` | Normalize, edit adjust, split/merge, apply/remove/toggle, style queries (~62 tests) |
 | `BlockSpanStatesTest.kt` | Lifecycle, edit adjustment, split/merge transfer, style ops, queries, pending styles, aliasing/invariant edge cases (~57 tests) |
@@ -363,3 +377,17 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `CascadeEditorStringsTest.kt` | Default preset: non-empty strings, unsupportedBlock interpolation, copy with custom values, known English defaults |
 | `CascadeEditorBlockStringsTest.kt` | Default preset: all built-in typeIds present, non-empty displayName/description/keywords, forType null for unknown, BlockLocalizedStrings defaults |
 | `BuiltInSlashCommandFactoryLocalizationTest.kt` | Localized slash generation: title/description override, keyword merging + dedup, null blockStrings fallback, missing typeId fallback, mixed localized/unlocalized, English keywords always present |
+| `HtmlEscapingTest.kt` | `Html.escapeText` / `Html.escapeAttr`: ampersand-first escaping, escapable-set coverage, idempotence on plain ASCII, empty input, Unicode passthrough |
+| `HtmlProfileTest.kt` | `HtmlProfile` registration surface: tag-decoder replacement / removal / case-insensitive lookup, profile immutability with built-in default decoders, parser policy overrides, `UnknownTagPolicy` Strip / WarnAndStrip / Preserve / Custom, built-in block + span encoder lookup by class (Heading / Highlight cross-instance sharing), custom block + span encoder lookup by typeId, block group encoder registration / replacement / removal, support-set replacement, `Default` policy defaults |
+| `HtmlSupportSetTest.kt` | `HtmlProfile.Default.supportSet` predicates: per-built-in-type support, indentation range coverage, Heading levels 1–6, Todo / `SpanStyle.Custom` rejection, parameterized `Highlight` / `Link` value-based acceptance; `supportsDocument` rejects stale `NumberedList` numbering and outline-invariant violations, accepts empty + normalized documents |
+| `HtmlSchemaDecodeTest.kt` | Default-profile block decode mappings, inline tag synonyms, nested mixed list flattening, numbered-list post-decode renumbering, and Todo-like HTML non-mapping |
+| `HtmlPerDecoderWhitespaceTest.kt` | Default per-decoder whitespace: paragraph / heading / quote trim+collapse, list-item edge trimming and single trailing newline drop, pre/code whitespace preservation |
+| `HtmlBrAndPreCodeTest.kt` | Default `<br>` handling, root `<br>` warning/drop behavior, `<pre><code>` plain code blocks, inline `<code>` spans |
+| `HtmlLinkAttributesTest.kt` | Default `<a href>` URL normalization, missing/blank href warning/drop behavior, and `<mark>` highlight color decode |
+| `HtmlIndentationEncodingTest.kt` | Decode-side default `cascade-indent-N` class support and post-decode indentation normalization for unsupported block types |
+| `HtmlEncodeContextTest.kt` | Generic encode context helpers: inline escaping, registered span tags, newline policy for non-Code vs Code, text-only/attr/free-fragment helpers |
+| `HtmlBlockGroupEncoderTest.kt` | Generic block group dispatch: profile-order group matching, contiguous run detection, unrelated-block splitting, null-key fallthrough |
+| `EncoderFallbackTest.kt` | Encode fallback behavior: default text-preserving block fallback, `HtmlEmit.Skip`, consumer exception warnings, primary+fallback failure, custom block/span encoder lookup |
+| `HtmlNoThrowGuaranteeTest.kt` | Decode no-throw coverage plus encode-side no-throw coverage for empty/large/custom inputs and throwing consumer block/span encoders |
+| `sample/.../CustomProfileTest.kt` | Sample-only custom profile: sample decode layout, concrete/placeholder `ql-indent-N`, canonical span/link encode, flat list encode, dropped non-list indentation, flat mixed-outline output, support-set claims |
+| `sample/.../CustomRoundTripTest.kt` | Sample-local deterministic fixtures constrained by `CustomHtmlProfile.Profile.supportSet` round-trip through `HtmlSchema.encode` / `decode` |

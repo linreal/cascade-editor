@@ -43,6 +43,7 @@ If you only need a formatted text area, a single-buffer editor is simpler. Casca
 - **Notion-style editing workflows** — native drag-and-drop block reordering, outline indentation, slash-command insertion, undo/redo, list continuation, and structural editing behaviors without WebView
 - **Rich-text spans inside blocks** — bold, italic, underline, strikethrough, inline code, highlight, and custom styles with span preservation across split, merge, and replace operations
 - **Versioned document serialization** — `toJson()` / `loadFromJson()` with explicit schemas, codec hooks, and support for custom block types
+- **HTML import/export** — `toHtml()` / `loadFromHtml()` with a profile-driven codec for round-tripping documents through HTML payloads; a default HTML5-ish profile plus public extension points (per-tag decoders, span encoders, block group encoders, parser policies, support-set claims) so consumers can express their dialect without forking the parser
 - **Custom block system** — extend the editor with your own `CustomBlockType`, `BlockRenderer`, slash commands, and block-specific behavior
 - **Shared multiplatform editor core** — one Kotlin codebase for Android, iOS, and desktop with native Compose rendering instead of HTML/contentEditable or embedded JavaScript editors
 - **Theming and localization** — configurable colors, typography, and UI strings for integrating the editor into product-specific design systems
@@ -302,6 +303,18 @@ val result = stateHolder.loadFromJson(json, textStates, spanStates)
 All block types, text content, rich text formatting (bold, italic, etc.), and supported indentation attributes are preserved through the round-trip. Unknown block types from newer editor versions are kept as-is — no silent data loss on re-save.
 
 For custom block types, plug in `BlockTypeCodec` and `BlockContentCodec` to control how your types are serialized.
+
+Documents can also round-trip through HTML for interchange with HTML-native systems:
+
+```kotlin
+// Save
+val html = stateHolder.toHtml(textStates, spanStates, HtmlProfile.Default)
+
+// Load
+val result = stateHolder.loadFromHtml(html, textStates, spanStates, HtmlProfile.Default)
+```
+
+`HtmlProfile.Default` ships an HTML5-ish canonical mapping. For dialect-specific HTML (Quill-flavored payloads, custom link attributes, flat `ql-indent-N` lists, and so on), compose a custom profile from `HtmlProfile.Default` using `withTagDecoder()`, `withSpanEncoder()`, `withBlockGroupEncoder()`, and `withParserPolicy()`. See [HtmlImportExportFeatureContext.md](docs/HtmlImportExport.md) for the full extension recipe and the reference `CustomHtmlProfile` in `sample/`.
 
 ## Architecture
 

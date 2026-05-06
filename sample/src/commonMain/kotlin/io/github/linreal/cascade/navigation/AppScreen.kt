@@ -5,4 +5,5 @@ sealed class AppScreen {
     data object EditorDemo : AppScreen()
     data object CustomBlocks : AppScreen()
     data object CustomToolbar : AppScreen()
+    data object CustomHtmlProfile : AppScreen()
 }

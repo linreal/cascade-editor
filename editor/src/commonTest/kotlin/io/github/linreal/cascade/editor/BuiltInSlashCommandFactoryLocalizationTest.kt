@@ -145,7 +145,7 @@ class BuiltInSlashCommandFactoryLocalizationTest {
         assertTrue(items[0].keywords.contains("titre"))
     }
 
-    // -- Code descriptor (Task 6) --
+    // -- Code descriptor --
 
     @Test
     fun `code descriptor generates localized item with ConvertInPlace`() {

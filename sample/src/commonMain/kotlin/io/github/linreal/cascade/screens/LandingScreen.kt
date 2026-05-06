@@ -112,6 +112,16 @@ fun LandingScreen(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            SectionCard(
+                icon = Res.drawable.ic_code,
+                title = "Custom HTML Profile",
+                description = "Import and export a Custom HTML dialect",
+                onClick = { onNavigate(AppScreen.CustomHtmlProfile) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
         }
     }
 }

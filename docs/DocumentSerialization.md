@@ -1,5 +1,7 @@
 # Document Save/Load Serialization — Technical Context
 
+> Covers the JSON serialization layer (`toJson()` / `loadFromJson()`). For HTML interchange, see [`HtmlImportExportFeatureContext.md`](HtmlImportExport.md), which describes a parallel codec under `htmlserialization/` driven by `HtmlProfile`.
+
 ## 1. Feature Overview
 
 CascadeEditor stores documents as an in-memory `List<Block>`. The serialization layer converts that block list to JSON and back, with policy-driven handling of IDs, unknown block types, malformed data, rich text spans, and block-level attributes such as indentation depth.

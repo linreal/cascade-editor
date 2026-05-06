@@ -432,7 +432,7 @@ class EnterContinuationTest {
         assertEquals(2, (newState.blocks[3].type as BlockType.NumberedList).number)
     }
 
-    // --- Backspace at start of list item un-lists (Task 7) ---
+    // --- Backspace at start of list item un-lists ---
 
     @Test
     fun `backspace at start of BulletList converts to Paragraph`() {

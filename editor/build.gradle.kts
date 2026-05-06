@@ -39,6 +39,10 @@ kotlin {
     }
 
     sourceSets {
+        all {
+            languageSettings.optIn("io.github.linreal.cascade.editor.htmlserialization.ExperimentalCascadeHtmlApi")
+        }
+
         commonMain.dependencies {
             implementation(libs.compose.foundation)
             implementation(libs.compose.components.resources)
