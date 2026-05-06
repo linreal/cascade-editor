@@ -37,7 +37,7 @@ internal class HtmlEncodeContextImpl(
             .mapIndexedNotNull { index, span -> span.toEncodedSpan(index) }
         if (encodedSpans.isEmpty()) return encodeTextSegment(text, preserveNewlines)
 
-        val boundaries = sortedSetOf(0, text.length)
+        val boundaries = mutableSetOf(0, text.length)
         for (span in encodedSpans) {
             boundaries += span.start
             boundaries += span.end
@@ -45,7 +45,7 @@ internal class HtmlEncodeContextImpl(
 
         val builder = StringBuilder(text.length)
         var openSpans = emptyList<EncodedSpan>()
-        val boundaryList = boundaries.toList()
+        val boundaryList = boundaries.sorted()
         for (boundaryIndex in 0 until boundaryList.lastIndex) {
             val start = boundaryList[boundaryIndex]
             val end = boundaryList[boundaryIndex + 1]
