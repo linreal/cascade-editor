@@ -6,7 +6,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 
 | Concept | File | Key Symbol |
 |---------|------|------------|
-| Main composable | `ui/CascadeEditor.kt` | `CascadeEditor(stateHolder, textStates, spanStates, registry, slashRegistry, ...)` |
+| Main composable | `ui/CascadeEditor.kt` | `CascadeEditor(stateHolder, textStates, spanStates, registry, slashRegistry, slashCommand, ...)` |
 | Text input | `ui/BackspaceAwareTextEdit.kt` | `BackspaceAwareTextField()` |
 | Shared text field | `ui/renderers/TextBlockField.kt` | `TextBlockField()` |
 | Text renderer | `ui/renderers/TextBlockRenderer.kt` | `TextBlockRenderer` |
@@ -121,6 +121,8 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Slash caret rect local | `ui/LocalSlashCaretRect.kt` | `LocalSlashCaretRect`, `SlashCaretRectHolder` |
 | Slash registry local | `ui/LocalSlashCommandRegistry.kt` | `LocalSlashCommandRegistry` |
 | Slash popup items local | `ui/LocalSlashPopupItems.kt` | `LocalSlashPopupItems` |
+| Slash command slot | `ui/SlashCommandSlot.kt` | `SlashCommandSlot` (`Default`, `None`) |
+| Slash enabled local | `ui/LocalSlashCommandsEnabled.kt` | `LocalSlashCommandsEnabled` (internal) |
 | Theme colors | `theme/CascadeEditorColors.kt` | `CascadeEditorColors` |
 | Theme typography | `theme/CascadeEditorTypography.kt` | `CascadeEditorTypography` |
 | Theme dimensions | `theme/CascadeEditorDimensions.kt` | `CascadeEditorDimensions` |
@@ -281,6 +283,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Slash commands (integration) | Done | `shouldInvalidateSlashSession()` closes session on drag, selection, or anchor deletion; reactive `LaunchedEffect` + `snapshotFlow` wiring in `CascadeEditor` |
 | Slash commands (text observer) | Done | `SlashCommandTextObserver` detects `/`, tracks `queryRange`, dismisses on invalid state; wired in `TextBlockField` via combined text+selection `snapshotFlow`; observer is `null` for `BlockType.Code` (call-site suppression keyed in `remember(...)` so same-id Paragraph ↔ Code conversion drops/recreates it) |
 | Slash commands (UI) | Done | Popup overlay with grouped items, caret-relative positioning, keyboard nav (Up/Down/Enter/Escape), auto-highlight, submenu back-nav, `focusProperties { canFocus = false }` pattern |
+| Slash commands (disable gate) | Done | `CascadeEditor(slashCommand = SlashCommandSlot.None)` disables the entire palette via single `LocalSlashCommandsEnabled` gate that suppresses observer construction in `TextBlockField`; downstream popup/key-handling stays inert because `slashCommandState` never opens |
 | Todo checkbox UI | Done | `TodoBlockRenderer` with `Checkbox` + `TextBlockField`, `ToggleTodo` action |
 | Bullet/numbered list prefixes | Done | `TextBlockRenderer` wraps list types in `Row` with non-editable prefix gutter (`•` / depth-formatted ordered prefixes) |
 | List auto-detection | Done | `ListAutoDetectObserver` detects `- ` and `N. ` triggers, converts block type, removes prefix text; suppressed for `BlockType.Code` via the call-site `isListBlock` predicate (`isCurrentlyList || block.type is BlockType.Code`) keyed in `remember(...)` |

@@ -19,7 +19,7 @@ Shared `commonMain` editor core | Android + iOS + Desktop | 1000+ tests | Extens
 
 ## Why CascadeEditor?
 
-Notion and Craft feel different from ordinary rich-text fields because the document is not a single styled text buffer. It is an ordered block document: paragraphs, headings, todos, quotes, lists, and dividers exist as structural units that can be inserted, converted, reordered, and serialized independently.
+Notion and Craft feel different from ordinary rich-text fields because the document is not a single styled text buffer. It is an ordered block document: paragraphs, headings, todos, quotes, lists, code blocks, and dividers exist as structural units that can be inserted, converted, reordered, and serialized independently.
 
 CascadeEditor brings that model to Compose Multiplatform natively. Each block has its own live text state, renderer, slash-command behavior, and serialization path, while rich-text spans still work inside text-capable blocks. That is what enables Notion-style editing on Android, iOS, and desktop without delegating the editor core to a WebView.
 
@@ -39,9 +39,9 @@ If you only need a formatted text area, a single-buffer editor is simpler. Casca
 
 ## Features
 
-- **Structured document editing** — paragraphs, headings (H1-H6), todos, bullet lists, numbered lists, quotes, and dividers as independent blocks that can be inserted, split, merged, converted, indented, reordered, and deleted
+- **Structured document editing** — paragraphs, headings (H1-H6), todos, bullet lists, numbered lists, quotes, code blocks, and dividers as independent blocks that can be inserted, split, merged, converted, indented, reordered, and deleted
 - **Notion-style editing workflows** — native drag-and-drop block reordering, outline indentation, slash-command insertion, undo/redo, list continuation, and structural editing behaviors without WebView
-- **Rich-text spans inside blocks** — bold, italic, underline, strikethrough, inline code, highlight, and custom styles with span preservation across split, merge, and replace operations
+- **Rich-text spans inside blocks** — bold, italic, underline, strikethrough, inline code, highlight, links, and custom styles with span preservation across split, merge, and replace operations
 - **Versioned document serialization** — `toJson()` / `loadFromJson()` with explicit schemas, codec hooks, and support for custom block types
 - **HTML import/export** — `toHtml()` / `loadFromHtml()` with a profile-driven codec for round-tripping documents through HTML payloads; a default HTML5-ish profile plus public extension points (per-tag decoders, span encoders, block group encoders, parser policies, support-set claims) so consumers can express their dialect without forking the parser
 - **Custom block system** — extend the editor with your own `CustomBlockType`, `BlockRenderer`, slash commands, and block-specific behavior
@@ -142,7 +142,7 @@ Custom commands get the full `SlashCommandContext` — replace text, swap blocks
 
 ## Toolbar
 
-A built-in formatting toolbar ships with bold, italic, underline, strikethrough, inline code, and highlight — plus keyboard shortcuts (Cmd/Ctrl+B/I/U) that work even with the toolbar hidden.
+A built-in formatting toolbar ships with bold, italic, underline, strikethrough, inline code, highlight, and link editing — plus keyboard shortcuts (Cmd/Ctrl+B/I/U) that work even with the toolbar hidden.
 
 Customize which buttons appear and in what order:
 
@@ -255,6 +255,7 @@ See [Indentation](docs/Indentation.md) for the flat-outline model, public API, s
 | `BulletList` | Yes | Yes | Auto-detected from `- ` prefix |
 | `NumberedList(number)` | Yes | Yes | Auto-renumbering on insert/delete/move, including nested outlines |
 | `Quote` | Yes | No | Left border stripe + background tint |
+| `Code` | Yes | No | Multi-line monospace block, no rich-text spans |
 | `Divider` | No | No | Horizontal rule |
 
 Extend with custom types via the `CustomBlockType` interface (see [Custom Block Types](#custom-block-types)).
