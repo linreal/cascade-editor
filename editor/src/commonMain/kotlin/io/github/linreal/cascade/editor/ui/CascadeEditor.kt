@@ -151,6 +151,7 @@ public fun CascadeEditor(
     spanStates: BlockSpanStates = remember { BlockSpanStates() },
     registry: BlockRegistry = remember { createEditorRegistry() },
     slashRegistry: SlashCommandRegistry = remember { SlashCommandRegistry() },
+    slashCommand: SlashCommandSlot = SlashCommandSlot.Default,
     theme: CascadeEditorTheme = CascadeEditorTheme.light(),
     strings: CascadeEditorStrings = CascadeEditorStrings.default(),
     blockStrings: CascadeEditorBlockStrings = CascadeEditorBlockStrings.default(),
@@ -174,26 +175,39 @@ public fun CascadeEditor(
         }
     }
 
+    // Single high-level gate: when the slot is None, the entire slash subsystem
+    // is skipped — observer is never installed (TextBlockField), no executor/registry
+    // is built, no popup is rendered, and no key handler intercepts
+    val slashEnabled = slashCommand !is SlashCommandSlot.None
+
     // Slash wiring: built-in executor → built-in items → merged registry → executor.
     // The builtInExecutor lambda only needs stateHolder + blockRegistry, not the
     // SlashCommandRegistry, which breaks the circular dependency and lets us pass
     // the merged registry (built-in + custom) to the executor.
-    val builtInExecutor = remember(stateHolder, registry) {
-        createBuiltInSlashExecutor(stateHolder, registry)
+    val builtInExecutor = remember(stateHolder, registry, slashEnabled) {
+        if (slashEnabled) createBuiltInSlashExecutor(stateHolder, registry) else null
     }
 
     val builtInSlashItems = remember(registry, builtInExecutor, blockStrings) {
-        val builtInFactory = BuiltInSlashCommandFactory(builtInExecutor)
-        builtInFactory.generate(registry.getAllDescriptors(), blockStrings)
+        if (builtInExecutor == null) {
+            emptyList()
+        } else {
+            val builtInFactory = BuiltInSlashCommandFactory(builtInExecutor)
+            builtInFactory.generate(registry.getAllDescriptors(), blockStrings)
+        }
     }
 
     // Use slashRegistry reference (stable) as the remember key — not getRootItems()
     // which creates a new List on every recomposition with fragile data-class equality.
-    val effectiveSlashRegistry = remember(builtInSlashItems, slashRegistry) {
-        createMergedSlashRegistry(
-            builtInItems = builtInSlashItems,
-            customItems = slashRegistry.getRootItems(),
-        )
+    val effectiveSlashRegistry = remember(builtInSlashItems, slashRegistry, slashEnabled) {
+        if (slashEnabled) {
+            createMergedSlashRegistry(
+                builtInItems = builtInSlashItems,
+                customItems = slashRegistry.getRootItems(),
+            )
+        } else {
+            null
+        }
     }
 
     val slashExecutionScope = rememberCoroutineScope()
@@ -205,14 +219,18 @@ public fun CascadeEditor(
         slashExecutionScope,
         builtInExecutor,
     ) {
-        SlashCommandExecutor(
-            registry = effectiveSlashRegistry,
-            stateHolder = stateHolder,
-            textStates = textStates,
-            spanStates = spanStates,
-            executionScope = slashExecutionScope,
-            builtInExecutor = builtInExecutor,
-        )
+        if (effectiveSlashRegistry != null && builtInExecutor != null) {
+            SlashCommandExecutor(
+                registry = effectiveSlashRegistry,
+                stateHolder = stateHolder,
+                textStates = textStates,
+                spanStates = spanStates,
+                executionScope = slashExecutionScope,
+                builtInExecutor = builtInExecutor,
+            )
+        } else {
+            null
+        }
     }
 
     // Cleanup stale states when blocks change
@@ -224,9 +242,11 @@ public fun CascadeEditor(
     }
 
     // Close slash session when drag, selection, or anchor deletion invalidates it.
-    LaunchedEffect(stateHolder) {
-        snapshotFlow { shouldInvalidateSlashSession(stateHolder.state) }
-            .collect { if (it) stateHolder.dispatch(CloseSlashCommand) }
+    if (slashEnabled) {
+        LaunchedEffect(stateHolder) {
+            snapshotFlow { shouldInvalidateSlashSession(stateHolder.state) }
+                .collect { if (it) stateHolder.dispatch(CloseSlashCommand) }
+        }
     }
 
     // Create span action dispatcher for coordinated runtime + snapshot style updates
@@ -365,7 +385,7 @@ public fun CascadeEditor(
         slashState?.navigationPath,
         effectiveSlashRegistry,
     ) {
-        if (slashState != null) {
+        if (slashState != null && effectiveSlashRegistry != null) {
             effectiveSlashRegistry.search(slashState.query, slashState.navigationPath)
         } else {
             emptyList()
@@ -373,14 +393,16 @@ public fun CascadeEditor(
     }
 
     // Empty search results invalidate slash mode per feature spec.
-    LaunchedEffect(
-        slashState?.anchorBlockId,
-        slashState?.query,
-        slashState?.navigationPath,
-        slashPopupItems
-    ) {
-        if (slashState != null && slashPopupItems.isEmpty()) {
-            stateHolder.dispatch(CloseSlashCommand)
+    if (slashEnabled) {
+        LaunchedEffect(
+            slashState?.anchorBlockId,
+            slashState?.query,
+            slashState?.navigationPath,
+            slashPopupItems
+        ) {
+            if (slashState != null && slashPopupItems.isEmpty()) {
+                stateHolder.dispatch(CloseSlashCommand)
+            }
         }
     }
 
@@ -407,6 +429,7 @@ public fun CascadeEditor(
         LocalLinkState provides linkState,
         LocalLinkActions provides linkActions,
         LocalLinkOpener provides linkOpener,
+        LocalSlashCommandsEnabled provides slashEnabled,
         LocalSlashCommandExecutor provides slashExecutor,
         LocalSlashSessionAnchorBlockId provides slashState?.anchorBlockId,
         LocalSlashHighlightedCommandId provides slashState?.highlightedCommandId,
@@ -624,8 +647,8 @@ public fun CascadeEditor(
                     }
                 }
 
-                // Slash command popup overlay - shown when a slash session is active.
-                if (slashState != null && slashPopupItems.isNotEmpty()) {
+                // Slash command popup overlay - shown when a slash is enabled session is active
+                if (slashEnabled && slashState != null && slashPopupItems.isNotEmpty() && slashExecutor != null) {
                     SlashCommandPopup(
                         slashState = slashState,
                         stateHolder = stateHolder,

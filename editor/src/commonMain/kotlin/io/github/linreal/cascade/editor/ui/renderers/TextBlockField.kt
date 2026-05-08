@@ -53,6 +53,7 @@ import io.github.linreal.cascade.editor.ui.LocalFormattingActions
 import io.github.linreal.cascade.editor.ui.LocalLinkOpener
 import io.github.linreal.cascade.editor.ui.LocalSlashCaretRect
 import io.github.linreal.cascade.editor.ui.LocalSlashCommandExecutor
+import io.github.linreal.cascade.editor.ui.LocalSlashCommandsEnabled
 import io.github.linreal.cascade.editor.ui.LocalSlashHighlightedCommandId
 import io.github.linreal.cascade.editor.ui.LocalSlashPopupItems
 import io.github.linreal.cascade.editor.ui.LocalSlashSessionAnchorBlockId
@@ -107,6 +108,7 @@ internal fun TextBlockField(
     val slashHighlightedCommandId = LocalSlashHighlightedCommandId.current
     val slashCaretRectHolder = LocalSlashCaretRect.current
     val slashPopupItems = LocalSlashPopupItems.current
+    val slashCommandsEnabled = LocalSlashCommandsEnabled.current
     // rememberUpdatedState keeps the latest opener available to the unfocused-tap
     // pointerInput without re-keying it. This matters because consumers commonly
     // pass an unstable lambda for onOpenLink, which would otherwise cancel and
@@ -168,10 +170,11 @@ internal fun TextBlockField(
         }
     }
     // Code blocks suppress slash-menu detection: typing `/` in code is treated as
-    // literal text. Suppression lives at the call site (no construction) so a stale
-    // observer cannot emit UpdateSlashCommandSession / CloseSlashCommand after a
-    // same-id Paragraph -> Code conversion.
-    val slashSuppressed = block.type is BlockType.Code
+    // literal text. SlashCommandSlot.None disables the feature wholesale via
+    // LocalSlashCommandsEnabled. Suppression lives at the call site (no construction)
+    // so a stale observer cannot emit UpdateSlashCommandSession / CloseSlashCommand
+    // after a same-id Paragraph -> Code conversion.
+    val slashSuppressed = !slashCommandsEnabled || block.type is BlockType.Code
     val slashTextObserver: SlashCommandTextObserver? = remember(
         block.id,
         callbacks,
