@@ -5,6 +5,7 @@ import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorStateHolder
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import io.github.linreal.cascade.editor.ui.visibleSelection
 
 /**
@@ -20,7 +21,20 @@ internal class DefaultFormattingActions(
     private val stateHolder: EditorStateHolder,
     private val textStates: BlockTextStates,
     private val spanActionDispatcher: SpanActionDispatcher,
+    private val policyProvider: () -> EditorInteractionPolicy,
 ) : FormattingActions {
+
+    constructor(
+        stateHolder: EditorStateHolder,
+        textStates: BlockTextStates,
+        spanActionDispatcher: SpanActionDispatcher,
+        policy: EditorInteractionPolicy,
+    ) : this(
+        stateHolder = stateHolder,
+        textStates = textStates,
+        spanActionDispatcher = spanActionDispatcher,
+        policyProvider = { policy },
+    )
 
     override fun toggleStyle(style: SpanStyle) {
         val (blockId, start, end) = resolveContext() ?: return
@@ -42,6 +56,9 @@ internal class DefaultFormattingActions(
      * Returns null if formatting is disallowed.
      */
     private fun resolveContext(): FormattingContext? {
+        val policy = policyProvider()
+        if (!policy.canFormatText) return null
+
         val state = stateHolder.state
         val blockId = state.focusedBlockId ?: return null
         val block = state.getBlock(blockId) ?: return null

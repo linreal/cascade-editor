@@ -34,6 +34,7 @@ The feature is fully extensible: consumers register custom `SlashCommandItem`s a
 - **Facade for safe mutations**: `SlashCommandEditor` interface prevents commands from dispatching raw `EditorAction`s. `SlashCommandEditorHost` coordinates runtime text (`BlockTextStates`), runtime spans (`BlockSpanStates`), and snapshot state (`EditorStateHolder`) so they never diverge.
 - **Factory + executor lambda**: `BuiltInSlashCommandFactory` is pure — it generates items at composition time. Actual execution is deferred via a `builtInExecutor` lambda injected from `SlashCommandExecutor`, keeping the factory testable without editor dependencies.
 - **CompositionLocal threading**: Five new locals carry slash state from `CascadeEditor` down to `TextBlockField` without prop-drilling, while keeping recomposition scoped (e.g., `LocalSlashSessionAnchorBlockId` carries only the block ID, not the full query).
+- **Read-only high-level gate**: `CascadeEditor` treats read-only mode like `SlashCommandSlot.None` for editor-owned slash wiring. Observer construction, registry/executor wiring, popup rendering, keyboard execution, and toolbar slash insertion are disabled when `CascadeEditorConfig(readOnly = true)`.
 
 ### Why These Choices
 
@@ -140,6 +141,7 @@ The session closes when any of these occur:
 - Drag or block selection starts (`shouldInvalidateSlashSession`)
 - Anchor block deleted from document
 - Command execution completes with `Done` or `Failure`
+- `config.readOnly` changes to `true`
 
 ## 4. Public API Surface
 
@@ -150,6 +152,7 @@ The session closes when any of these occur:
 fun CascadeEditor(
     slashRegistry: SlashCommandRegistry = remember { SlashCommandRegistry() },
     // ... other params
+    config: CascadeEditorConfig = CascadeEditorConfig.Default,
 )
 
 // Registration
@@ -263,6 +266,8 @@ CascadeEditor (composable)
 - **Empty results auto-close**: A `LaunchedEffect` in `CascadeEditor` dispatches `CloseSlashCommand` when `slashPopupItems` becomes empty. This handles the case where the user's query filters out all items.
 
 - **Focus preservation**: Every popup composable (`SlashCommandPopup`, `SlashCommandRow`, inner `LazyColumn`) uses `focusProperties { canFocus = false }` to prevent focus theft from the active `TextBlockField`.
+
+- **Read-only mode**: No slash observer is installed, no popup renders, no executor runs, and slash keyboard handling no-ops while read-only is active. If app-owned code externally leaves `slashCommandState` set, `CascadeEditor` still does not render or execute the popup and transition cleanup dispatches `CloseSlashCommand`.
 
 - **Edit-before-range handling**: When the user types before the `/` character (e.g., inserting text at the beginning of the line), the observer shifts both `slashStart` and `rangeEnd` by the edit delta. A dedicated `editBeforeRange` flag skips cursor validation in this case because the cursor is naturally at the edit site, not inside the slash range.
 

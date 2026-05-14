@@ -9,6 +9,7 @@ import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorStateHolder
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import io.github.linreal.cascade.editor.ui.visibleSelection
 
 /**
@@ -32,6 +33,7 @@ internal fun rememberFormattingState(
     textStates: BlockTextStates,
     spanStates: BlockSpanStates,
     trackedStyles: List<SpanStyle>,
+    policy: EditorInteractionPolicy,
 ): State<FormattingState> {
 
  // Layer 1: EditorState-derived values
@@ -64,7 +66,7 @@ internal fun rememberFormattingState(
     // state are read, so cursor/span changes in non-focused blocks are
     // invisible to this derivation.
 
-    return remember(stateHolder, textStates, spanStates, trackedStyles) {
+    return remember(stateHolder, textStates, spanStates, trackedStyles, policy) {
         derivedStateOf {
             val blockId = focusedBlockId.value
             val blockType = focusedBlockType.value
@@ -88,6 +90,7 @@ internal fun rememberFormattingState(
                 spans = spans,
                 pendingStyles = pendingStyles,
                 trackedStyles = trackedStyles,
+                policy = policy,
             )
         }
     }

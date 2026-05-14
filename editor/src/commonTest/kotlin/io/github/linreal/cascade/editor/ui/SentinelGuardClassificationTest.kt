@@ -90,7 +90,12 @@ class SentinelGuardClassificationTest {
     }
 
     @Test
-    fun `text length grew but sentinel missing entirely returns RestoreSentinel with -1 index`() {
+    fun `defensive - missing-sentinel original returns RestoreSentinel with -1 index`() {
+        // Original buffer normally always starts with ZWSP because the field
+        // injects it at construction; an empty originalText is a defensive
+        // edge case rather than a normal user input. The classifier must still
+        // return a RestoreSentinel signal so the transformation re-injects the
+        // sentinel instead of firing onBackspaceAtStart.
         val original = ""
         val new = "x"
 

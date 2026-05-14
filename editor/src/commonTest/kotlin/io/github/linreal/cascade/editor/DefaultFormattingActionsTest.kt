@@ -1,5 +1,6 @@
 package io.github.linreal.cascade.editor
 
+import androidx.compose.ui.text.TextRange
 import io.github.linreal.cascade.editor.action.EditorAction
 import io.github.linreal.cascade.editor.action.UpdateBlockContent
 import io.github.linreal.cascade.editor.core.Block
@@ -14,7 +15,7 @@ import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.EditorStateHolder
-import androidx.compose.ui.text.TextRange
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -37,6 +38,7 @@ class DefaultFormattingActionsTest {
         stateHolder = stateHolder,
         textStates = textStates,
         spanActionDispatcher = spanActionDispatcher,
+        policy = EditorInteractionPolicy.Editable,
     )
 
     private val blockId = BlockId("test")
@@ -242,6 +244,47 @@ class DefaultFormattingActionsTest {
         actions.removeStyle(SpanStyle.Bold)
 
         assertTrue(dispatchedActions.isEmpty())
+    }
+
+    @Test
+    fun `read-only policy prevents ranged formatting mutations`() {
+        val originalSpans = listOf(TextSpan(0, 5, SpanStyle.Bold))
+        setupFocusedBlock(
+            "Hello World",
+            spans = originalSpans,
+            selectionStart = 0,
+            selectionEnd = 5,
+        )
+        val readOnlyActions = DefaultFormattingActions(
+            stateHolder = stateHolder,
+            textStates = textStates,
+            spanActionDispatcher = spanActionDispatcher,
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        readOnlyActions.toggleStyle(SpanStyle.Bold)
+        readOnlyActions.applyStyle(SpanStyle.Italic)
+        readOnlyActions.removeStyle(SpanStyle.Bold)
+
+        assertTrue(dispatchedActions.isEmpty())
+        assertEquals(originalSpans, spanStates.getSpans(blockId))
+    }
+
+    @Test
+    fun `read-only policy prevents collapsed formatting pending-style mutations`() {
+        setupFocusedBlock("Hello World", selectionStart = 3, selectionEnd = 3)
+        val readOnlyActions = DefaultFormattingActions(
+            stateHolder = stateHolder,
+            textStates = textStates,
+            spanActionDispatcher = spanActionDispatcher,
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        readOnlyActions.toggleStyle(SpanStyle.Bold)
+
+        assertTrue(dispatchedActions.isEmpty())
+        assertEquals(null, spanStates.getPendingStyles(blockId))
+        assertTrue(spanStates.getSpans(blockId).isEmpty())
     }
 
  // Fresh selection resolution

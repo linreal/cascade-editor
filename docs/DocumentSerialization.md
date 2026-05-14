@@ -115,6 +115,8 @@ EditorStateHolder.loadFromJson(jsonString, textStates, spanStates)
 
 **Important ordering detail:** During decode, type and content are validated *before* the block ID is resolved. This prevents skipped (malformed) blocks from polluting the `seenIds` set, which would cause false duplicate-ID warnings on later valid blocks sharing the same ID.
 
+**Read-only boundary:** `CascadeEditorConfig(readOnly = true)` does not change serialization behavior. `toJson()` still reads current runtime state, and `loadFromJson()` still clears runtime holders and replaces editor state. Apps that expose save/load/import/reset controls in a read-only view must gate those controls themselves.
+
 ---
 
 ## 4. Public API Surface
@@ -188,6 +190,7 @@ public fun CascadeEditor(
     spanStates: BlockSpanStates = remember { BlockSpanStates() },   // NEW
     registry: BlockRegistry = remember { createEditorRegistry() },
     // ... rest unchanged
+    config: CascadeEditorConfig = CascadeEditorConfig.Default,
 )
 ```
 
@@ -281,6 +284,7 @@ Link URLs are normalized by `LinkUrlPolicy` during encode/decode. Bare domain-sh
 
 - `toJson()` checks for runtime entry *existence* (`get(blockId) != null`) before reading. This avoids calling `getSpans()` on absent entries, which would return empty lists and incorrectly erase off-screen spans.
 - `loadFromJson()` clears *all* runtime state (`textStates.clear()`, `spanStates.clear()`) before setting new blocks. This prevents stale `TextFieldState` entries from overriding loaded content when block IDs are preserved.
+- Read-only mode does not make `BlockTextStates`, `BlockSpanStates`, or captured `TextFieldState` references immutable. Direct runtime writes are app-owned and must be guarded by the caller.
 
 ### Unknown Block Rendering
 

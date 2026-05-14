@@ -132,16 +132,18 @@ public class EditorStateHolder {
 ```kotlin
 IconButton(
     onClick = { editorState.undo() },
-    enabled = editorState.canUndo,
+    enabled = !readOnly && editorState.canUndo,
 ) { /* icon */ }
 
 IconButton(
     onClick = { editorState.redo() },
-    enabled = editorState.canRedo,
+    enabled = !readOnly && editorState.canRedo,
 ) { /* icon */ }
 ```
 
-No new parameters were added to `CascadeEditor`. History binds to runtime holders internally via `DisposableEffect`.
+History binds to runtime holders internally via `DisposableEffect`; it does not add history-specific `CascadeEditor` parameters.
+
+`CascadeEditorConfig(readOnly = true)` disables only editor-owned undo/redo shortcuts handled by the text-field key path. Public `EditorStateHolder.undo()` and `redo()` remain app-owned mutation APIs, so external toolbar/header buttons should gate them when the app is in read-only mode.
 
 ## 5. Integration Points
 
@@ -164,6 +166,7 @@ No new parameters were added to `CascadeEditor`. History binds to runtime holder
 ### What bypasses history
 
 - Direct external `EditorStateHolder.dispatch(action)` — by contract in v1
+- Direct external `EditorStateHolder.undo()` / `redo()` while the app is in read-only mode
 - Focus-only changes (`FocusBlock`, `FocusPreviousBlock`, etc.)
 - Block selection changes (`SelectBlock`, `ClearSelection`, etc.)
 - Slash menu navigation (`OpenSlashCommand`, `HighlightSlashCommand`, etc.)

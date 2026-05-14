@@ -8,6 +8,7 @@ import io.github.linreal.cascade.editor.core.TextSpan
 import io.github.linreal.cascade.editor.richtext.LinkState
 import io.github.linreal.cascade.editor.richtext.LinkStateCalculator
 import io.github.linreal.cascade.editor.richtext.LinkTarget
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -143,6 +144,46 @@ class LinkStateCalculatorTest {
         assertEquals(LinkState.Empty, state.copy(focusedBlockId = null))
     }
 
+    @Test
+    fun `read-only policy disables link mutation while preserving existing link metadata`() {
+        val editable = compute(
+            text = "Hello link",
+            selection = TextRange(8),
+            spans = listOf(TextSpan(6, 10, link)),
+        )
+        val readOnly = compute(
+            text = "Hello link",
+            selection = TextRange(8),
+            spans = listOf(TextSpan(6, 10, link)),
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        assertTrue(editable.canLink)
+        assertFalse(readOnly.canLink)
+        assertEquals(editable.focusedBlockId, readOnly.focusedBlockId)
+        assertEquals(editable.target, readOnly.target)
+        assertEquals(editable.targetText, readOnly.targetText)
+        assertEquals(editable.existingUrl, readOnly.existingUrl)
+        assertEquals(editable.existingLinkRange, readOnly.existingLinkRange)
+        assertEquals(editable.existingLinkText, readOnly.existingLinkText)
+        assertEquals(editable.isInsideLink, readOnly.isInsideLink)
+        assertEquals(editable.intersectsLink, readOnly.intersectsLink)
+    }
+
+    @Test
+    fun `read-only policy disables canLink for otherwise linkable selection`() {
+        val state = compute(
+            text = "Hello link",
+            selection = TextRange(0, 5),
+            spans = emptyList(),
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        assertFalse(state.canLink)
+        assertEquals(LinkTarget(blockId, 0, 5), state.target)
+        assertEquals("Hello", state.targetText)
+    }
+
     private fun compute(
         text: String,
         selection: TextRange,
@@ -151,6 +192,7 @@ class LinkStateCalculatorTest {
         isDragging: Boolean = false,
         focusedBlockId: BlockId? = blockId,
         focusedBlockType: BlockType? = BlockType.Paragraph,
+        policy: EditorInteractionPolicy = EditorInteractionPolicy.Editable,
     ): LinkState {
         return LinkStateCalculator.compute(
             focusedBlockId = focusedBlockId,
@@ -161,6 +203,7 @@ class LinkStateCalculatorTest {
             visibleSelectionStart = selection.start,
             visibleSelectionEnd = selection.end,
             spans = spans,
+            policy = policy,
         )
     }
 }

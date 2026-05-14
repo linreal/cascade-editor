@@ -47,6 +47,7 @@ If you only need a formatted text area, a single-buffer editor is simpler. Casca
 - **Custom block system** — extend the editor with your own `CustomBlockType`, `BlockRenderer`, slash commands, and block-specific behavior
 - **Shared multiplatform editor core** — one Kotlin codebase for Android, iOS, and desktop with native Compose rendering instead of HTML/contentEditable or embedded JavaScript editors
 - **Theming and localization** — configurable colors, typography, and UI strings for integrating the editor into product-specific design systems
+- **Read-only mode** — render a selectable, scrollable document with links still openable while editor-owned mutation controls are disabled
 
 ## Quick Start
 
@@ -244,6 +245,29 @@ IconButton(
 Enter and Backspace understand nested list/todo behavior, and dragging can change block depth horizontally.
 
 See [Indentation](docs/Indentation.md) for the flat-outline model, public API, serialization rules, and drag behavior.
+
+## Read-Only Mode
+
+Use `CascadeEditorConfig(readOnly = true)` when the current user can view a document but cannot edit it:
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    config = CascadeEditorConfig(readOnly = true),
+)
+```
+
+Read-only mode keeps normal viewer affordances: scrolling, native text selection/copy, and opening existing links from unfocused text blocks. The default toolbar remains visible, but mutating controls are disabled or no-op. To hide the toolbar, use the existing toolbar slot:
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    toolbar = ToolbarSlot.None,
+    config = CascadeEditorConfig(readOnly = true),
+)
+```
+
+This is a UI boundary inside `CascadeEditor`, not an application authorization layer. App-owned calls such as `stateHolder.dispatch(...)`, `undo()`, `redo()`, `loadFromJson(...)`, `loadFromHtml(...)`, autosave, remote sync, or direct `BlockTextStates` / `BlockSpanStates` writes remain the caller's responsibility. See [Read-Only Mode](docs/ReadOnlyMode.md) for the full behavior contract and custom renderer guidance.
 
 ## Block Types
 

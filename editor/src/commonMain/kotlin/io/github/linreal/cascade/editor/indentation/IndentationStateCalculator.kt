@@ -11,6 +11,7 @@ import io.github.linreal.cascade.editor.core.canShiftIndentation
 import io.github.linreal.cascade.editor.core.resolveIndentationTargetRootIndices
 import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.EditorStateHolder
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 
 /**
  * Pure calculator for public indentation command state.
@@ -21,21 +22,29 @@ internal object IndentationStateCalculator {
      * Computes the indentation capabilities for [state] using the same target
      * resolution and outline validation as the reducer actions.
      */
-    internal fun compute(state: EditorState): IndentationState {
+    internal fun compute(
+        state: EditorState,
+        policy: EditorInteractionPolicy = EditorInteractionPolicy.Editable,
+    ): IndentationState {
         return compute(
             blocks = state.blocks,
             focusedBlockId = state.focusedBlockId,
             selectedBlockIds = state.selectedBlockIds,
+            policy = policy,
         )
     }
 
     /**
      * Computes from only the editor fields that affect indentation capabilities.
+     *
+     * [policy] disables mutation-facing booleans after target resolution so
+     * custom chrome can still inspect the current indentation target.
      */
     internal fun compute(
         blocks: List<Block>,
         focusedBlockId: BlockId?,
         selectedBlockIds: Set<BlockId>,
+        policy: EditorInteractionPolicy = EditorInteractionPolicy.Editable,
     ): IndentationState {
         val rootIndices = resolveIndentationTargetRootIndices(
             blocks = blocks,
@@ -45,6 +54,14 @@ internal object IndentationStateCalculator {
         if (rootIndices.isEmpty()) return IndentationState.Empty
 
         val targetBlockIds = rootIndices.map { index -> blocks[index].id }
+        if (!policy.canEditBlockStructure) {
+            return IndentationState(
+                canIndentForward = false,
+                canIndentBackward = false,
+                targetBlockIds = targetBlockIds,
+            )
+        }
+
         val canIndentForward = canShiftIndentation(
             blocks = blocks,
             targetRootIndices = rootIndices,
@@ -70,6 +87,7 @@ internal object IndentationStateCalculator {
 @Composable
 internal fun rememberIndentationState(
     stateHolder: EditorStateHolder,
+    policy: EditorInteractionPolicy,
 ): State<IndentationState> {
     // Split high-churn EditorState into stable inputs so drag target updates do
     // not force outline validation work when indentation-relevant fields are unchanged.
@@ -83,12 +101,13 @@ internal fun rememberIndentationState(
         derivedStateOf { stateHolder.state.selectedBlockIds }
     }
 
-    return remember(stateHolder) {
+    return remember(stateHolder, policy) {
         derivedStateOf {
             IndentationStateCalculator.compute(
                 blocks = blocks.value,
                 focusedBlockId = focusedBlockId.value,
                 selectedBlockIds = selectedBlockIds.value,
+                policy = policy,
             )
         }
     }

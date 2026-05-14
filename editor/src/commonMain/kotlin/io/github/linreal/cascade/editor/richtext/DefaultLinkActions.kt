@@ -1,6 +1,7 @@
 package io.github.linreal.cascade.editor.richtext
 
 import androidx.compose.runtime.Stable
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 
 /**
  * Editor-managed [LinkChromeActions] facade exposed through CompositionLocals.
@@ -19,7 +20,18 @@ import androidx.compose.runtime.Stable
 internal class DefaultLinkActions(
     private val stateProvider: () -> LinkState,
     private val delegate: LinkActions,
+    private val policyProvider: () -> EditorInteractionPolicy,
 ) : LinkChromeActions {
+
+    constructor(
+        stateProvider: () -> LinkState,
+        delegate: LinkActions,
+        policy: EditorInteractionPolicy,
+    ) : this(
+        stateProvider = stateProvider,
+        delegate = delegate,
+        policyProvider = { policy },
+    )
 
     /**
      * Returns URL validation feedback even when linking is currently unavailable,
@@ -30,13 +42,16 @@ internal class DefaultLinkActions(
         url: String,
         title: String?,
     ): LinkValidationResult {
-        if (!stateProvider().canLink) {
+        val policy = policyProvider()
+        if (!policy.canEditLinks || !stateProvider().canLink) {
             return LinkUrlPolicy.validate(url)
         }
         return delegate.applyLink(target, url, title)
     }
 
     override fun removeLink(target: LinkTarget) {
+        val policy = policyProvider()
+        if (!policy.canEditLinks) return
         if (!stateProvider().canLink) return
         delegate.removeLink(target)
     }

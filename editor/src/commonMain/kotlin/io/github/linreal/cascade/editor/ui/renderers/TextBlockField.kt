@@ -49,7 +49,9 @@ import androidx.compose.ui.input.key.type
 import io.github.linreal.cascade.editor.ui.LocalBlockSpanStates
 import io.github.linreal.cascade.editor.ui.LocalBlockTextStates
 import io.github.linreal.cascade.editor.ui.LocalEditorStateHolder
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import io.github.linreal.cascade.editor.ui.LocalFormattingActions
+import io.github.linreal.cascade.editor.ui.LocalEditorInteractionPolicy
 import io.github.linreal.cascade.editor.ui.LocalLinkOpener
 import io.github.linreal.cascade.editor.ui.LocalSlashCaretRect
 import io.github.linreal.cascade.editor.ui.LocalSlashCommandExecutor
@@ -95,6 +97,7 @@ internal fun TextBlockField(
     val focusRequester = remember { FocusRequester() }
     var hasComposeFocus by remember { mutableStateOf(false) }
     val stateHolder = LocalEditorStateHolder.current
+    val interactionPolicy = LocalEditorInteractionPolicy.current
 
     // Get TextFieldState from the shared holder.
     // generation key invalidates the cache when loadFromJson clears all states.
@@ -169,17 +172,22 @@ internal fun TextBlockField(
             )
         }
     }
-    // Code blocks suppress slash-menu detection: typing `/` in code is treated as
-    // literal text. SlashCommandSlot.None disables the feature wholesale via
-    // LocalSlashCommandsEnabled. Suppression lives at the call site (no construction)
-    // so a stale observer cannot emit UpdateSlashCommandSession / CloseSlashCommand
-    // after a same-id Paragraph -> Code conversion.
-    val slashSuppressed = !slashCommandsEnabled || block.type is BlockType.Code
+    val slashSuppressed = shouldSuppressSlashTextObserver(
+        blockType = block.type,
+        slashCommandsEnabled = slashCommandsEnabled,
+        policy = interactionPolicy,
+    )
+    // interactionPolicy is included so the observer refreshes if a future
+    // partial-edit policy leaves canEditText untouched but flips a different
+    // capability the observer consults. Without it, the observer would only
+    // get refreshed when `slashSuppressed` flips or `callbacks` identity
+    // changes — both currently true today but coincidental.
     val slashTextObserver: SlashCommandTextObserver? = remember(
         block.id,
         callbacks,
         textStates.generation,
         slashSuppressed,
+        interactionPolicy,
     ) {
         if (slashSuppressed) {
             null
@@ -209,12 +217,9 @@ internal fun TextBlockField(
             stateHolder.unregisterTextHistoryTracker(block.id, textHistoryTracker)
         }
     }
-    val isCurrentlyList = block.type is BlockType.BulletList || block.type is BlockType.NumberedList
-    // Treat code blocks as already-list to short-circuit list auto-detect: typing
-    // `- ` or `1. ` inside code is literal text. Same-id Paragraph -> Code drops the
-    // old observer through the remember key, so a stale paragraph observer cannot
-    // convert the new code block.
-    val suppressListAutoDetect = isCurrentlyList || block.type is BlockType.Code
+    // Short-circuit list auto-detect when the block already has list/code
+    // semantics or the current policy cannot apply the resulting mutation.
+    val suppressListAutoDetect = !allowsListAutoDetect(block.type, interactionPolicy)
     val listAutoDetectObserver = remember(
         block.id,
         suppressListAutoDetect,
@@ -284,6 +289,7 @@ internal fun TextBlockField(
         listAutoDetectObserver,
         stateHolder,
         textHistoryTracker,
+        interactionPolicy,
     ) {
         var lastObservedVisibleText = textFieldState.visibleText()
         var lastObservedTextSnapshot = textFieldState.text
@@ -369,7 +375,7 @@ internal fun TextBlockField(
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     var layoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
-    val isSlashAnchor = slashSessionAnchorBlockId == block.id
+    val isSlashAnchor = !slashSuppressed && slashSessionAnchorBlockId == block.id
 
     // Report caret rect in window coordinates when this block is the slash anchor.
     LaunchedEffect(isSlashAnchor, textLayoutResult, layoutCoordinates, textFieldState.selection) {
@@ -404,9 +410,18 @@ internal fun TextBlockField(
 
     val cursorBrush = remember(colors.cursor) { SolidColor(colors.cursor) }
 
-    val keyHandler = remember(formattingActions, callbacks, textHistoryTracker, stateHolder) {
+    val currentPolicyForKeyHandler by rememberUpdatedState(interactionPolicy)
+    val currentSlashEnabledForKeyHandler by rememberUpdatedState(!slashSuppressed)
+    val keyHandler = remember(
+        formattingActions,
+        callbacks,
+        textHistoryTracker,
+        stateHolder,
+    ) {
         TextBlockKeyHandler(
             formattingActions = formattingActions,
+            policyProvider = { currentPolicyForKeyHandler },
+            slashEnabledProvider = { currentSlashEnabledForKeyHandler },
             callbacks = callbacks,
             isSlashAnchor = { isSlashAnchor },
             slashHighlightedCommandId = { slashHighlightedCommandId },
@@ -421,6 +436,10 @@ internal fun TextBlockField(
     var handledPhysicalEnterKey by remember { mutableStateOf<Key?>(null) }
 
     fun handleEditorEnter(cursorPosition: Int) {
+        // Enter routes to either slash execution or `callbacks.onEnter`, both of
+        // which are structural edits.
+        if (!interactionPolicy.canEditBlockStructure) return
+
         val highlightedItemId = slashHighlightedCommandId
         val highlightedItem = if (highlightedItemId != null) {
             slashPopupItems.firstOrNull { it.id == highlightedItemId }
@@ -429,6 +448,7 @@ internal fun TextBlockField(
         }
         val executor = slashCommandExecutor
         if (
+            !slashSuppressed &&
             slashSessionAnchorBlockId == block.id &&
             highlightedItem != null &&
             executor != null
@@ -442,30 +462,36 @@ internal fun TextBlockField(
     }
 
     fun handlePhysicalEnterKeyEvent(keyEvent: KeyEvent): Boolean {
-        val enterKey = when (keyEvent.key) {
-            Key.Enter, Key.NumPadEnter -> keyEvent.key
-            else -> null
-        } ?: return false
-
-        if (keyEvent.isShiftPressed) return false
-
-        return when (keyEvent.type) {
-            KeyEventType.KeyUp -> {
-                if (handledPhysicalEnterKey == enterKey) {
-                    handledPhysicalEnterKey = null
-                    true
-                } else {
-                    false
+        return when (
+            val classification = classifyPhysicalEnterKeyEvent(
+                key = keyEvent.key,
+                type = keyEvent.type,
+                isShiftPressed = keyEvent.isShiftPressed,
+                policy = interactionPolicy,
+            )
+        ) {
+            PhysicalEnterAction.PassThrough -> false
+            PhysicalEnterAction.ConsumeWithoutMutating -> true
+            is PhysicalEnterAction.Process -> {
+                when (classification.type) {
+                    KeyEventType.KeyUp -> {
+                        if (handledPhysicalEnterKey == classification.key) {
+                            handledPhysicalEnterKey = null
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    KeyEventType.KeyDown -> {
+                        if (handledPhysicalEnterKey != classification.key) {
+                            handledPhysicalEnterKey = classification.key
+                            handleEditorEnter(textFieldState.visibleSelection().start)
+                        }
+                        true
+                    }
+                    else -> true
                 }
             }
-            KeyEventType.KeyDown -> {
-                if (handledPhysicalEnterKey != enterKey) {
-                    handledPhysicalEnterKey = enterKey
-                    handleEditorEnter(textFieldState.visibleSelection().start)
-                }
-                true
-            }
-            else -> true
         }
     }
 
@@ -496,9 +522,13 @@ internal fun TextBlockField(
             outputTransformation = outputTransformation,
             onTextLayout = { result -> textLayoutResult = result() },
             focusRequester = focusRequester,
+            readOnly = !interactionPolicy.canEditText,
             onBackspaceAtStart = {
-                textHistoryTracker.noteBatchBreaker()
-                callbacks.onBackspaceAtStart(block.id)
+                // Backspace at start merges with the previous block — structural.
+                if (interactionPolicy.canEditBlockStructure) {
+                    textHistoryTracker.noteBatchBreaker()
+                    callbacks.onBackspaceAtStart(block.id)
+                }
             },
             onEnterPressed = { cursorPosition ->
                 handleEditorEnter(cursorPosition)
@@ -559,6 +589,22 @@ internal fun TextBlockField(
 
 private const val ZWSP_SENTINEL: Char = '\u200B'
 
+/**
+ * Returns true when this text field should not construct a slash observer.
+ *
+ * Suppression happens at construction time so stale observers cannot emit slash
+ * session actions after the block type or editor interaction policy changes.
+ */
+internal fun shouldSuppressSlashTextObserver(
+    blockType: BlockType,
+    slashCommandsEnabled: Boolean,
+    policy: EditorInteractionPolicy,
+): Boolean {
+    return !slashCommandsEnabled ||
+        !policy.canEditText ||
+        blockType is BlockType.Code
+}
+
 private fun visibleTextFromSnapshot(text: CharSequence): String {
     if (text.isEmpty()) return ""
     return if (text[0] == ZWSP_SENTINEL) {
@@ -576,4 +622,50 @@ private fun visibleOffsetForRawOffset(text: CharSequence, rawOffset: Int): Int {
     val sentinelOffset = if (text.isNotEmpty() && text[0] == ZWSP_SENTINEL) 1 else 0
     val visibleLength = (text.length - sentinelOffset).coerceAtLeast(0)
     return (rawOffset - sentinelOffset).coerceIn(0, visibleLength)
+}
+
+/**
+ * Decision made by [handlePhysicalEnterKeyEvent] before any structural side
+ * effect runs. Extracting the policy gate as a pure classification lets
+ * common-test coverage assert the read-only behavior — including the code-block
+ * newline path inside [handleEditorEnter] — without standing up a Compose host.
+ */
+internal sealed class PhysicalEnterAction {
+    /** Not an Enter key (or Shift+Enter — pass through to text-field input). */
+    internal data object PassThrough : PhysicalEnterAction()
+    /** Enter is gated by policy; consume the event but do not mutate. */
+    internal data object ConsumeWithoutMutating : PhysicalEnterAction()
+    /** Enter should run through the editor's structural pipeline. */
+    internal data class Process(
+        val key: Key,
+        val type: KeyEventType,
+    ) : PhysicalEnterAction()
+}
+
+internal fun classifyPhysicalEnterKeyEvent(
+    key: Key,
+    type: KeyEventType,
+    isShiftPressed: Boolean,
+    policy: EditorInteractionPolicy,
+): PhysicalEnterAction {
+    val isEnter = key == Key.Enter || key == Key.NumPadEnter
+    if (!isEnter) return PhysicalEnterAction.PassThrough
+    if (isShiftPressed) return PhysicalEnterAction.PassThrough
+    if (!policy.canEditBlockStructure) return PhysicalEnterAction.ConsumeWithoutMutating
+    return PhysicalEnterAction.Process(key = key, type = type)
+}
+
+/**
+ * List auto-detect rewrites the live text buffer and converts the block type,
+ * so both text-edit and block-structure capabilities are required before the
+ * observer is allowed to run.
+ */
+internal fun allowsListAutoDetect(
+    blockType: BlockType,
+    policy: EditorInteractionPolicy,
+): Boolean {
+    if (!policy.canEditText || !policy.canEditBlockStructure) return false
+    return blockType !is BlockType.BulletList &&
+        blockType !is BlockType.NumberedList &&
+        blockType !is BlockType.Code
 }

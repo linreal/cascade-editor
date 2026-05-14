@@ -135,6 +135,17 @@ All gates key on `block.type.supportsSpans` (or `focusedBlockType.supportsSpans`
 
 > **Known programmatic-commit consume gap (Code Enter).** Code Enter mutations in `DefaultBlockCallbacks.onEnter` register a programmatic commit via `BlockTextStates.replaceVisibleRange(...)`. For non-Code blocks, `SpanMaintenanceTextObserver` consumes that commit. Code blocks have neither `SpanMaintenanceTextObserver` (suppressed by `supportsSpans`) nor a slash observer that would naturally drain it, so a pending commit can linger. The "snapshot identity changed without text change" branch in `TextBlockField` already calls `consumeProgrammaticCommit` defensively. If post-Enter typing in Code is later observed to misclassify the first user character as programmatic, the targeted fix is one extra `consumeProgrammaticCommit(block.id)` next to the `spanTextObserver?.onCommittedVisibleText(...)` call.
 
+### Read-Only Policy Gating
+
+Read-only mode is a separate UI policy gate from `supportsSpans`. A spans-supporting focused text block still computes style and link metadata, but mutating surfaces are disabled:
+
+- `FormattingState.canFormat` is `false`.
+- `DefaultFormattingActions` no-op, including calls from custom toolbar content.
+- Formatting keyboard shortcuts are consumed without applying styles or creating history batch side effects.
+- `LinkState.canLink` is `false`, while non-mutating metadata such as `target`, `targetText`, `existingUrl`, `existingLinkRange`, `existingLinkText`, `isInsideLink`, and `intersectsLink` remains available when the focused block and selection support it.
+- `LocalLinkActions` validates URLs for feedback but does not mutate runtime text/spans or snapshot state.
+- Existing link opening from unfocused text blocks remains available because it does not dispatch editor actions or mutate history.
+
 ---
 
 ## Span Algorithms
@@ -427,7 +438,7 @@ Links use a dedicated state/action layer instead of `FormattingActions` because 
 
 | Property | Meaning |
 |----------|---------|
-| `canLink` | True only for a focused text block with no block selection and no active drag |
+| `canLink` | True only for a focused text block with no block selection, no active drag, and link editing enabled by the current editor policy |
 | `target` | Current cursor/selection as a `LinkTarget` |
 | `targetText` | Visible text inside the current non-collapsed target |
 | `existingUrl` | Existing URL only when the target is covered by exactly one link URL |
@@ -505,6 +516,8 @@ Opening links is deliberately separate from link editing. `CascadeEditor(onOpenL
 
 Opening a link never dispatches an editor action, never writes runtime text/span state, and never records history. Long-press does not open links because the opener is only called from tap handling.
 
+Read-only mode keeps this opening path enabled. Link editing state/actions are disabled, but tapping an existing link in an unfocused text block still routes through `LinkHitTester` and `LocalLinkOpener`.
+
 ### Out of V1
 
 - **No popup "Open" action.** The link popup (`LinkPopupSlot.Default` and the `LinkPopupState`/`LinkPopupActions` surface) does not include an open-link button. Opening is exclusively the unfocused-block tap path described above. This keeps the popup focused on editing and avoids bypassing the focused-block editing semantics.
@@ -534,6 +547,7 @@ data class FormattingState(
 - Focused block is `Code`
 - Multi-block selection is active
 - Drag-and-drop is in progress
+- Read-only mode is active
 
 ### FormattingActions (`richtext/FormattingActions.kt`)
 
@@ -572,6 +586,7 @@ CascadeEditor(
     stateHolder = ...,
     toolbar = ToolbarSlot.Default(),              // or None, or Custom { state, actions -> ... }
     onFormattingStateChanged = { state -> ... },  // optional external callback
+    config = CascadeEditorConfig(readOnly = true), // optional behavior gate
 )
 ```
 
@@ -647,6 +662,9 @@ Conversion helpers in `ui/BackspaceAwareTextEdit.kt`:
 - `TextFieldState.visibleText()` — buffer text minus sentinel
 - `TextFieldState.visibleCursorPosition()` — cursor position minus 1, clamped to 0
 - `TextFieldState.visibleSelection()` — selection range minus 1 on each bound, clamped to 0
+- `TextFieldState.selectedVisibleText()` — selected visible text in document order, excluding the sentinel
+
+`selectedVisibleText()` is the common verification surface for read-only copy-source correctness. Platform-native clipboard behavior still needs manual QA on Android, iOS, desktop, and wasm/JS before release.
 
 `SpanMapper` handles the reverse shift (+1) when applying styles to `TextFieldBuffer` in `OutputTransformation`.
 

@@ -6,6 +6,7 @@ import io.github.linreal.cascade.editor.action.IndentForward
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.indentation.DefaultIndentationActions
 import io.github.linreal.cascade.editor.indentation.IndentationState
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -26,6 +27,7 @@ class DefaultIndentationActionsTest {
                 )
             },
             dispatchAction = dispatchedActions::add,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         actions.indentForward()
@@ -45,6 +47,7 @@ class DefaultIndentationActionsTest {
                 )
             },
             dispatchAction = dispatchedActions::add,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         actions.indentBackward()
@@ -58,6 +61,7 @@ class DefaultIndentationActionsTest {
         val actions = DefaultIndentationActions(
             stateProvider = { IndentationState.Empty },
             dispatchAction = dispatchedActions::add,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         actions.indentForward()
@@ -71,6 +75,7 @@ class DefaultIndentationActionsTest {
         val actions = DefaultIndentationActions(
             stateProvider = { IndentationState.Empty },
             dispatchAction = dispatchedActions::add,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         actions.indentBackward()
@@ -85,6 +90,7 @@ class DefaultIndentationActionsTest {
         val actions = DefaultIndentationActions(
             stateProvider = { currentState },
             dispatchAction = dispatchedActions::add,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         actions.indentForward()
@@ -96,5 +102,25 @@ class DefaultIndentationActionsTest {
         actions.indentForward()
 
         assertEquals<List<EditorAction>>(listOf(IndentForward), dispatchedActions)
+    }
+
+    @Test
+    fun `read-only policy blocks indentation dispatch even when state is enabled`() {
+        val dispatchedActions = mutableListOf<EditorAction>()
+        val enabledState = IndentationState(
+            canIndentForward = true,
+            canIndentBackward = true,
+            targetBlockIds = listOf(targetId),
+        )
+        val actions = DefaultIndentationActions(
+            stateProvider = { enabledState },
+            dispatchAction = dispatchedActions::add,
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        actions.indentForward()
+        actions.indentBackward()
+
+        assertTrue(dispatchedActions.isEmpty())
     }
 }

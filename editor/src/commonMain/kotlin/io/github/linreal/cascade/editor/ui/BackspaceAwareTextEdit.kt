@@ -50,6 +50,7 @@ private const val ZWSP_CHAR: Char = '\u200B'
  * @param focusRequester Optional FocusRequester for programmatic focus control
  * @param onBackspaceAtStart Called when backspace is pressed at the start of text
  * @param onEnterPressed Called when Enter is pressed, with cursor position (relative to visible text)
+ * @param readOnly When true, text editing is blocked while focus and selection remain available.
  */
 @Composable
 public fun BackspaceAwareTextField(
@@ -61,14 +62,23 @@ public fun BackspaceAwareTextField(
     focusRequester: FocusRequester? = null,
     onBackspaceAtStart: () -> Unit,
     onEnterPressed: (cursorPosition: Int) -> Unit,
+    readOnly: Boolean = false,
     onTextLayout: (Density.(getResult: () -> TextLayoutResult?) -> Unit)? = null,
 ) {
     // Capture the latest callback so the input transformation, which is
     // remembered without keys, never invokes a stale lambda after recomposition.
     val currentOnBackspaceAtStart by rememberUpdatedState(onBackspaceAtStart)
+    val currentReadOnly by rememberUpdatedState(readOnly)
 
+    // BasicTextField(readOnly = true) is the source-of-truth gate for typing,
+    // paste, and IME insertion in read-only mode. Defense-in-depth: a
+    // programmatic `TextFieldState.edit { replace(...) }` call from outside
+    // the editor would still trip the sentinel classifier, so a final guard
+    // here keeps `onBackspaceAtStart` from firing if anything bypasses the
+    // BasicTextField read-only contract.
     val sentinelGuard = remember {
         InputTransformation {
+            if (!shouldProcessSentinelGuard(currentReadOnly)) return@InputTransformation
             when (val action = classifySentinelChange(originalText, asCharSequence())) {
                 SentinelGuardAction.NoOp -> Unit
                 SentinelGuardAction.DeletionAtStart -> {
@@ -117,8 +127,11 @@ public fun BackspaceAwareTextField(
         if (
             keyEvent.type == KeyEventType.KeyDown &&
             keyEvent.key == Key.Backspace &&
-            state.selection.start == 0 &&
-            state.selection.collapsed
+            shouldFireBackspaceAtStartFromHardwareKey(
+                selectionStart = state.selection.start,
+                selectionCollapsed = state.selection.collapsed,
+                readOnly = currentReadOnly,
+            )
         ) {
             currentOnBackspaceAtStart()
             true
@@ -135,13 +148,16 @@ public fun BackspaceAwareTextField(
         cursorBrush = cursorBrush,
         modifier = keyGuardModifier,
         onTextLayout = onTextLayout,
+        readOnly = readOnly,
         keyboardOptions = KeyboardOptions(
             imeAction = ImeAction.Next,
         ),
         onKeyboardAction = {
-            // Report cursor position relative to visible text
-            val cursorPos = (state.selection.start - 1).coerceAtLeast(0)
-            onEnterPressed(cursorPos)
+            if (shouldDeliverImeEnter(currentReadOnly)) {
+                // Report cursor position relative to visible text
+                val cursorPos = (state.selection.start - 1).coerceAtLeast(0)
+                onEnterPressed(cursorPos)
+            }
         },
     )
 }
@@ -187,6 +203,33 @@ private fun indexOfZwsp(text: CharSequence): Int {
 }
 
 /**
+ * Returns whether hardware Backspace at raw position 0 should invoke the
+ * editor-owned `onBackspaceAtStart` callback. Lifted out so common tests can
+ * verify the read-only contract without instantiating a Compose host.
+ */
+internal fun shouldFireBackspaceAtStartFromHardwareKey(
+    selectionStart: Int,
+    selectionCollapsed: Boolean,
+    readOnly: Boolean,
+): Boolean {
+    if (readOnly) return false
+    return selectionStart == 0 && selectionCollapsed
+}
+
+/**
+ * Returns whether the IME action callback (Next/Enter) should invoke
+ * `onEnterPressed`. Read-only mode silences IME-driven structural Enter.
+ */
+internal fun shouldDeliverImeEnter(readOnly: Boolean): Boolean = !readOnly
+
+/**
+ * Returns whether the sentinel guard input transformation should process a
+ * buffer change. Defense-in-depth for programmatic edits that bypass
+ * `BasicTextField(readOnly = true)`.
+ */
+internal fun shouldProcessSentinelGuard(readOnly: Boolean): Boolean = !readOnly
+
+/**
  * Returns the visible text content (without the sentinel character).
  */
 public fun TextFieldState.visibleText(): String {
@@ -208,4 +251,16 @@ public fun TextFieldState.visibleSelection(): TextRange {
     val start = (selection.start - 1).coerceAtLeast(0)
     val end = (selection.end - 1).coerceAtLeast(0)
     return TextRange(start, end)
+}
+
+/**
+ * Returns the selected visible text in document order, excluding the leading
+ * sentinel character from both the coordinate conversion and returned content.
+ */
+public fun TextFieldState.selectedVisibleText(): String {
+    val visible = visibleText()
+    val selection = visibleSelection()
+    val start = minOf(selection.start, selection.end).coerceIn(0, visible.length)
+    val end = maxOf(selection.start, selection.end).coerceIn(start, visible.length)
+    return visible.substring(start, end)
 }

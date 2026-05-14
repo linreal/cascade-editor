@@ -6,6 +6,7 @@ import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
 import io.github.linreal.cascade.editor.richtext.FormattingStateCalculator
 import io.github.linreal.cascade.editor.richtext.StyleStatus
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -30,6 +31,7 @@ class FormattingStateCalculatorTest {
         spans: List<TextSpan> = emptyList(),
         pendingStyles: Set<SpanStyle>? = null,
         trackedStyles: List<SpanStyle> = defaultTracked,
+        policy: EditorInteractionPolicy = EditorInteractionPolicy.Editable,
     ) = FormattingStateCalculator.compute(
         focusedBlockId = focusedBlockId,
         focusedBlockType = focusedBlockType,
@@ -40,6 +42,7 @@ class FormattingStateCalculatorTest {
         spans = spans,
         pendingStyles = pendingStyles,
         trackedStyles = trackedStyles,
+        policy = policy,
     )
 
  // canFormat disabled cases
@@ -79,6 +82,22 @@ class FormattingStateCalculatorTest {
     fun `dragging returns canFormat false`() {
         val result = compute(isDragging = true)
         assertFalse(result.canFormat)
+    }
+
+    @Test
+    fun `read-only policy returns canFormat false for spans-supporting focused block`() {
+        val result = compute(
+            focusedBlockType = BlockType.Paragraph,
+            selStart = 0,
+            selEnd = 5,
+            spans = listOf(TextSpan(0, 5, SpanStyle.Bold)),
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        assertFalse(result.canFormat)
+        assertTrue(result.styles.isEmpty())
+        assertEquals(blockId, result.focusedBlockId)
+        assertFalse(result.selectionCollapsed)
     }
 
     @Test

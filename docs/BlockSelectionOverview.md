@@ -30,6 +30,8 @@ Block selection introduces a multi-select mode to the CascadeEditor. Users long-
 
 **Subtree-aware selected drag.** Dragging a selected block resolves selected roots in document order, filters out selected descendants of another selected root, and expands each root to its full flat-outline subtree. Unsupported selected block types can still move as drag roots; indentation support only affects indent/outdent commands, not drag payload membership.
 
+**Read-only disables selection and drag affordances at the UI boundary.** The reducers remain mutable for app-owned code, but `CascadeEditorConfig(readOnly = true)` prevents editor-owned long-press selection, tap toggles, drag start, hover target updates, drag completion, drag preview/drop indicator rendering, and empty-space edit focus. Native text selection inside text fields remains available.
+
 ## 3. Data Flow
 
 ### Long-press to select (primary entry point)
@@ -205,6 +207,8 @@ The feature depends on:
 - **Invalid drag hover clears the target.** Gaps inside the payload or gaps that cannot accept the payload without corrupting outline depth set `DragState.targetIndex = null`, hide the indicator, and make `CompleteDrag` clear drag state without moving blocks.
 
 - **No "tap on empty area" to exit selection.** The consumer must clear selection via `ClearSelection` dispatch or by having the user deselect all blocks one by one.
+
+- **Read-only transition cleanup.** If read-only mode becomes active while blocks are selected or a drag is active, `CascadeEditor` dispatches `ClearSelection` and `CancelDrag` as UI cleanup. This does not mutate document blocks. External `EditorStateHolder.dispatch(...)` calls can still create selection or drag state unless the application gates them.
 
 ## 8. Glossary
 

@@ -9,6 +9,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.text.TextRange
@@ -35,15 +36,36 @@ internal class LinkPopupController(
     private val textStates: BlockTextStates,
     private val spanStates: BlockSpanStates,
     private val linkStateProvider: () -> LinkState,
+    private val policyProvider: () -> EditorInteractionPolicy,
 ) {
+    constructor(
+        linkActions: LinkActions,
+        stateHolder: EditorStateHolder,
+        textStates: BlockTextStates,
+        spanStates: BlockSpanStates,
+        linkStateProvider: () -> LinkState,
+        policy: EditorInteractionPolicy,
+    ) : this(
+        linkActions = linkActions,
+        stateHolder = stateHolder,
+        textStates = textStates,
+        spanStates = spanStates,
+        linkStateProvider = linkStateProvider,
+        policyProvider = { policy },
+    )
+
     var session: LinkPopupSession? by mutableStateOf(null)
         private set
 
     /**
      * Opens a popup session against the latest [LinkState], or no-ops when
-     * [LinkState.canLink] is false or no link target is currently resolvable.
+     * link editing is disabled, [LinkState.canLink] is false, or no link target
+     * is currently resolvable.
      */
     fun open() {
+        val policy = policyProvider()
+        if (!policy.canEditLinks) return
+
         val newSession = LinkPopupSession.create(
             linkState = linkStateProvider(),
             linkActions = linkActions,
@@ -116,7 +138,9 @@ internal fun rememberLinkPopupController(
     textStates: BlockTextStates,
     spanStates: BlockSpanStates,
     linkState: State<LinkState>,
+    policy: EditorInteractionPolicy,
 ): LinkPopupController {
+    val currentPolicy = rememberUpdatedState(policy)
     val controller = remember(linkActions, stateHolder, textStates, spanStates) {
         LinkPopupController(
             linkActions = linkActions,
@@ -124,6 +148,7 @@ internal fun rememberLinkPopupController(
             textStates = textStates,
             spanStates = spanStates,
             linkStateProvider = { linkState.value },
+            policyProvider = { currentPolicy.value },
         )
     }
 

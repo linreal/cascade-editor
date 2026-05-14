@@ -13,9 +13,11 @@ import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
+import io.github.linreal.cascade.editor.registry.PolicyAwareBlockCallbacks
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorState
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -90,6 +92,20 @@ class EnterContinuationTest {
     }
 
  // Pending styles transferred to new block
+
+    @Test
+    fun `read-only Enter does not split paragraph`() {
+        val harness = TestHarness(text = "Hello")
+        val readOnlyCallbacks = PolicyAwareBlockCallbacks(
+            delegate = harness.callbacks,
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        readOnlyCallbacks.onEnter(blockId, cursorPosition = 5)
+
+        assertEquals(emptyList(), harness.dispatched)
+        assertEquals("Hello", harness.textStates.getVisibleText(blockId))
+    }
 
     @Test
     fun `pending styles are transferred to new block on Enter`() {
