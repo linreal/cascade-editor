@@ -5,7 +5,9 @@ import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.slash.SlashCommandTextObserver
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import io.github.linreal.cascade.editor.ui.observers.ListAutoDetectObserver
+import io.github.linreal.cascade.editor.ui.renderers.shouldSuppressSlashTextObserver
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -19,7 +21,7 @@ import kotlin.test.assertTrue
  * predicates are duplicated as small helpers so this test file does not depend on
  * a Compose runtime; the helpers must stay in lockstep with `TextBlockField`.
  *
- * Covers the spec scenarios:
+ * Covers these scenarios:
  *  - Slash typed in Code does not open a slash session (observer not constructed).
  *  - `- ` and `1. ` typed in Code do not convert to lists (predicate suppresses).
  *  - Same-id Paragraph → Code disables both observers; Code → Paragraph re-enables.
@@ -35,11 +37,19 @@ class CodeBlockObserverSuppressionTest {
         val suppressListAutoDetect: Boolean,
     ) {
         companion object {
-            fun forBlock(block: Block): ObserverPredicates {
+            fun forBlock(
+                block: Block,
+                slashCommandsEnabled: Boolean = true,
+                policy: EditorInteractionPolicy = EditorInteractionPolicy.Editable,
+            ): ObserverPredicates {
                 val isCurrentlyList = block.type is BlockType.BulletList ||
                     block.type is BlockType.NumberedList
                 return ObserverPredicates(
-                    slashSuppressed = block.type is BlockType.Code,
+                    slashSuppressed = shouldSuppressSlashTextObserver(
+                        blockType = block.type,
+                        slashCommandsEnabled = slashCommandsEnabled,
+                        policy = policy,
+                    ),
                     suppressListAutoDetect = isCurrentlyList || block.type is BlockType.Code,
                 )
             }
@@ -53,10 +63,12 @@ class CodeBlockObserverSuppressionTest {
      */
     private fun buildObservers(
         block: Block,
+        slashCommandsEnabled: Boolean = true,
+        policy: EditorInteractionPolicy = EditorInteractionPolicy.Editable,
         onListDetected: (BlockType, Int) -> Unit = { _, _ -> },
         initialVisibleText: String = (block.content as? BlockContent.Text)?.text.orEmpty(),
     ): TestObservers {
-        val predicates = ObserverPredicates.forBlock(block)
+        val predicates = ObserverPredicates.forBlock(block, slashCommandsEnabled, policy)
         val slashObserver: SlashCommandTextObserver? = if (predicates.slashSuppressed) {
             null
         } else {
@@ -156,6 +168,26 @@ class CodeBlockObserverSuppressionTest {
 
         val observers = buildObservers(block)
         assertNotNull(observers.slashObserver, "paragraph blocks must construct a slash observer")
+    }
+
+    @Test
+    fun `read-only policy suppresses paragraph slash observer`() {
+        val observers = buildObservers(
+            block = blockOf(BlockType.Paragraph),
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        assertNull(observers.slashObserver, "read-only text fields must not construct a slash observer")
+    }
+
+    @Test
+    fun `disabled slash subsystem suppresses paragraph slash observer`() {
+        val observers = buildObservers(
+            block = blockOf(BlockType.Paragraph),
+            slashCommandsEnabled = false,
+        )
+
+        assertNull(observers.slashObserver, "disabled slash subsystem must not construct a slash observer")
     }
 
     // List auto-detect suppression

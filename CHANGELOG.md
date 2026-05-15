@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Added `CascadeEditorConfig(readOnly = ...)` and public `LocalCascadeEditorConfig` for UI-scoped read-only editor behavior.
+- Added read-only enforcement for built-in editor interaction surfaces: text input, formatting, indentation, link editing, slash commands, todo toggles, block selection, drag/reorder, empty-space focus, and structural keyboard edits are disabled while scrolling, text selection/copy, and existing link opening remain available.
+
+
 ## [1.4.0] - 2026-05-06
 
 ### Added

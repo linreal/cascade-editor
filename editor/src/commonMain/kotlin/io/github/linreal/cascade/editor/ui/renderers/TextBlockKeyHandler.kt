@@ -17,6 +17,7 @@ import io.github.linreal.cascade.editor.slash.SlashCommandItem
 import io.github.linreal.cascade.editor.slash.SlashCommandId
 import io.github.linreal.cascade.editor.ui.SlashPopupDefaults
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 
 /**
  * Handles keyboard events for [TextBlockField]: history shortcuts
@@ -25,9 +26,16 @@ import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
  *
  * Hardware-keyboard shortcuts include deduplication guards because iOS can deliver
  * duplicate `KeyDown` events for the same physical press.
+ *
+ * Policy and slash availability are read through providers so a handler whose
+ * remember keys are accidentally dropped or whose retention outlives a
+ * recomposition (e.g., when held briefly by an in-flight key event) cannot act
+ * on a stale snapshot.
  */
 internal class TextBlockKeyHandler(
     private val formattingActions: FormattingActions?,
+    private val policyProvider: () -> EditorInteractionPolicy,
+    private val slashEnabledProvider: () -> Boolean,
     private val callbacks: BlockCallbacks,
     private val isSlashAnchor: () -> Boolean,
     private val slashHighlightedCommandId: () -> SlashCommandId?,
@@ -38,6 +46,10 @@ internal class TextBlockKeyHandler(
     private val onUndo: () -> Unit,
     private val onRedo: () -> Unit,
 ) {
+    private val policy: EditorInteractionPolicy
+        get() = policyProvider()
+    private val slashEnabled: Boolean
+        get() = slashEnabledProvider()
     /** Tracks which formatting key is currently held to prevent duplicate iOS `KeyDown`. */
     private var handledFormattingKey: Key? = null
     /** Tracks which history key is currently held to prevent duplicate iOS `KeyDown`. */
@@ -47,10 +59,9 @@ internal class TextBlockKeyHandler(
      * Returns `true` if the event was consumed.
      */
     fun onPreviewKeyEvent(keyEvent: KeyEvent): Boolean {
-        detectPasteShortcut(keyEvent)
         val shortcutEvent = keyEvent.toShortcutKeyEvent()
         if (onPreviewShortcutEvent(shortcutEvent)) return true
-        if (handleSlashPopupNav(keyEvent)) return true
+        if (onPreviewSlashPopupKeyEvent(keyEvent.toSlashPopupKeyEvent())) return true
         return false
     }
 
@@ -61,6 +72,7 @@ internal class TextBlockKeyHandler(
      * constructing platform-native [KeyEvent] instances.
      */
     internal fun onPreviewShortcutEvent(keyEvent: ShortcutKeyEvent): Boolean {
+        detectPasteShortcut(keyEvent)
         if (handleHistoryShortcut(keyEvent)) return true
         if (handleFormattingShortcut(keyEvent)) return true
         return false
@@ -73,9 +85,9 @@ internal class TextBlockKeyHandler(
      * committed text observer path, so shortcut detection gives us a stronger
      * hint before the eventual text commit arrives.
      */
-    private fun detectPasteShortcut(keyEvent: KeyEvent) {
-        val isShortcutModifier = keyEvent.isMetaPressed || keyEvent.isCtrlPressed
-        if (!isShortcutModifier) return
+    private fun detectPasteShortcut(keyEvent: ShortcutKeyEvent) {
+        if (!policy.canEditText) return
+        if (!keyEvent.hasShortcutModifier) return
         if (keyEvent.type != KeyEventType.KeyDown) return
         if (keyEvent.key == Key.V) {
             onPasteShortcutDetected()
@@ -93,6 +105,13 @@ internal class TextBlockKeyHandler(
         val shortcut = historyShortcutForKey(keyEvent.key, keyEvent.isShiftPressed)
         if (!keyEvent.hasShortcutModifier || shortcut == null) {
             return false
+        }
+
+        if (!policy.canUseEditorHistoryShortcuts) {
+            if (keyEvent.type == KeyEventType.KeyDown) {
+                handledHistoryKey = keyEvent.key
+            }
+            return true
         }
 
         return when (keyEvent.type) {
@@ -121,6 +140,12 @@ internal class TextBlockKeyHandler(
 
         if (keyEvent.hasShortcutModifier && formattingActions != null) {
             val style = formattingStyleForKey(keyEvent.key) ?: return false
+            if (!policy.canFormatText) {
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    handledFormattingKey = keyEvent.key
+                }
+                return true
+            }
             return when (keyEvent.type) {
                 KeyEventType.KeyUp -> true
                 KeyEventType.KeyDown -> {
@@ -139,8 +164,15 @@ internal class TextBlockKeyHandler(
 
     // Slash popup keyboard navigation
 
-    private fun handleSlashPopupNav(keyEvent: KeyEvent): Boolean {
+    /**
+     * Handles slash popup keyboard navigation after normalizing platform key events.
+     *
+     * This helper exists so common tests can cover popup routing without creating
+     * platform-native [KeyEvent] instances.
+     */
+    internal fun onPreviewSlashPopupKeyEvent(keyEvent: SlashPopupKeyEvent): Boolean {
         if (keyEvent.type != KeyEventType.KeyDown) return false
+        if (!canHandleSlashPopup()) return false
         if (!isSlashAnchor()) return false
 
         return when (keyEvent.key) {
@@ -177,6 +209,13 @@ internal class TextBlockKeyHandler(
             else -> false
         }
     }
+
+    /**
+     * Returns whether this handler may touch slash popup state or execution.
+     */
+    private fun canHandleSlashPopup(): Boolean {
+        return slashEnabled && policy.canEditText
+    }
 }
 
 /**
@@ -190,6 +229,14 @@ internal data class ShortcutKeyEvent(
     val type: KeyEventType,
     val hasShortcutModifier: Boolean,
     val isShiftPressed: Boolean,
+)
+
+/**
+ * Normalized slash popup key event used by [TextBlockKeyHandler].
+ */
+internal data class SlashPopupKeyEvent(
+    val key: Key,
+    val type: KeyEventType,
 )
 
 private enum class HistoryShortcut {
@@ -233,5 +280,12 @@ private fun KeyEvent.toShortcutKeyEvent(): ShortcutKeyEvent {
         type = type,
         hasShortcutModifier = isMetaPressed || isCtrlPressed,
         isShiftPressed = isShiftPressed,
+    )
+}
+
+private fun KeyEvent.toSlashPopupKeyEvent(): SlashPopupKeyEvent {
+    return SlashPopupKeyEvent(
+        key = key,
+        type = type,
     )
 }

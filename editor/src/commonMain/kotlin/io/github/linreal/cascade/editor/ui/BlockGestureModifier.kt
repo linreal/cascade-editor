@@ -51,6 +51,7 @@ import kotlinx.coroutines.CancellationException
  * @param outlineIndexProvider Provides cached block lookup data keyed by the
  *        current block list.
  * @param callbacks Block callbacks for dispatching drag actions.
+ * @param policy Current editor interaction policy for block-level gesture gates.
  * @param longPressTimeoutMillis Custom long-press timeout in milliseconds.
  *        If null, uses the platform default from ViewConfiguration.
  */
@@ -62,92 +63,185 @@ internal fun Modifier.blockGestures(
     stateProvider: () -> EditorState,
     outlineIndexProvider: () -> DragHoverOutlineIndex,
     callbacks: BlockCallbacks,
+    policy: EditorInteractionPolicy,
     longPressTimeoutMillis: Long? = null,
     onEmptySpaceTap: () -> Unit = {},
-): Modifier = this.pointerInput(Unit) {
-    var longPressedBlockId: BlockId? = null
-    val timeout = longPressTimeoutMillis ?: viewConfiguration.longPressTimeoutMillis
+): Modifier {
+    if (!shouldInstallBlockGestureInput(policy)) return this
 
-    fun finishDrag(fallbackAction: () -> Unit) {
-        val blockId = longPressedBlockId
-        longPressedBlockId = null
-        val dragState = stateProvider().dragState
-        if (dragState != null) {
-            val originalRootIndentationLevel = dragState.primaryRootId
-                ?.let { dragState.originalRootIndentationLevels[it] }
-            if (blockId != null && isDropAtOriginalPosition(
-                    dragState.targetIndex,
-                    dragState.primaryBlockOriginalIndex,
-                    originalRootIndentationLevel = originalRootIndentationLevel,
-                    futureRootIndentationLevel = dragState.futureRootIndentationLevel,
-                )
-            ) {
-                callbacks.dispatch(CancelDrag)
-                callbacks.dispatch(ToggleBlockSelection(blockId))
-            } else {
-                fallbackAction()
+    return this.pointerInput(policy, callbacks) {
+        var longPressedBlockId: BlockId? = null
+        val timeout = longPressTimeoutMillis ?: viewConfiguration.longPressTimeoutMillis
+
+        fun finishDrag(fallbackAction: () -> Unit) {
+            val blockId = longPressedBlockId
+            longPressedBlockId = null
+            val dragState = stateProvider().dragState
+            if (dragState != null && policy.canDragBlocks) {
+                val originalRootIndentationLevel = dragState.primaryRootId
+                    ?.let { dragState.originalRootIndentationLevels[it] }
+                if (blockId != null && isDropAtOriginalPosition(
+                        dragState.targetIndex,
+                        dragState.primaryBlockOriginalIndex,
+                        originalRootIndentationLevel = originalRootIndentationLevel,
+                        futureRootIndentationLevel = dragState.futureRootIndentationLevel,
+                    )
+                ) {
+                    callbacks.dispatch(CancelDrag)
+                    dispatchBlockSelectionToggleIfAllowed(policy, callbacks, blockId)
+                } else {
+                    fallbackAction()
+                }
             }
         }
-    }
 
-    detectDragAfterLongPress(
-        longPressTimeoutMillis = timeout,
-        onTap = { offset ->
-            if (stateProvider().hasSelection) {
+        detectDragAfterLongPress(
+            longPressTimeoutMillis = timeout,
+            onTap = { offset ->
+                if (stateProvider().hasSelection) {
+                    if (!policy.canSelectBlocks) {
+                        false
+                    } else {
+                        val item = findItemAtPosition(lazyListState.layoutInfo, offset.y)
+                        val blockId = (item?.key as? String)?.let(::BlockId)
+                        if (blockId != null) {
+                            dispatchBlockSelectionToggleIfAllowed(policy, callbacks, blockId)
+                        }
+                        true
+                    }
+                } else {
+                    val item = findItemAtPosition(lazyListState.layoutInfo, offset.y)
+                    if (item == null && canFocusLastTextBlockFromEmptySpace(policy)) {
+                        onEmptySpaceTap()
+                        true
+                    } else {
+                        false
+                    }
+                }
+            },
+            onDragStart = { offset ->
+                longPressedBlockId = null
+
                 val item = findItemAtPosition(lazyListState.layoutInfo, offset.y)
                 val blockId = (item?.key as? String)?.let(::BlockId)
-                if (blockId != null) {
-                    callbacks.dispatch(ToggleBlockSelection(blockId))
+                if (item != null && blockId != null) {
+                    longPressedBlockId = blockId
+                    val touchWithinBlock = offset.y - item.offset
+                    dragOffsetY.floatValue = offset.y
+                    dragDeltaX.floatValue = 0f
+                    dispatchBlockDragStartIfAllowed(policy, callbacks, blockId, touchWithinBlock)
                 }
-                true
-            } else {
-                val item = findItemAtPosition(lazyListState.layoutInfo, offset.y)
-                if (item == null) {
-                    onEmptySpaceTap()
-                    true
-                } else {
-                    false
-                }
-            }
-        },
-        onDragStart = { offset ->
-            longPressedBlockId = null
-
-            val item = findItemAtPosition(lazyListState.layoutInfo, offset.y)
-            val blockId = (item?.key as? String)?.let(::BlockId)
-            if (item != null && blockId != null) {
-                longPressedBlockId = blockId
-                val touchWithinBlock = offset.y - item.offset
-                dragOffsetY.floatValue = offset.y
-                dragDeltaX.floatValue = 0f
-                callbacks.onDragStart(blockId, touchWithinBlock)
-            }
-        },
-        onDrag = { change, dragAmount ->
-            change.consume()
-            val currentState = stateProvider()
-            if (currentState.dragState != null) {
-                dragOffsetY.floatValue += dragAmount.y
-                dragDeltaX.floatValue += dragAmount.x
-                val hoverTarget = recomputeDepthAwareDragHoverTarget(
-                    layoutInfo = lazyListState.layoutInfo,
-                    dragY = dragOffsetY.floatValue,
-                    outlineIndex = outlineIndexProvider(),
-                    dragState = currentState.dragState,
-                    horizontalDragDeltaPx = dragDeltaX.floatValue,
-                    indentUnitPx = indentUnitPx,
-                )
-                callbacks.dispatch(
-                    UpdateDragTarget(
+            },
+            onDrag = { change, dragAmount ->
+                change.consume()
+                val currentState = stateProvider()
+                if (currentState.dragState != null && policy.canDragBlocks) {
+                    dragOffsetY.floatValue += dragAmount.y
+                    dragDeltaX.floatValue += dragAmount.x
+                    val hoverTarget = recomputeDepthAwareDragHoverTarget(
+                        layoutInfo = lazyListState.layoutInfo,
+                        dragY = dragOffsetY.floatValue,
+                        outlineIndex = outlineIndexProvider(),
+                        dragState = currentState.dragState,
+                        horizontalDragDeltaPx = dragDeltaX.floatValue,
+                        indentUnitPx = indentUnitPx,
+                    )
+                    dispatchDragTargetUpdateIfAllowed(
+                        policy = policy,
+                        callbacks = callbacks,
                         targetIndex = hoverTarget?.visualGap,
                         futureRootIndentationLevel = hoverTarget?.futureRootIndentationLevel,
                     )
-                )
-            }
-        },
-        onDragEnd = { finishDrag { callbacks.dispatch(CompleteDrag) } },
-        onDragCancel = { finishDrag { callbacks.dispatch(CancelDrag) } },
+                }
+            },
+            onDragEnd = { finishDrag { callbacks.dispatch(CompleteDrag) } },
+            onDragCancel = { finishDrag { callbacks.dispatch(CancelDrag) } },
+        )
+    }
+}
+
+/**
+ * Returns whether the editor should install its block-level pointer detector.
+ *
+ * The detector consumes long-press and handled tap input. When every block-level
+ * gesture it owns is unavailable, omitting it keeps normal scroll and text-viewer
+ * interactions on the LazyColumn path.
+ */
+internal fun shouldInstallBlockGestureInput(policy: EditorInteractionPolicy): Boolean {
+    return policy.canDragBlocks ||
+        policy.canSelectBlocks ||
+        canFocusLastTextBlockFromEmptySpace(policy)
+}
+
+/**
+ * Dispatches drag start only when block dragging is currently available.
+ */
+internal fun dispatchBlockDragStartIfAllowed(
+    policy: EditorInteractionPolicy,
+    callbacks: BlockCallbacks,
+    blockId: BlockId,
+    touchOffsetY: Float,
+): Boolean {
+    if (!policy.canDragBlocks) return false
+    callbacks.onDragStart(blockId, touchOffsetY)
+    return true
+}
+
+/**
+ * Dispatches block-selection toggles only when selection gestures are enabled.
+ */
+internal fun dispatchBlockSelectionToggleIfAllowed(
+    policy: EditorInteractionPolicy,
+    callbacks: BlockCallbacks,
+    blockId: BlockId,
+): Boolean {
+    if (!policy.canSelectBlocks) return false
+    callbacks.dispatch(ToggleBlockSelection(blockId))
+    return true
+}
+
+/**
+ * Dispatches drag hover target changes only for active editor-owned drag flows.
+ */
+internal fun dispatchDragTargetUpdateIfAllowed(
+    policy: EditorInteractionPolicy,
+    callbacks: BlockCallbacks,
+    targetIndex: Int?,
+    futureRootIndentationLevel: Int?,
+): Boolean {
+    if (!policy.canDragBlocks) return false
+    callbacks.dispatch(
+        UpdateDragTarget(
+            targetIndex = targetIndex,
+            futureRootIndentationLevel = futureRootIndentationLevel,
+        )
     )
+    return true
+}
+
+/**
+ * Returns whether editor-owned drag affordance UI should react to drag state.
+ *
+ * Drag state can be supplied by app-owned code independently of this UI policy.
+ * Built-in auto-scroll, drop indicators, and previews only render when the
+ * current policy still allows editor-owned block dragging.
+ */
+internal fun shouldRenderDragAffordances(
+    policy: EditorInteractionPolicy,
+    state: EditorState,
+): Boolean {
+    return policy.canDragBlocks && state.dragState != null
+}
+
+/**
+ * Empty-space taps are an edit convenience: they place the caret at the end of
+ * the final text block. Both text editing and structural edits are required —
+ * the caret is only useful when typing/Enter/Backspace can change the document.
+ * Future partial-edit modes that disable either capability should leave empty
+ * space inert.
+ */
+internal fun canFocusLastTextBlockFromEmptySpace(policy: EditorInteractionPolicy): Boolean {
+    return policy.canEditText && policy.canEditBlockStructure
 }
 
 /**

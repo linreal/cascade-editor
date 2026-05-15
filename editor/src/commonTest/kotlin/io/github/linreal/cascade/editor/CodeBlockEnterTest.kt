@@ -1,18 +1,25 @@
 package io.github.linreal.cascade.editor
 
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.text.TextRange
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
+import io.github.linreal.cascade.editor.registry.PolicyAwareBlockCallbacks
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.EditorStateHolder
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
+import io.github.linreal.cascade.editor.ui.renderers.PhysicalEnterAction
+import io.github.linreal.cascade.editor.ui.renderers.classifyPhysicalEnterKeyEvent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -29,6 +36,99 @@ import kotlin.test.assertTrue
 class CodeBlockEnterTest {
 
     private val codeBlockId = BlockId("code-1")
+
+    @Test
+    fun `read-only physical Enter on code block is consumed without mutation`() {
+        // The physical Enter gate inside TextBlockField runs before code-block
+        // newline insertion, so it must short-circuit on ReadOnly without
+        // hitting handleEditorEnter — defense-in-depth in addition to the
+        // PolicyAwareBlockCallbacks gate covered by the test below.
+        val classification = classifyPhysicalEnterKeyEvent(
+            key = Key.Enter,
+            type = KeyEventType.KeyDown,
+            isShiftPressed = false,
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        assertEquals(PhysicalEnterAction.ConsumeWithoutMutating, classification)
+    }
+
+    @Test
+    fun `read-only physical NumPadEnter on code block is consumed without mutation`() {
+        val classification = classifyPhysicalEnterKeyEvent(
+            key = Key.NumPadEnter,
+            type = KeyEventType.KeyDown,
+            isShiftPressed = false,
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        assertEquals(PhysicalEnterAction.ConsumeWithoutMutating, classification)
+    }
+
+    @Test
+    fun `editable physical Enter is processed through the structural pipeline`() {
+        val classification = classifyPhysicalEnterKeyEvent(
+            key = Key.Enter,
+            type = KeyEventType.KeyDown,
+            isShiftPressed = false,
+            policy = EditorInteractionPolicy.Editable,
+        )
+
+        val process = assertIs<PhysicalEnterAction.Process>(classification)
+        assertEquals(Key.Enter, process.key)
+        assertEquals(KeyEventType.KeyDown, process.type)
+    }
+
+    @Test
+    fun `Shift+Enter passes through regardless of policy`() {
+        // Soft-break inside the text field; not the editor's structural Enter.
+        assertEquals(
+            PhysicalEnterAction.PassThrough,
+            classifyPhysicalEnterKeyEvent(
+                key = Key.Enter,
+                type = KeyEventType.KeyDown,
+                isShiftPressed = true,
+                policy = EditorInteractionPolicy.Editable,
+            ),
+        )
+        assertEquals(
+            PhysicalEnterAction.PassThrough,
+            classifyPhysicalEnterKeyEvent(
+                key = Key.Enter,
+                type = KeyEventType.KeyDown,
+                isShiftPressed = true,
+                policy = EditorInteractionPolicy.ReadOnly,
+            ),
+        )
+    }
+
+    @Test
+    fun `non-Enter keys pass through`() {
+        assertEquals(
+            PhysicalEnterAction.PassThrough,
+            classifyPhysicalEnterKeyEvent(
+                key = Key.A,
+                type = KeyEventType.KeyDown,
+                isShiftPressed = false,
+                policy = EditorInteractionPolicy.Editable,
+            ),
+        )
+    }
+
+    @Test
+    fun `read-only Enter does not mutate code block`() {
+        val harness = Harness.code(text = "line1", cursorPosition = 5)
+        val readOnlyCallbacks = PolicyAwareBlockCallbacks(
+            delegate = harness.callbacks,
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        readOnlyCallbacks.onEnter(codeBlockId, cursorPosition = 5)
+
+        assertEquals(listOf("line1"), harness.visibleTexts())
+        assertEquals(listOf(BlockType.Code), harness.blockTypes())
+        assertFalse(harness.stateHolder.canUndo)
+    }
 
     @Test
     fun `mid-text Enter inserts newline at cursor without splitting`() {

@@ -2,7 +2,7 @@
 
 ## 1. Feature Overview
 
-The toolbar system provides inline editor controls at the bottom of the `CascadeEditor`. It lets users apply span styles (bold, italic, underline, strikethrough, inline code, highlight) to selected text or toggle pending styles at a collapsed cursor, and the built-in toolbar also exposes block indent/outdent controls. The feature is fully configurable: consumers can use the built-in config-driven toolbar, supply a completely custom composable toolbar, or hide it entirely. Keyboard shortcuts (Cmd/Ctrl+B/I/U) work independently of toolbar visibility. An external `onFormattingStateChanged` callback enables out-of-editor UI (e.g., a floating toolbar or app bar) to reflect formatting state reactively, while indentation and link state/actions are available through CompositionLocals for custom chrome.
+The toolbar system provides inline editor controls at the bottom of the `CascadeEditor`. It lets users apply span styles (bold, italic, underline, strikethrough, inline code, highlight) to selected text or toggle pending styles at a collapsed cursor, and the built-in toolbar also exposes block indent/outdent controls. The feature is fully configurable: consumers can use the built-in config-driven toolbar, supply a completely custom composable toolbar, or hide it entirely. Keyboard shortcuts (Cmd/Ctrl+B/I/U) work independently of toolbar visibility, unless read-only mode disables editor-owned formatting mutations. An external `onFormattingStateChanged` callback enables out-of-editor UI (e.g., a floating toolbar or app bar) to reflect formatting state reactively, while indentation and link state/actions are available through CompositionLocals for custom chrome.
 
 ---
 
@@ -74,6 +74,8 @@ The toolbar system provides inline editor controls at the bottom of the `Cascade
 **Link actions are gated by link availability.** `LocalLinkActions` exposes a `LinkChromeActions` facade that delegates to `LinkActionDispatcher` only while `LinkState.canLink` is true. If linking is unavailable, `applyLink` still validates the URL for UI feedback but does not mutate, and `removeLink` no-ops. The chrome surface adds `currentTarget()`, `applyLinkAtCurrentTarget(...)`, and `removeLinkAtCurrentTarget()` for callers without a captured target; the latter two are inherited defaults that forward to `applyLink`/`removeLink` after consulting `currentTarget()`. The minimal target-based `LinkActions` interface is the right type for popup sessions and any code path that has already captured a `LinkTarget`.
 
 **Link popup sessions are editor-owned and slot-rendered.** Pressing the default toolbar link button creates a `LinkPopupSession` for `LinkPopupSlot.Default` and `Custom`. The session captures the current `LinkTarget`, owns title/URL field state, validates through `LinkUrlPolicy`, and routes valid apply/remove operations through `LinkActions`. `Default` renders the foundation-only popup, `Custom` receives the same state/actions for consumer UI, and `None` suppresses editor-owned popup state/UI.
+
+**Read-only keeps toolbar visibility separate from edit permission.** `CascadeEditorConfig(readOnly = true)` leaves the default toolbar visible but makes mutating controls disabled or no-op: formatting, indentation, link editing, and toolbar slash insertion. Toolbar visibility is still controlled only by `ToolbarSlot`; use `ToolbarSlot.None` to hide it. `ToolbarSlot.Custom` content remains visible, and editor-provided state/actions are policy-aware, but custom direct writes still need to check `LocalCascadeEditorConfig.current.readOnly`.
 
 ---
 
@@ -216,6 +218,7 @@ Consumer
 | `linkPopup` | `LinkPopupSlot` | `LinkPopupSlot.Default` | Controls editor-owned link popup rendering |
 | `onOpenLink` | `((String) -> Unit)?` | `null` | App-controlled link opener for unfocused-block taps. When null, the editor falls back to `LocalUriHandler` and swallows platform open failures. |
 | `onFormattingStateChanged` | `((FormattingState) -> Unit)?` | `null` | External formatting state listener |
+| `config` | `CascadeEditorConfig` | `CascadeEditorConfig.Default` | Cross-cutting behavior config, including read-only mode |
 
 ### `ToolbarSlot` (sealed interface)
 
@@ -411,14 +414,17 @@ The toolbar is intentionally outside the drag gesture `Box` to prevent drag even
 - Focused block type does not support text
 - Block selection is active (multi-select mode)
 - Drag is in progress
+- The editor is read-only
 
-**`canLink` disablement conditions.** Link state is disabled under the same editor-level guards as formatting: no focused text block, block selection active, or drag in progress. `LocalLinkActions` also checks this state at invocation time before mutating.
+**`canLink` disablement conditions.** Link state is disabled under the same editor-level guards as formatting: no focused text block, block selection active, drag in progress, or read-only mode. Read-only link state still preserves non-mutating metadata for custom chrome when available. `LocalLinkActions` also checks this state at invocation time before mutating.
 
-**Indentation enablement is independent of formatting enablement.** Indent/outdent buttons use `IndentationState`, not `FormattingState.canFormat`. They can target focused supported blocks or selected supported root blocks and no-op when structural outline rules disallow movement.
+**Indentation enablement is independent of formatting enablement.** Indent/outdent buttons use `IndentationState`, not `FormattingState.canFormat`. They can target focused supported blocks or selected supported root blocks and no-op when structural outline rules, selection/focus state, or read-only mode disallow movement.
 
 **`showIndentation = false` hides only default toolbar buttons.** It does not disable indentation reducers or remove `LocalIndentationState` / `LocalIndentationActions` from custom toolbar content.
 
 **Toolbar visibility does not affect link locals.** `LocalLinkState` and `LocalLinkActions` are provided in default, custom, and no-toolbar modes. `ToolbarSlot.None` hides editor-owned toolbar UI only.
+
+**Read-only does not hide the iOS hide-keyboard button.** The iOS default toolbar button remains visible and dispatches `ClearFocus`; read-only fields usually do not open the soft keyboard, so this is mostly a no-op. Use `ToolbarSlot.Custom` if the app wants to hide it.
 
 **`showLink = false` hides only the default toolbar link button.** It does not remove `LocalLinkState`, `LocalLinkActions`, or the `linkPopup` parameter. Apps that own all link chrome should usually combine `ToolbarSlot.Custom` or `RichTextToolbarConfig(showLink = false)` with `LinkPopupSlot.None`.
 

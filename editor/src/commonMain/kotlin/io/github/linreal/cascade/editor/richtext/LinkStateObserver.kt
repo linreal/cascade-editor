@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorStateHolder
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import io.github.linreal.cascade.editor.ui.visibleSelection
 
 /**
@@ -21,6 +22,7 @@ internal fun rememberLinkState(
     stateHolder: EditorStateHolder,
     textStates: BlockTextStates,
     spanStates: BlockSpanStates,
+    policy: EditorInteractionPolicy,
 ): State<LinkState> {
     val focusedBlockId = remember(stateHolder) {
         derivedStateOf { stateHolder.state.focusedBlockId }
@@ -38,7 +40,7 @@ internal fun rememberLinkState(
         derivedStateOf { stateHolder.state.dragState != null }
     }
 
-    return remember(stateHolder, textStates, spanStates) {
+    return remember(stateHolder, textStates, spanStates, policy) {
         derivedStateOf {
             val blockId = focusedBlockId.value
             val blockType = focusedBlockType.value
@@ -65,6 +67,7 @@ internal fun rememberLinkState(
                 visibleSelectionStart = selection.start,
                 visibleSelectionEnd = selection.end,
                 spans = spans,
+                policy = policy,
             )
         }
     }

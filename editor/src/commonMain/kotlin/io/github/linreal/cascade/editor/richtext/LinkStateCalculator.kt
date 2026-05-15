@@ -4,6 +4,7 @@ import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import kotlin.math.max
 import kotlin.math.min
 
@@ -18,6 +19,9 @@ internal object LinkStateCalculator {
      * Collapsed cursors only resolve a link when the cursor is strictly inside
      * the link range. Ranged selections resolve one existing URL only when the
      * whole range is covered by link spans with exactly one URL.
+     *
+     * [policy] controls whether link editing is enabled while leaving
+     * non-mutating target and existing-link metadata available for chrome.
      */
     internal fun compute(
         focusedBlockId: BlockId?,
@@ -28,6 +32,7 @@ internal object LinkStateCalculator {
         visibleSelectionStart: Int,
         visibleSelectionEnd: Int,
         spans: List<TextSpan>,
+        policy: EditorInteractionPolicy = EditorInteractionPolicy.Editable,
     ): LinkState {
         if (
             focusedBlockId == null ||
@@ -66,7 +71,7 @@ internal object LinkStateCalculator {
         }
 
         return LinkState(
-            canLink = true,
+            canLink = policy.canEditLinks,
             focusedBlockId = focusedBlockId,
             target = target,
             targetText = visibleText.substring(rangeStart, rangeEnd),

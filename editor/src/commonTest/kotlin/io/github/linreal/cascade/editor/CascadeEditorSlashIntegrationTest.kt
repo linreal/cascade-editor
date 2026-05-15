@@ -20,7 +20,11 @@ import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.EditorStateHolder
 import io.github.linreal.cascade.editor.state.SlashCommandState
 import io.github.linreal.cascade.editor.state.SlashQueryRange
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
+import io.github.linreal.cascade.editor.ui.SlashCommandSlot
 import io.github.linreal.cascade.editor.ui.createMergedSlashRegistry
+import io.github.linreal.cascade.editor.ui.isSlashCommandSubsystemEnabled
+import io.github.linreal.cascade.editor.ui.shouldRenderSlashCommandPopup
 import io.github.linreal.cascade.editor.ui.shouldInvalidateSlashSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -31,6 +35,48 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CascadeEditorSlashIntegrationTest {
+
+    @Test
+    fun `slash subsystem is disabled by read-only policy`() {
+        assertFalse(
+            isSlashCommandSubsystemEnabled(
+                slashCommand = SlashCommandSlot.Default,
+                policy = EditorInteractionPolicy.ReadOnly,
+            )
+        )
+    }
+
+    @Test
+    fun `slash subsystem remains disabled by slot even when editable`() {
+        assertFalse(
+            isSlashCommandSubsystemEnabled(
+                slashCommand = SlashCommandSlot.None,
+                policy = EditorInteractionPolicy.Editable,
+            )
+        )
+    }
+
+    @Test
+    fun `slash subsystem is enabled only when slot and policy allow it`() {
+        assertTrue(
+            isSlashCommandSubsystemEnabled(
+                slashCommand = SlashCommandSlot.Default,
+                policy = EditorInteractionPolicy.Editable,
+            )
+        )
+    }
+
+    @Test
+    fun `read-only slash gate prevents popup rendering for externally supplied session`() {
+        assertFalse(
+            shouldRenderSlashCommandPopup(
+                slashEnabled = false,
+                hasSlashState = true,
+                hasPopupItems = true,
+                hasExecutor = true,
+            )
+        )
+    }
 
     @Test
     fun `createMergedSlashRegistry combines built-in and custom items`() {

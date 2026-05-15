@@ -17,6 +17,7 @@ import io.github.linreal.cascade.editor.state.PendingTextHistoryPush
 import io.github.linreal.cascade.editor.state.TextEditHistoryTracker
 import io.github.linreal.cascade.editor.state.captureCheckpoint
 import io.github.linreal.cascade.editor.state.captureFocusedEditingUiState
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -56,6 +57,7 @@ class FormattingHistoryIntegrationTest {
             stateHolder = stateHolder,
             textStates = textStates,
             spanActionDispatcher = spanActionDispatcher,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         init {

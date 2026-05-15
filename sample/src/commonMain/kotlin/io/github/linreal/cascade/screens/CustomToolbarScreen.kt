@@ -23,7 +23,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +44,8 @@ import androidx.compose.ui.unit.sp
 import cascadeeditor.sample.generated.resources.Res
 import cascadeeditor.sample.generated.resources.ic_arrow_back
 import cascadeeditor.sample.generated.resources.ic_dark_mode
+import cascadeeditor.sample.generated.resources.ic_edit
+import cascadeeditor.sample.generated.resources.ic_edit_off
 import cascadeeditor.sample.generated.resources.ic_light_mode
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.SpanStyle
@@ -53,6 +58,8 @@ import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.rememberEditorState
 import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
 import io.github.linreal.cascade.editor.ui.CascadeEditor
+import io.github.linreal.cascade.editor.ui.CascadeEditorConfig
+import io.github.linreal.cascade.editor.ui.LocalCascadeEditorConfig
 import io.github.linreal.cascade.editor.ui.ToolbarSlot
 import io.github.linreal.cascade.editor.ui.visibleSelection
 import io.github.linreal.cascade.ui.PageScaffold
@@ -69,7 +76,7 @@ private val TrackedStyles = listOf(
     SpanStyle.InlineCode,
 )
 
-// Screen         
+// Screen
 
 @Composable
 fun CustomToolbarScreen(
@@ -82,6 +89,7 @@ fun CustomToolbarScreen(
     val textStates = remember { BlockTextStates() }
     val spanStates = remember { BlockSpanStates() }
     val editorState = rememberEditorState(buildToolbarDemoBlocks())
+    var isReadOnly by remember { mutableStateOf(false) }
 
     PageScaffold {
         // Header
@@ -108,18 +116,33 @@ fun CustomToolbarScreen(
                     color = MaterialTheme.colorScheme.onBackground,
                 )
             }
-            IconButton(
-                onClick = onToggleTheme,
-                modifier = Modifier.size(40.dp),
-            ) {
-                Image(
-                    painter = painterResource(
-                        if (isDark) Res.drawable.ic_light_mode else Res.drawable.ic_dark_mode
-                    ),
-                    contentDescription = if (isDark) "Switch to light" else "Switch to dark",
-                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-                    modifier = Modifier.size(20.dp),
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = { isReadOnly = !isReadOnly },
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Image(
+                        painter = painterResource(
+                            if (isReadOnly) Res.drawable.ic_edit_off else Res.drawable.ic_edit
+                        ),
+                        contentDescription = if (isReadOnly) "Read-only" else "Editable",
+                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                IconButton(
+                    onClick = onToggleTheme,
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Image(
+                        painter = painterResource(
+                            if (isDark) Res.drawable.ic_light_mode else Res.drawable.ic_dark_mode
+                        ),
+                        contentDescription = if (isDark) "Switch to light" else "Switch to dark",
+                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
         }
 
@@ -131,40 +154,47 @@ fun CustomToolbarScreen(
             toolbar = ToolbarSlot.Custom(
                 trackedStyles = TrackedStyles,
                 content = { formattingState, actions ->
+                    val editorConfig = LocalCascadeEditorConfig.current
                     WritersPaletteToolbar(
                         formattingState = formattingState,
                         actions = actions,
+                        readOnly = editorConfig.readOnly,
                         onInsertDate = {
-                            val blockId =
-                                formattingState.value.focusedBlockId ?: return@WritersPaletteToolbar
-                            val tfs = textStates.get(blockId) ?: return@WritersPaletteToolbar
-                            val sel = tfs.visibleSelection()
-                            val now = Clock.System.now()
-                                .toLocalDateTime(TimeZone.currentSystemDefault())
-                            val formatted = now.toString()
-                                .substringBefore('.')
-                                .replace('T', ' ')
-                            textStates.replaceVisibleRange(
-                                blockId = blockId,
-                                start = sel.min,
-                                endExclusive = sel.max,
-                                replacement = formatted,
-                            )
+                            if (!editorConfig.readOnly) {
+                                val blockId = formattingState.value.focusedBlockId
+                                val tfs = blockId?.let { textStates.get(it) }
+                                if (blockId != null && tfs != null) {
+                                    val sel = tfs.visibleSelection()
+                                    val now = Clock.System.now()
+                                        .toLocalDateTime(TimeZone.currentSystemDefault())
+                                    val formatted = now.toString()
+                                        .substringBefore('.')
+                                        .replace('T', ' ')
+                                    textStates.replaceVisibleRange(
+                                        blockId = blockId,
+                                        start = sel.min,
+                                        endExclusive = sel.max,
+                                        replacement = formatted,
+                                    )
+                                }
+                            }
                         },
                     )
                 },
             ),
+            config = CascadeEditorConfig(readOnly = isReadOnly),
             modifier = Modifier.fillMaxSize(),
         )
     }
 }
 
-// Writer's Palette Toolbar   
+// Writer's Palette Toolbar
 
 @Composable
 private fun WritersPaletteToolbar(
     formattingState: State<FormattingState>,
     actions: FormattingActions,
+    readOnly: Boolean,
     onInsertDate: () -> Unit,
 ) {
     val state = formattingState.value
@@ -233,7 +263,7 @@ private fun WritersPaletteToolbar(
         ButtonGroup {
             ActionButton(
                 label = "Date",
-                enabled = canFormat,
+                enabled = canFormat && !readOnly,
                 onClick = onInsertDate,
             )
         }
@@ -265,7 +295,7 @@ private fun ButtonGroup(
     }
 }
 
-// Style Toggle Button  
+// Style Toggle Button
 
 @Composable
 private fun StyleToggleButton(
@@ -335,7 +365,7 @@ private fun StyleToggleButton(
     }
 }
 
-// Action Button (non-toggle) 
+// Action Button (non-toggle)
 
 @Composable
 private fun ActionButton(
@@ -377,7 +407,7 @@ private fun ActionButton(
     }
 }
 
-// Clear Formatting Button 
+// Clear Formatting Button
 
 @Composable
 private fun ClearFormattingButton(

@@ -42,6 +42,8 @@ The supported indentation block types are `Paragraph`, `Todo`, `BulletList`, and
 
 **Reducer and public state share validation.** `IndentationStateCalculator` uses the same target resolution and outline checks as the `IndentForward` / `IndentBackward` reducers, so toolbar enablement matches the actual command result.
 
+**Read-only gates editor-owned indentation surfaces.** In read-only mode, `IndentationState` keeps the resolved target IDs available for inspection but reports `canIndentForward = false` and `canIndentBackward = false`. `DefaultIndentationActions` no-op while the internal editor policy disallows block-structure edits. Reducers remain mutable for app-owned dispatch.
+
 **Drag moves are atomic.** `MoveDragPayload` handles payload removal, insertion, depth rewrite, outline validation, and numbered-list renumbering in one reducer step. Invalid drops return the original block list.
 
 **Shared indentation animation timing.** Normal block indentation, drop indicator Y/depth movement, and drag preview badge indentation use `IndentationAnimation` so related lane changes feel consistent.
@@ -209,6 +211,7 @@ val indentationActions = LocalIndentationActions.current
 - Selection takes precedence over focus for indentation commands. Unsupported selected blocks are ignored for indentation targeting.
 - Drag selection is different from indentation selection: unsupported selected blocks can still move as drag roots, but an unsupported primary root cannot be horizontally indented and keeps future depth `0`.
 - Invalid drag hover targets hide the drop indicator and prevent `CompleteDrag` from mutating blocks.
+- Read-only mode disables built-in indent/outdent UI, indentation actions exposed through editor locals, structural Enter/Backspace indentation behavior, and drag reindentation. External reducer dispatch such as `stateHolder.dispatch(IndentForward)` is still app-owned.
 - Tab and Shift+Tab keyboard shortcuts are intentionally not part of V1. Indentation is available through reducer actions, public `IndentationActions`, Enter/Backspace list behavior, toolbar buttons, and drag depth changes.
 - The document model is still flat. Consumers that need a tree must derive it from order and `indentationLevel`.
 

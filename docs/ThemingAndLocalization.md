@@ -113,6 +113,7 @@ public fun CascadeEditor(
     modifier: Modifier = Modifier,
     toolbar: ToolbarSlot = ToolbarSlot.Default(),
     // ...
+    config: CascadeEditorConfig = CascadeEditorConfig.Default,
 )
 ```
 
@@ -184,7 +185,7 @@ CascadeEditor(
 | `CascadeEditorBlockStrings` | `public` | `default()` |
 | `BlockLocalizedStrings` | `public` | constructor |
 
-All `CompositionLocal` instances (`LocalCascadeTheme`, `LocalCascadeStrings`, `LocalCascadeBlockStrings`) are `internal` — consumers configure via parameters, not locals.
+Theme/string `CompositionLocal` instances (`LocalCascadeTheme`, `LocalCascadeStrings`, `LocalCascadeBlockStrings`) are `internal` — consumers configure them via parameters, not locals. `LocalCascadeEditorConfig` is the separate public behavior-config local for custom renderer/chrome content; use it for read-only behavior such as disabling custom controls, not for theme or localization.
 
 ---
 

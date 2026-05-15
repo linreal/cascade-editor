@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,14 +34,16 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import io.github.linreal.cascade.editor.action.CancelDrag
+import io.github.linreal.cascade.editor.action.ClearSelection
 import io.github.linreal.cascade.editor.action.ClearFocus
 import io.github.linreal.cascade.editor.action.CloseSlashCommand
 import io.github.linreal.cascade.editor.action.FocusBlock
-import io.github.linreal.cascade.editor.action.UpdateDragTarget
 import io.github.linreal.cascade.editor.isIos
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
@@ -50,6 +53,7 @@ import io.github.linreal.cascade.editor.indentation.DefaultIndentationActions
 import io.github.linreal.cascade.editor.indentation.rememberIndentationState
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
+import io.github.linreal.cascade.editor.registry.PolicyAwareBlockCallbacks
 import io.github.linreal.cascade.editor.richtext.DefaultFormattingActions
 import io.github.linreal.cascade.editor.richtext.DefaultLinkActions
 import io.github.linreal.cascade.editor.richtext.FormattingState
@@ -137,6 +141,8 @@ import io.github.linreal.cascade.editor.ui.renderers.resolveOrderedListPrefixSty
  *        and swallow platform opening failures.
  * @param onFormattingStateChanged Optional callback fired when the formatting
  *        state changes. Uses structural equality to avoid redundant calls.
+ * @param config Cross-cutting editor behavior configuration. Defaults to
+ *        [CascadeEditorConfig.Default] to preserve existing call sites.
  */
 
 // Shorter than platform default (~400ms) to feel responsive for block selection
@@ -160,8 +166,13 @@ public fun CascadeEditor(
     linkPopup: LinkPopupSlot = LinkPopupSlot.Default,
     onOpenLink: ((String) -> Unit)? = null,
     onFormattingStateChanged: ((FormattingState) -> Unit)? = null,
+    config: CascadeEditorConfig = CascadeEditorConfig.Default,
 ) {
     val state = stateHolder.state
+    val interactionPolicy = remember(config) {
+        config.toInteractionPolicy()
+    }
+    val currentInteractionPolicy = rememberUpdatedState(interactionPolicy)
     val orderedListPrefixStyles = remember(state.blocks) {
         resolveOrderedListPrefixStyles(state.blocks)
     }
@@ -175,10 +186,8 @@ public fun CascadeEditor(
         }
     }
 
-    // Single high-level gate: when the slot is None, the entire slash subsystem
-    // is skipped — observer is never installed (TextBlockField), no executor/registry
-    // is built, no popup is rendered, and no key handler intercepts
-    val slashEnabled = slashCommand !is SlashCommandSlot.None
+    // Single high-level gate: when disabled, the entire slash subsystem is skipped.
+    val slashEnabled = isSlashCommandSubsystemEnabled(slashCommand, interactionPolicy)
 
     // Slash wiring: built-in executor → built-in items → merged registry → executor.
     // The builtInExecutor lambda only needs stateHolder + blockRegistry, not the
@@ -259,8 +268,8 @@ public fun CascadeEditor(
         )
     }
 
-    // Create callbacks with state access and text states for proper merge handling
-    val callbacks = remember(stateHolder, textStates, spanStates) {
+    // Create callbacks with state access and text states for proper merge handling.
+    val defaultCallbacks = remember(stateHolder, textStates, spanStates) {
         DefaultBlockCallbacks(
             dispatchFn = { action -> stateHolder.dispatch(action) },
             stateProvider = { stateHolder.state },
@@ -268,6 +277,9 @@ public fun CascadeEditor(
             spanStates = spanStates,
             stateHolder = stateHolder,
         )
+    }
+    val callbacks = remember(defaultCallbacks, interactionPolicy) {
+        PolicyAwareBlockCallbacks(defaultCallbacks, interactionPolicy)
     }
 
     // Inject theme highlight color into the default toolbar config so that the
@@ -312,25 +324,35 @@ public fun CascadeEditor(
             textStates = textStates,
             spanStates = spanStates,
             trackedStyles = trackedStyles,
+            policy = interactionPolicy,
         )
     } else {
         null
     }
 
     // Always created — used by keyboard shortcuts (Cmd+B/I/U) even without a toolbar.
-    val formattingActions = remember(stateHolder, textStates, spanActionDispatcher) {
+    // interactionPolicy is intentionally NOT a remember key: the action object
+    // is stateless and reads policy through currentInteractionPolicy.value at
+    // invocation time, so a policy flip needs no wrapper rebuild.
+    val formattingActions = remember(
+        stateHolder,
+        textStates,
+        spanActionDispatcher,
+    ) {
         DefaultFormattingActions(
             stateHolder = stateHolder,
             textStates = textStates,
             spanActionDispatcher = spanActionDispatcher,
+            policyProvider = { currentInteractionPolicy.value },
         )
     }
 
-    val indentationState = rememberIndentationState(stateHolder)
+    val indentationState = rememberIndentationState(stateHolder, interactionPolicy)
     val indentationActions = remember(stateHolder, indentationState) {
         DefaultIndentationActions(
             stateProvider = { indentationState.value },
             dispatchAction = { action -> stateHolder.dispatchStructuralAction(action) },
+            policyProvider = { currentInteractionPolicy.value },
         )
     }
 
@@ -338,6 +360,7 @@ public fun CascadeEditor(
         stateHolder = stateHolder,
         textStates = textStates,
         spanStates = spanStates,
+        policy = interactionPolicy,
     )
     val linkActionDispatcher = remember(stateHolder, textStates, spanStates) {
         LinkActionDispatcher(
@@ -351,6 +374,7 @@ public fun CascadeEditor(
         DefaultLinkActions(
             stateProvider = { linkState.value },
             delegate = linkActionDispatcher,
+            policyProvider = { currentInteractionPolicy.value },
         )
     }
     val uriHandler = LocalUriHandler.current
@@ -366,7 +390,22 @@ public fun CascadeEditor(
         textStates = textStates,
         spanStates = spanStates,
         linkState = linkState,
+        policy = interactionPolicy,
     )
+
+    // Cleanup re-runs only when policy identity changes. Holder/controller are
+    // stable for the composition's lifetime and are routed through
+    // rememberUpdatedState so the latest references are read inside the effect
+    // without adding them to the keys.
+    val currentLinkPopupController by rememberUpdatedState(linkPopupController)
+    val currentStateHolderForCleanup by rememberUpdatedState(stateHolder)
+    LaunchedEffect(interactionPolicy) {
+        applyReadOnlyTransitionCleanup(
+            policy = interactionPolicy,
+            stateHolder = currentStateHolderForCleanup,
+            linkPopupController = currentLinkPopupController,
+        )
+    }
 
     // Fire external callback on formatting state changes (structural equality dedup)
     if (onFormattingStateChanged != null && formattingState != null) {
@@ -392,7 +431,7 @@ public fun CascadeEditor(
         }
     }
 
-    // Empty search results invalidate slash mode per feature spec.
+    // Empty search results invalidate slash mode.
     if (slashEnabled) {
         LaunchedEffect(
             slashState?.anchorBlockId,
@@ -414,6 +453,8 @@ public fun CascadeEditor(
     }
 
     CompositionLocalProvider(
+        LocalCascadeEditorConfig provides config,
+        LocalEditorInteractionPolicy provides interactionPolicy,
         LocalCascadeTheme provides theme,
         LocalCascadeStrings provides strings,
         LocalCascadeBlockStrings provides blockStrings,
@@ -496,6 +537,7 @@ public fun CascadeEditor(
         // recomposition on every pointer move.
         val dragOffsetY = remember { mutableFloatStateOf(0f) }
         val dragDeltaX = remember { mutableFloatStateOf(0f) }
+        val renderDragAffordances = shouldRenderDragAffordances(interactionPolicy, state)
 
         // Outer Column: editor content (weight=1f) + toolbar at bottom.
         // Toolbar is OUTSIDE the drag gesture Box to prevent drag events
@@ -514,16 +556,18 @@ public fun CascadeEditor(
                         stateProvider = { stateHolder.state },
                         outlineIndexProvider = { currentDragHoverOutlineIndex },
                         callbacks = callbacks,
+                        policy = interactionPolicy,
                         longPressTimeoutMillis = BLOCK_LONG_PRESS_MS,
                         onEmptySpaceTap = {
-                            val blocks = stateHolder.state.blocks
-                            val lastTextBlock = blocks.lastOrNull { it.type.supportsText }
-                            if (lastTextBlock != null) {
-                                val visibleText = textStates.getVisibleText(lastTextBlock.id)
-                                textStates.setCursorPosition(lastTextBlock.id, visibleText?.length ?: 0)
-                                stateHolder.dispatch(FocusBlock(lastTextBlock.id))
-                            }
-                        }
+                            focusLastTextBlockFromEmptySpace(
+                                policy = interactionPolicy,
+                                blocks = stateHolder.state.blocks,
+                                textStates = textStates,
+                                dispatchFocusBlock = { blockId ->
+                                    stateHolder.dispatch(FocusBlock(blockId))
+                                },
+                            )
+                        },
                     )
             ) {
                 LazyColumn(
@@ -532,7 +576,7 @@ public fun CascadeEditor(
                     // its Scrollable modifier does not consume pointer events that
                     // belong to our drag handler. Auto-scroll uses dispatchRawDelta
                     // which bypasses gesture handling entirely.
-                    userScrollEnabled = state.dragState == null && state.slashCommandState == null,
+                    userScrollEnabled = !renderDragAffordances && state.slashCommandState == null,
                     // Extra space so the last block isn't flush against the viewport edge.
                     contentPadding = PaddingValues(bottom = 40.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -546,7 +590,8 @@ public fun CascadeEditor(
                         val isFocused = state.focusedBlockId == block.id
                         val isSelected = block.id in state.selectedBlockIds
                         val isDragging =
-                            state.dragState?.draggingBlockIds?.contains(block.id) == true
+                            renderDragAffordances &&
+                                state.dragState?.draggingBlockIds?.contains(block.id) == true
                         val hasSelection = state.hasSelection
 
                         // Look up renderer for this block type (includes unknown-block fallback)
@@ -601,23 +646,23 @@ public fun CascadeEditor(
                     lazyListState = lazyListState,
                     dragOffsetY = { dragOffsetY.floatValue },
                     dragDeltaX = { dragDeltaX.floatValue },
-                    isDragging = state.dragState != null,
+                    isDragging = renderDragAffordances,
                     stateProvider = { stateHolder.state },
                     outlineIndexProvider = { currentDragHoverOutlineIndex },
                     indentUnitPx = indentUnitPx,
                     onDropTargetChanged = { hoverTarget ->
-                        callbacks.dispatch(
-                            UpdateDragTarget(
-                                targetIndex = hoverTarget?.visualGap,
-                                futureRootIndentationLevel = hoverTarget?.futureRootIndentationLevel,
-                            )
+                        dispatchDragTargetUpdateIfAllowed(
+                            policy = interactionPolicy,
+                            callbacks = callbacks,
+                            targetIndex = hoverTarget?.visualGap,
+                            futureRootIndentationLevel = hoverTarget?.futureRootIndentationLevel,
                         )
                     }
                 )
 
                 // Drop indicator overlay - rendered on top of LazyColumn.
                 // Canvas does not consume touch events, so gestures pass through.
-                state.dragState?.let { dragState ->
+                if (renderDragAffordances) state.dragState?.let { dragState ->
                     DropIndicator(
                         targetIndex = dragState.targetIndex,
                         futureRootIndentationLevel = dragState.futureRootIndentationLevel,
@@ -628,7 +673,7 @@ public fun CascadeEditor(
                 // Drag preview overlay - semi-transparent block following the finger.
                 // Rendered last in Box so it draws on top of both list and indicator.
                 // Position updates happen in graphicsLayer (draw phase only).
-                state.dragState?.let { dragState ->
+                if (renderDragAffordances) state.dragState?.let { dragState ->
                     val primaryBlockId =
                         dragState.primaryRootId ?: dragState.draggingBlockIds.firstOrNull()
                     val draggedBlock = primaryBlockId?.let { id ->
@@ -647,12 +692,19 @@ public fun CascadeEditor(
                     }
                 }
 
-                // Slash command popup overlay - shown when a slash is enabled session is active
-                if (slashEnabled && slashState != null && slashPopupItems.isNotEmpty() && slashExecutor != null) {
+                // Slash command popup overlay - shown when an enabled session is active.
+                if (
+                    shouldRenderSlashCommandPopup(
+                        slashEnabled = slashEnabled,
+                        hasSlashState = slashState != null,
+                        hasPopupItems = slashPopupItems.isNotEmpty(),
+                        hasExecutor = slashExecutor != null,
+                    )
+                ) {
                     SlashCommandPopup(
-                        slashState = slashState,
+                        slashState = slashState!!,
                         stateHolder = stateHolder,
-                        slashExecutor = slashExecutor,
+                        slashExecutor = slashExecutor!!,
                     )
                 }
 
@@ -671,6 +723,25 @@ public fun CascadeEditor(
             // Toolbar
             when (resolvedToolbar) {
                 is ToolbarSlot.Default -> if (formattingState != null) {
+                    val toolbarSlashEnabled = isToolbarSlashInsertEnabled(
+                        slashEnabled = slashEnabled,
+                        policy = interactionPolicy,
+                    )
+                    val currentToolbarSlashEnabled = rememberUpdatedState(toolbarSlashEnabled)
+                    // Enablement is read at invocation time through the provider so
+                    // stale capture cannot mutate text after a policy flip — the
+                    // remember keys intentionally exclude the Boolean.
+                    val onToolbarSlashInsert = remember(formattingState, textStates) {
+                        createToolbarSlashInsertAction(
+                            slashEnabledProvider = { currentToolbarSlashEnabled.value },
+                            formattingState = formattingState,
+                            textStates = textStates,
+                        )
+                    }
+                    val onLinkClick: () -> Unit = remember(linkPopupController) {
+                        { linkPopupController.open() }
+                    }
+                    val onHideKeyboard: (() -> Unit)? = rememberIosHideKeyboardCallback(stateHolder)
                     RichTextToolbar(
                         formattingState = formattingState,
                         actions = formattingActions,
@@ -678,22 +749,10 @@ public fun CascadeEditor(
                         indentationActions = indentationActions,
                         linkState = linkState,
                         config = resolvedToolbar.config,
-                        onSlashInsert = {
-                            val blockId =
-                                formattingState.value.focusedBlockId ?: return@RichTextToolbar
-                            val tfs = textStates.get(blockId) ?: return@RichTextToolbar
-                            val sel = tfs.visibleSelection()
-                            tfs.edit {
-                                replace(sel.min + 1, sel.max + 1, "/")
-                                selection = TextRange(sel.min + 2)
-                            }
-                        },
-                        onLinkClick = linkPopupController::open,
-                        onHideKeyboard = if (isIos) {
-                            { stateHolder.dispatch(ClearFocus) }
-                        } else {
-                            null
-                        },
+                        slashEnabled = toolbarSlashEnabled,
+                        onSlashInsert = onToolbarSlashInsert,
+                        onLinkClick = onLinkClick,
+                        onHideKeyboard = onHideKeyboard,
                     )
                 }
 
@@ -708,12 +767,142 @@ public fun CascadeEditor(
     }
 }
 
+/**
+ * Returns the iOS hide-keyboard callback when running on iOS, or `null`
+ * elsewhere. The lambda is `remember`-keyed on the state holder so the toolbar
+ * receives a stable reference across recompositions.
+ */
+@Composable
+private fun rememberIosHideKeyboardCallback(
+    stateHolder: EditorStateHolder,
+): (() -> Unit)? {
+    if (!isIos) return null
+    return remember(stateHolder) { { stateHolder.dispatch(ClearFocus) } }
+}
+
+/**
+ * Handles an empty editor-area tap by moving the caret to the end of the final
+ * text block, but only while the current interaction policy still allows that
+ * edit-focused convenience.
+ */
+internal fun focusLastTextBlockFromEmptySpace(
+    policy: EditorInteractionPolicy,
+    blocks: List<Block>,
+    textStates: BlockTextStates,
+    dispatchFocusBlock: (BlockId) -> Unit,
+) {
+    if (!canFocusLastTextBlockFromEmptySpace(policy)) return
+    val lastTextBlock = blocks.lastOrNull { it.type.supportsText } ?: return
+    val visibleText = textStates.getVisibleText(lastTextBlock.id)
+    textStates.setCursorPosition(lastTextBlock.id, visibleText?.length ?: 0)
+    dispatchFocusBlock(lastTextBlock.id)
+}
+
+/**
+ * Clears editor-owned transient UI state that can otherwise keep mutating
+ * workflows alive after the interaction policy no longer allows them.
+ *
+ * The dispatched actions only affect UI state: slash session, active drag, and
+ * block selection. Document blocks, text focus, caret, and text selection are
+ * intentionally left untouched.
+ *
+ * Synchronous: returns once dispatched cleanup actions have been queued. The
+ * caller wraps it in `LaunchedEffect(policy)` so cleanup re-runs whenever the
+ * policy identity changes, not because cleanup itself needs to suspend.
+ */
+internal fun applyReadOnlyTransitionCleanup(
+    policy: EditorInteractionPolicy,
+    stateHolder: EditorStateHolder,
+    linkPopupController: LinkPopupController,
+) {
+    if (!policy.canUseSlashCommands && stateHolder.state.slashCommandState != null) {
+        stateHolder.dispatch(CloseSlashCommand)
+    }
+    if (!policy.canDragBlocks && stateHolder.state.dragState != null) {
+        stateHolder.dispatch(CancelDrag)
+    }
+    if (!policy.canSelectBlocks && stateHolder.state.selectedBlockIds.isNotEmpty()) {
+        stateHolder.dispatch(ClearSelection)
+    }
+    if (!policy.canEditLinks) {
+        linkPopupController.forceDismiss()
+    }
+}
+
 internal fun collectTextBlockIds(blocks: List<Block>): Set<BlockId> {
     return blocks
         .asSequence()
         .filter { block -> block.type.supportsText && block.content is BlockContent.Text }
         .map { block -> block.id }
         .toSet()
+}
+
+/**
+ * Resolves the editor-owned slash subsystem gate from the public slot and
+ * interaction policy.
+ *
+ * The toolbar applies an additional text-edit gate because its slash button
+ * directly writes into the focused text field.
+ */
+internal fun isSlashCommandSubsystemEnabled(
+    slashCommand: SlashCommandSlot,
+    policy: EditorInteractionPolicy,
+): Boolean {
+    return slashCommand !is SlashCommandSlot.None && policy.canUseSlashCommands
+}
+
+/**
+ * Resolves whether the default toolbar's slash insert control can edit text.
+ */
+internal fun isToolbarSlashInsertEnabled(
+    slashEnabled: Boolean,
+    policy: EditorInteractionPolicy,
+): Boolean {
+    return slashEnabled && policy.canEditText
+}
+
+/**
+ * Builds the default toolbar slash action, checking enablement at invocation
+ * time so a callback captured before a runtime policy change cannot mutate text
+ * after slash insertion becomes unavailable.
+ */
+internal fun createToolbarSlashInsertAction(
+    slashEnabledProvider: () -> Boolean,
+    formattingState: State<FormattingState>,
+    textStates: BlockTextStates,
+): () -> Unit {
+    return action@{
+        if (!slashEnabledProvider()) return@action
+        val blockId = formattingState.value.focusedBlockId ?: return@action
+        val textFieldState = textStates.get(blockId) ?: return@action
+        insertSlashTriggerAtVisibleSelection(textFieldState)
+    }
+}
+
+/**
+ * Inserts the slash trigger using visible-text coordinates.
+ *
+ * Editor text fields store an internal sentinel before visible text, so the raw
+ * mutation offsets are shifted by one.
+ */
+internal fun insertSlashTriggerAtVisibleSelection(textFieldState: TextFieldState) {
+    val selection = textFieldState.visibleSelection()
+    textFieldState.edit {
+        replace(selection.min + 1, selection.max + 1, "/")
+        this.selection = TextRange(selection.min + 2)
+    }
+}
+
+/**
+ * Resolves whether the editor-owned slash popup has all dependencies needed to render.
+ */
+internal fun shouldRenderSlashCommandPopup(
+    slashEnabled: Boolean,
+    hasSlashState: Boolean,
+    hasPopupItems: Boolean,
+    hasExecutor: Boolean,
+): Boolean {
+    return slashEnabled && hasSlashState && hasPopupItems && hasExecutor
 }
 
 /**

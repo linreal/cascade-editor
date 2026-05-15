@@ -7,6 +7,7 @@ import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.indentation.IndentationStateCalculator
 import io.github.linreal.cascade.editor.state.EditorState
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -134,5 +135,23 @@ class IndentationStateCalculatorTest {
         assertTrue(result.canIndentForward)
         assertFalse(result.canIndentBackward)
         assertEquals(listOf(paragraph.id), result.targetBlockIds)
+    }
+
+    @Test
+    fun `read-only policy disables indentation booleans for otherwise indentable target`() {
+        val first = block("first")
+        val second = block("second")
+
+        val result = IndentationStateCalculator.compute(
+            state = state(
+                blocks = listOf(first, second),
+                focusedBlockId = second.id,
+            ),
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        assertFalse(result.canIndentForward)
+        assertFalse(result.canIndentBackward)
+        assertEquals(listOf(second.id), result.targetBlockIds)
     }
 }

@@ -6,6 +6,7 @@ import io.github.linreal.cascade.editor.richtext.LinkActions
 import io.github.linreal.cascade.editor.richtext.LinkState
 import io.github.linreal.cascade.editor.richtext.LinkTarget
 import io.github.linreal.cascade.editor.richtext.LinkValidationResult
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -22,6 +23,7 @@ class DefaultLinkActionsTest {
         val actions = DefaultLinkActions(
             stateProvider = { LinkState.Empty },
             delegate = delegate,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         val result = actions.applyLink(
@@ -43,6 +45,7 @@ class DefaultLinkActionsTest {
         val actions = DefaultLinkActions(
             stateProvider = { enabledState() },
             delegate = delegate,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         val result = actions.applyLink(
@@ -65,6 +68,7 @@ class DefaultLinkActionsTest {
         val actions = DefaultLinkActions(
             stateProvider = { LinkState.Empty },
             delegate = delegate,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         actions.removeLink(target)
@@ -79,6 +83,7 @@ class DefaultLinkActionsTest {
         val actions = DefaultLinkActions(
             stateProvider = { enabledState() },
             delegate = delegate,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         actions.removeLink(target)
@@ -88,11 +93,33 @@ class DefaultLinkActionsTest {
     }
 
     @Test
+    fun `read-only policy validates apply but blocks delegate even when state allows linking`() {
+        val delegate = RecordingLinkActions()
+        val actions = DefaultLinkActions(
+            stateProvider = { enabledState() },
+            delegate = delegate,
+            policy = EditorInteractionPolicy.ReadOnly,
+        )
+
+        val result = actions.applyLink(
+            target = target,
+            url = "example.com",
+            title = "Example",
+        )
+        actions.removeLink(target)
+
+        assertEquals(LinkValidationResult.Valid("https://example.com"), result)
+        assertTrue(delegate.applyCalls.isEmpty())
+        assertTrue(delegate.removeCalls.isEmpty())
+    }
+
+    @Test
     fun `applyLink returns validation feedback but does not delegate when canLink is false but target exists`() {
         val delegate = RecordingLinkActions()
         val actions = DefaultLinkActions(
             stateProvider = { disabledStateWithTarget() },
             delegate = delegate,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         val result = actions.applyLinkAtCurrentTarget("   ", "Example")
@@ -110,6 +137,7 @@ class DefaultLinkActionsTest {
         val actions = DefaultLinkActions(
             stateProvider = { LinkState.Empty },
             delegate = RecordingLinkActions(),
+            policy = EditorInteractionPolicy.Editable,
         )
         assertNull(actions.currentTarget())
     }
@@ -119,6 +147,7 @@ class DefaultLinkActionsTest {
         val actions = DefaultLinkActions(
             stateProvider = { enabledState() },
             delegate = RecordingLinkActions(),
+            policy = EditorInteractionPolicy.Editable,
         )
         assertEquals(target, actions.currentTarget())
     }
@@ -129,6 +158,7 @@ class DefaultLinkActionsTest {
         val actions = DefaultLinkActions(
             stateProvider = { LinkState.Empty },
             delegate = delegate,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         val result = actions.applyLinkAtCurrentTarget("example.com", "Example")
@@ -146,6 +176,7 @@ class DefaultLinkActionsTest {
         val actions = DefaultLinkActions(
             stateProvider = { enabledState() },
             delegate = delegate,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         val result = actions.applyLinkAtCurrentTarget("example.com", "Example")
@@ -164,6 +195,7 @@ class DefaultLinkActionsTest {
         val actions = DefaultLinkActions(
             stateProvider = { LinkState.Empty },
             delegate = delegate,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         actions.removeLinkAtCurrentTarget()
@@ -178,6 +210,7 @@ class DefaultLinkActionsTest {
         val actions = DefaultLinkActions(
             stateProvider = { enabledState() },
             delegate = delegate,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         actions.removeLinkAtCurrentTarget()

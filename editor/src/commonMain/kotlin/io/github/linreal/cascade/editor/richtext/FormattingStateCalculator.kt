@@ -5,6 +5,7 @@ import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.SpanStyle.Companion.kindMatches
 import io.github.linreal.cascade.editor.core.TextSpan
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import kotlin.math.max
 import kotlin.math.min
 
@@ -13,6 +14,12 @@ import kotlin.math.min
  */
 internal object FormattingStateCalculator {
 
+    /**
+     * Computes formatting affordance and active style metadata for the focused text block.
+     *
+     * [policy] only gates whether mutation-facing formatting is enabled; when formatting
+     * is disabled the result still preserves focus and collapsed-selection metadata.
+     */
     internal fun compute(
         focusedBlockId: BlockId?,
         focusedBlockType: BlockType?,
@@ -23,8 +30,10 @@ internal object FormattingStateCalculator {
         spans: List<TextSpan>,
         pendingStyles: Set<SpanStyle>?,
         trackedStyles: List<SpanStyle>,
+        policy: EditorInteractionPolicy = EditorInteractionPolicy.Editable,
     ): FormattingState {
-        val canFormat = focusedBlockId != null
+        val canFormat = policy.canFormatText
+            && focusedBlockId != null
             && focusedBlockType?.supportsText == true
             && focusedBlockType.supportsSpans
             && !hasBlockSelection

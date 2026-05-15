@@ -96,6 +96,7 @@ Internal surface (same package):
 
 - `toHtml(textStates, spanStates, profile)` calls `serialization.resolveCurrentBlocks(holder, textStates, spanStates)` (the same helper JSON export uses), then `HtmlSchema.encode(...)`. Live `BlockTextStates` / `BlockSpanStates` override snapshot `BlockContent.Text` for blocks that have runtime entries; off-screen blocks fall back to snapshot content; spans are stripped on non-spans block types defensively.
 - `loadFromHtml(html, textStates, spanStates, profile)` calls `HtmlSchema.decodeWithReport`, clears both runtime holders, then `setState(EditorState.withBlocks(result.blocks))`. Focus, selection, drag/slash state, and undo/redo history reset — same hard-replacement semantics as `loadFromJson`.
+- `CascadeEditorConfig(readOnly = true)` does not guard HTML import/export. `toHtml(...)` remains a read operation, and `loadFromHtml(...)` remains an app-owned hard replacement path that callers should disable or authorize separately in read-only product states.
 
 ## 4. Public API Surface
 

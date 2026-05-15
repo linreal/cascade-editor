@@ -22,6 +22,7 @@ import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.DragState
 import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.EditorStateHolder
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import io.github.linreal.cascade.editor.ui.RichTextToolbarConfig
 import io.github.linreal.cascade.editor.ui.ToolbarButtonSpec
 import kotlin.test.Test
@@ -82,6 +83,7 @@ class FormattingIntegrationTest {
             stateHolder = stateHolder,
             textStates = textStates,
             spanActionDispatcher = spanActionDispatcher,
+            policy = EditorInteractionPolicy.Editable,
         )
 
         val callbacks = DefaultBlockCallbacks(

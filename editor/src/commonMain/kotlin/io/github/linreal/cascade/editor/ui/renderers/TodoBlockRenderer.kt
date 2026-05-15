@@ -2,15 +2,18 @@ package io.github.linreal.cascade.editor.ui.renderers
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -28,10 +31,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.linreal.cascade.editor.action.ToggleTodo
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderer
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
+import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
+import io.github.linreal.cascade.editor.ui.LocalEditorInteractionPolicy
 import io.github.linreal.cascade.editor.ui.utils.Spacers
 
 /**
@@ -52,8 +58,18 @@ public class TodoBlockRenderer : BlockRenderer<BlockType.Todo> {
     ) {
         val todoType = block.type as? BlockType.Todo ?: return
         val theme = LocalCascadeTheme.current
+        val interactionPolicy = LocalEditorInteractionPolicy.current
+        val currentCallbacks = rememberUpdatedState(callbacks)
+        val currentPolicy = rememberUpdatedState(interactionPolicy)
         val indentationLevel = block.attributes.indentationLevel
         val useRoundCheckbox = indentationLevel % 2 != 0
+        val onCheckedChange = remember(block.id, callbacks, interactionPolicy) {
+            createTodoCheckedChangeAction(
+                blockId = block.id,
+                callbacksProvider = { currentCallbacks.value },
+                policyProvider = { currentPolicy.value },
+            )
+        }
 
         Row(
             modifier = modifier.withBlockIndentation(block),
@@ -67,7 +83,8 @@ public class TodoBlockRenderer : BlockRenderer<BlockType.Todo> {
                 checkboxSize = if (indentationLevel == 0) CheckboxSize else IndentedCheckboxSize,
                 corner = if (useRoundCheckbox) RoundCheckboxCorner else CheckboxCorner,
                 stroke = if (useRoundCheckbox) RoundCheckboxStroke else CheckboxStroke,
-                onCheckedChange = { callbacks.dispatch(ToggleTodo(block.id)) },
+                enabled = interactionPolicy.canEditBlockControls,
+                onCheckedChange = onCheckedChange,
             )
             Spacers.Horizontal(12.dp)
             TextBlockField(
@@ -92,6 +109,24 @@ private val IndentedCheckboxSize = 18.dp
 private val RoundCheckboxCorner = 99.dp
 private val RoundCheckboxStroke = 2.dp
 
+/**
+ * Creates a todo checkbox handler that resolves policy and callbacks at invoke
+ * time. Compose may keep an old input lambda alive briefly across recomposition,
+ * so the handler reads provider values instead of trusting construction-time
+ * captures.
+ */
+internal fun createTodoCheckedChangeAction(
+    blockId: BlockId,
+    callbacksProvider: () -> BlockCallbacks,
+    policyProvider: () -> EditorInteractionPolicy,
+): (Boolean) -> Unit {
+    return {
+        if (policyProvider().canEditBlockControls) {
+            callbacksProvider().dispatch(ToggleTodo(blockId))
+        }
+    }
+}
+
 @Composable
 private fun TodoCheckbox(
     checked: Boolean,
@@ -103,6 +138,7 @@ private fun TodoCheckbox(
     checkboxSize: Dp,
     corner: Dp,
     stroke: Dp,
+    enabled: Boolean,
 ) {
     val progress by animateFloatAsState(
         targetValue = if (checked) 1f else 0f,
@@ -110,11 +146,15 @@ private fun TodoCheckbox(
         label = "CheckboxProgress"
     )
 
+    val shape = RoundedCornerShape(corner)
+
     Box(
         modifier = modifier
             .size(checkboxSize)
+            .clip(shape)
             .toggleable(
                 value = checked,
+                enabled = enabled,
                 role = Role.Checkbox,
                 onValueChange = onCheckedChange
             )

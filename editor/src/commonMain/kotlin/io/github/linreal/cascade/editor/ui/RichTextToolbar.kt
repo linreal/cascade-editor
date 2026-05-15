@@ -57,6 +57,9 @@ import org.jetbrains.compose.resources.painterResource
  *
  * Buttons use [Modifier.focusProperties] to prevent stealing focus from the
  * text field. The toolbar supports horizontal scrolling for overflow.
+ *
+ * @param slashEnabled Whether the slash trigger button can write to the focused
+ *        text field.
  */
 @Composable
 internal fun RichTextToolbar(
@@ -66,6 +69,7 @@ internal fun RichTextToolbar(
     indentationActions: IndentationActions,
     linkState: State<LinkState>,
     config: RichTextToolbarConfig,
+    slashEnabled: Boolean,
     onSlashInsert: () -> Unit,
     onLinkClick: () -> Unit,
     onHideKeyboard: (() -> Unit)? = null,
@@ -95,7 +99,7 @@ internal fun RichTextToolbar(
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 SlashActionButton(
-                    enabled = state.canFormat,
+                    enabled = slashEnabled,
                     colors = colors,
                     typography = typography,
                     strings = strings,

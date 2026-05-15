@@ -54,6 +54,8 @@ The implementation touches the core model, action reducers, rendering layer, and
 
 **Ordered style follows numbered ancestry.** Absolute indentation no longer controls ordered-list marker style. A numbered list without a shallower numbered-list ancestor uses decimal. A numbered child of decimal uses lower alpha, a child of lower alpha uses lower roman, and a child of lower roman cycles back to decimal.
 
+**Read-only suppresses list editing affordances.** List prefixes still render, but `CascadeEditorConfig(readOnly = true)` prevents editor-owned list auto-detect conversion, Enter continuation/exit, Backspace un-listing, and nested-list outdent behavior. Reducers and app-owned dispatch remain mutable outside the editor UI policy.
+
 ---
 
 ## 3. Data Flow
