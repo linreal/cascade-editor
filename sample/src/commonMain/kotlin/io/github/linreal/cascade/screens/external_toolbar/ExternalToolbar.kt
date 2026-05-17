@@ -325,8 +325,8 @@ private fun ExternalToolbarIconButton(
     val primary = MaterialTheme.colorScheme.primary
     val targetBackground = when {
         !enabled -> Color.Transparent
-        status == StyleStatus.FullyActive -> primary.copy(alpha = 0.12f)
-        status == StyleStatus.Partial -> primary.copy(alpha = 0.08f)
+        status == StyleStatus.FullyActive -> primary.copy(alpha = 0.5f)
+        status == StyleStatus.Partial -> primary.copy(alpha = 0.2f)
         else -> Color.Transparent
     }
     val targetContent = when {
