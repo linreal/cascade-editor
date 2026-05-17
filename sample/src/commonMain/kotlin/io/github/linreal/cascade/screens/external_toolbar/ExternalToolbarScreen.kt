@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,7 +86,9 @@ fun ExternalToolbarScreen(
         config = editorConfig,
     )
 
-    val editorFocused = editorState.state.focusedBlockId != null
+    val editorFocused by remember(editorState) {
+        derivedStateOf { editorState.state.focusedBlockId != null }
+    }
     val showToolbar = editorFocused && !isReadOnly
     var bodyBounds by remember { mutableStateOf<Rect?>(null) }
     var editorBounds by remember { mutableStateOf<Rect?>(null) }
