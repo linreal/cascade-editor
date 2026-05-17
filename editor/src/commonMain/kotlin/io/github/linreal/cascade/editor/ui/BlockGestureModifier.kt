@@ -129,7 +129,20 @@ internal fun Modifier.blockGestures(
                     val touchWithinBlock = offset.y - item.offset
                     dragOffsetY.floatValue = offset.y
                     dragDeltaX.floatValue = 0f
-                    dispatchBlockDragStartIfAllowed(policy, callbacks, blockId, touchWithinBlock)
+                    val dragStarted = dispatchBlockDragStartIfAllowed(
+                        policy = policy,
+                        callbacks = callbacks,
+                        blockId = blockId,
+                        touchOffsetY = touchWithinBlock,
+                    )
+                    val selectionToggled = if (!dragStarted) {
+                        dispatchBlockLongPressSelectionIfDragDisabled(policy, callbacks, blockId)
+                    } else {
+                        false
+                    }
+                    dragStarted || selectionToggled
+                } else {
+                    false
                 }
             },
             onDrag = { change, dragAmount ->
@@ -171,6 +184,24 @@ internal fun shouldInstallBlockGestureInput(policy: EditorInteractionPolicy): Bo
     return policy.canDragBlocks ||
         policy.canSelectBlocks ||
         canFocusLastTextBlockFromEmptySpace(policy)
+}
+
+/**
+ * Dispatches a long-press selection toggle when block dragging is disabled.
+ *
+ * In the normal editable policy, long-press first starts a drag and a same-place
+ * drop becomes selection on release. When dragging is explicitly disabled,
+ * selection needs a direct long-press path so callers can keep selection without
+ * allowing drag/reorder.
+ */
+internal fun dispatchBlockLongPressSelectionIfDragDisabled(
+    policy: EditorInteractionPolicy,
+    callbacks: BlockCallbacks,
+    blockId: BlockId,
+): Boolean {
+    if (policy.canDragBlocks || !policy.canSelectBlocks) return false
+    callbacks.dispatch(ToggleBlockSelection(blockId))
+    return true
 }
 
 /**
@@ -287,8 +318,8 @@ internal fun isDropAtOriginalPosition(
  * @param enabled Whether drag detection is enabled. When false, no gestures are detected.
  * @param longPressTimeoutMillis Custom long-press timeout in milliseconds.
  *        If null, uses the platform default from ViewConfiguration.
- * @param onDragStart Called when drag starts after long press.
- *        Receives the touch position within the element (local coordinates).
+ * @param onDragStart Called when drag starts after long press. Receives the
+ *        touch position within the element (local coordinates).
  * @param onDrag Called during drag with the movement delta since the last callback.
  * @param onDragEnd Called when drag completes (finger lifted).
  * @param onDragCancel Called when drag is cancelled (e.g., gesture interrupted).
@@ -309,6 +340,7 @@ public fun Modifier.draggableAfterLongPress(
             longPressTimeoutMillis = timeout,
             onDragStart = { offset ->
                 onDragStart(offset)
+                true
             },
             onDrag = { change, dragAmount ->
                 change.consume()
@@ -329,11 +361,12 @@ public fun Modifier.draggableAfterLongPress(
  *
  * Mirrors the behavior of Compose Foundation's detectDragGesturesAfterLongPress
  * but allows specifying a custom [longPressTimeoutMillis] instead of relying on
- * the platform default.
+ * the platform default. [onDragStart] returns whether the long press was handled;
+ * unhandled long presses are left unconsumed.
  */
 private suspend fun PointerInputScope.detectDragAfterLongPress(
     longPressTimeoutMillis: Long,
-    onDragStart: (Offset) -> Unit,
+    onDragStart: (Offset) -> Boolean,
     onDragEnd: () -> Unit,
     onDragCancel: () -> Unit,
     onDrag: (change: PointerInputChange, dragAmount: Offset) -> Unit,
@@ -344,7 +377,8 @@ private suspend fun PointerInputScope.detectDragAfterLongPress(
             val down = awaitFirstDown(requireUnconsumed = false)
             val longPress = awaitCustomLongPress(down.id, longPressTimeoutMillis)
             if (longPress != null) {
-                onDragStart(longPress.position)
+                val handled = onDragStart(longPress.position)
+                if (!handled) return@awaitEachGesture
                 if (
                     drag(longPress.id) {
                         onDrag(it, it.positionChange())
@@ -357,7 +391,7 @@ private suspend fun PointerInputScope.detectDragAfterLongPress(
                     // Long-press can end up in cancel path (e.g. no actual move on some
                     // platforms)
                     // Consume the release so child tap handlers don't request
-                    // focus while we convert this gesture into block selection
+                    // focus while we convert this gesture into a block interaction.
                     currentEvent.changes.forEach { if (it.changedToUpIgnoreConsumed()) it.consume() }
                     onDragCancel()
                 }

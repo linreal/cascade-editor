@@ -110,12 +110,12 @@ internal class PolicyAwareBlockCallbacks(
 }
 
 /**
- * Returns whether a generic [EditorAction] may cross the read-only UI boundary.
+ * Returns whether a generic [EditorAction] may cross the editor UI policy boundary.
  *
- * Editable mode forwards all actions to preserve existing behavior. Read-only
- * mode classifies every [EditorAction] subtype with an exhaustive `when`, so
- * the compiler fails the build until any new subtype is explicitly placed in
- * the allow or deny branch.
+ * The fully editable singleton forwards all actions to preserve existing
+ * behavior. Partial and read-only policies classify every [EditorAction] subtype
+ * with an exhaustive `when`, so the compiler fails the build until any new
+ * subtype is explicitly attached to a capability.
  */
 private fun EditorInteractionPolicy.canDispatch(action: EditorAction): Boolean {
     if (this === EditorInteractionPolicy.Editable) return true
@@ -138,33 +138,40 @@ private fun EditorInteractionPolicy.canDispatch(action: EditorAction): Boolean {
         is DeleteBlock,
         is DeleteBlocks,
         DeleteSelectedOrFocused,
-        is UpdateBlockContent,
-        is UpdateBlockText,
         is ConvertBlockType,
         is MoveBlocks,
         is MergeBlocks,
         is ReplaceBlock,
         is SplitBlock,
-        is ToggleTodo,
         IndentForward,
-        IndentBackward,
+        IndentBackward -> canEditBlockStructure
+
+        is UpdateBlockContent,
+        is UpdateBlockText -> canEditText
+
+        is ToggleTodo -> canEditBlockControls
+
         is ApplySpanStyle,
-        is RemoveSpanStyle,
+        is RemoveSpanStyle -> canFormatText
+
         is SelectBlock,
         is SelectBlockRange,
         is AddBlockRangeToSelection,
         is ToggleBlockSelection,
-        SelectAll,
+        SelectAll -> canSelectBlocks
+
         FocusNextBlock,
-        FocusPreviousBlock,
+        FocusPreviousBlock -> canEditText
+
         is StartDrag,
         is UpdateDragTarget,
         CompleteDrag,
+        is MoveDragPayload -> canDragBlocks && canEditBlockStructure
+
         is OpenSlashCommand,
         is UpdateSlashCommandSession,
         is HighlightSlashCommand,
         is NavigateSlashSubmenu,
-        is MoveDragPayload,
-        NavigateSlashBack -> false
+        NavigateSlashBack -> canUseSlashCommands
     }
 }

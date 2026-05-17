@@ -28,6 +28,57 @@ class EditorInteractionPolicyTest {
         assertFalse(policy.canDragBlocks)
     }
 
+    @Test
+    fun `editable config can disable block selection only`() {
+        val policy = CascadeEditorConfig(
+            readOnly = false,
+            blockSelectionEnabled = false,
+            blockDraggingEnabled = true,
+        ).toInteractionPolicy()
+
+        assertTrue(policy.canEditText)
+        assertTrue(policy.canEditBlockStructure)
+        assertTrue(policy.canEditBlockControls)
+        assertTrue(policy.canFormatText)
+        assertTrue(policy.canEditLinks)
+        assertTrue(policy.canUseEditorHistoryShortcuts)
+        assertTrue(policy.canUseSlashCommands)
+        assertFalse(policy.canSelectBlocks)
+        assertTrue(policy.canDragBlocks)
+    }
+
+    @Test
+    fun `editable config can disable block dragging only`() {
+        val policy = CascadeEditorConfig(
+            readOnly = false,
+            blockSelectionEnabled = true,
+            blockDraggingEnabled = false,
+        ).toInteractionPolicy()
+
+        assertTrue(policy.canEditText)
+        assertTrue(policy.canEditBlockStructure)
+        assertTrue(policy.canEditBlockControls)
+        assertTrue(policy.canFormatText)
+        assertTrue(policy.canEditLinks)
+        assertTrue(policy.canUseEditorHistoryShortcuts)
+        assertTrue(policy.canUseSlashCommands)
+        assertTrue(policy.canSelectBlocks)
+        assertFalse(policy.canDragBlocks)
+    }
+
+    @Test
+    fun `read only config overrides block selection and dragging flags`() {
+        val policy = CascadeEditorConfig(
+            readOnly = true,
+            blockSelectionEnabled = true,
+            blockDraggingEnabled = true,
+        ).toInteractionPolicy()
+
+        assertEquals(EditorInteractionPolicy.ReadOnly, policy)
+        assertFalse(policy.canSelectBlocks)
+        assertFalse(policy.canDragBlocks)
+    }
+
     private fun assertAllCapabilities(policy: EditorInteractionPolicy, expected: Boolean) {
         val assertions = listOf(
             policy.canEditText,

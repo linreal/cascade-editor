@@ -30,7 +30,7 @@ Block selection introduces a multi-select mode to the CascadeEditor. Users long-
 
 **Subtree-aware selected drag.** Dragging a selected block resolves selected roots in document order, filters out selected descendants of another selected root, and expands each root to its full flat-outline subtree. Unsupported selected block types can still move as drag roots; indentation support only affects indent/outdent commands, not drag payload membership.
 
-**Read-only disables selection and drag affordances at the UI boundary.** The reducers remain mutable for app-owned code, but `CascadeEditorConfig(readOnly = true)` prevents editor-owned long-press selection, tap toggles, drag start, hover target updates, drag completion, drag preview/drop indicator rendering, and empty-space edit focus. Native text selection inside text fields remains available.
+**Config disables selection and drag affordances at the UI boundary.** The reducers remain mutable for app-owned code, but `CascadeEditorConfig(readOnly = true)` prevents editor-owned long-press selection, tap toggles, drag start, hover target updates, drag completion, drag preview/drop indicator rendering, and empty-space edit focus. Editable configs can disable block affordances independently with `blockSelectionEnabled = false` and/or `blockDraggingEnabled = false`; when dragging is disabled but selection remains enabled, long-press toggles block selection directly instead of starting a drag. Native text selection inside text fields remains available.
 
 ## 3. Data Flow
 

@@ -67,7 +67,7 @@ Custom content can read the public config local:
 val readOnly = LocalCascadeEditorConfig.current.readOnly
 ```
 
-Use it to disable custom checkboxes, buttons, menus, gestures, and direct runtime writes that your code owns. Built-in implementation code uses internal policy plumbing instead; those internal objects are not public API and should not be consumed as extension points.
+Use it to disable custom checkboxes, buttons, menus, gestures, and direct runtime writes that your code owns. Custom block-selection or drag affordances should also honor `LocalCascadeEditorConfig.current.blockSelectionEnabled` and `LocalCascadeEditorConfig.current.blockDraggingEnabled`. Built-in implementation code uses internal policy plumbing instead; those internal objects are not public API and should not be consumed as extension points.
 
 Editor-provided custom chrome surfaces are already policy-aware:
 

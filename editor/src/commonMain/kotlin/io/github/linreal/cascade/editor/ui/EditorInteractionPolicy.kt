@@ -51,12 +51,18 @@ internal data class EditorInteractionPolicy(
 /**
  * Converts public editor configuration into the internal interaction policy.
  *
- * This is the only built-in code path that should inspect [CascadeEditorConfig.readOnly].
+ * This is the only built-in code path that should inspect public behavior flags
+ * from [CascadeEditorConfig].
  */
 internal fun CascadeEditorConfig.toInteractionPolicy(): EditorInteractionPolicy {
     return if (readOnly) {
         EditorInteractionPolicy.ReadOnly
-    } else {
+    } else if (blockSelectionEnabled && blockDraggingEnabled) {
         EditorInteractionPolicy.Editable
+    } else {
+        EditorInteractionPolicy.Editable.copy(
+            canSelectBlocks = blockSelectionEnabled,
+            canDragBlocks = blockDraggingEnabled,
+        )
     }
 }

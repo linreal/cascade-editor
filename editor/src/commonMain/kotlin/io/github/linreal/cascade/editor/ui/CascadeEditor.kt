@@ -331,7 +331,7 @@ public fun CascadeEditor(
         policy = interactionPolicy,
     )
 
-    // Cleanup re-runs only when policy identity changes. Holder/controller are
+    // Cleanup re-runs only when the effective interaction policy changes. Holder/controller are
     // stable for the composition's lifetime and are routed through
     // rememberUpdatedState so the latest references are read inside the effect
     // without adding them to the keys.

@@ -16,6 +16,7 @@ import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.SlashQueryRange
 import io.github.linreal.cascade.editor.ui.EditorInteractionPolicy
 import io.github.linreal.cascade.editor.ui.dispatchBlockDragStartIfAllowed
+import io.github.linreal.cascade.editor.ui.dispatchBlockLongPressSelectionIfDragDisabled
 import io.github.linreal.cascade.editor.ui.dispatchBlockSelectionToggleIfAllowed
 import io.github.linreal.cascade.editor.ui.dispatchDragTargetUpdateIfAllowed
 import io.github.linreal.cascade.editor.ui.focusLastTextBlockFromEmptySpace
@@ -98,6 +99,53 @@ class ReadOnlyBlockAffordancesTest {
 
         assertTrue(dispatched)
         assertEquals<List<EditorAction>>(listOf(ToggleBlockSelection(blockId)), callbacks.actions)
+    }
+
+    @Test
+    fun `selection-only policy toggles block selection from long press without drag`() {
+        val callbacks = RecordingCallbacks()
+        val policy = EditorInteractionPolicy.Editable.copy(canDragBlocks = false)
+
+        val dispatched = dispatchBlockLongPressSelectionIfDragDisabled(
+            policy = policy,
+            callbacks = callbacks,
+            blockId = blockId,
+        )
+
+        assertTrue(dispatched)
+        assertEquals<List<EditorAction>>(listOf(ToggleBlockSelection(blockId)), callbacks.actions)
+    }
+
+    @Test
+    fun `drag-enabled policy does not use selection-only long press fallback`() {
+        val callbacks = RecordingCallbacks()
+
+        val dispatched = dispatchBlockLongPressSelectionIfDragDisabled(
+            policy = EditorInteractionPolicy.Editable,
+            callbacks = callbacks,
+            blockId = blockId,
+        )
+
+        assertFalse(dispatched)
+        assertEquals(emptyList<EditorAction>(), callbacks.actions)
+    }
+
+    @Test
+    fun `selection-disabled policy does not use selection-only long press fallback`() {
+        val callbacks = RecordingCallbacks()
+        val policy = EditorInteractionPolicy.Editable.copy(
+            canDragBlocks = false,
+            canSelectBlocks = false,
+        )
+
+        val dispatched = dispatchBlockLongPressSelectionIfDragDisabled(
+            policy = policy,
+            callbacks = callbacks,
+            blockId = blockId,
+        )
+
+        assertFalse(dispatched)
+        assertEquals(emptyList<EditorAction>(), callbacks.actions)
     }
 
     @Test

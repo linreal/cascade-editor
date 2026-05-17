@@ -73,7 +73,8 @@ fun ExternalToolbarScreen(
     }
 
     var isReadOnly by remember { mutableStateOf(false) }
-    val editorConfig = CascadeEditorConfig(readOnly = isReadOnly)
+    val editorConfig =
+        CascadeEditorConfig(readOnly = isReadOnly, blockSelectionEnabled = false, blockDraggingEnabled = false)
 
     // Integration contract: this controller and CascadeEditor must share the same runtime holders.
     val toolbarController = rememberCascadeEditorToolbarController(

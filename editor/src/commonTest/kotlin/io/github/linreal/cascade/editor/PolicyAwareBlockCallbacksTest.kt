@@ -153,6 +153,45 @@ class PolicyAwareBlockCallbacksTest {
         assertTrue(delegate.calls.isEmpty())
     }
 
+    @Test
+    fun `partial policy blocks only block selection actions when selection is disabled`() {
+        val delegate = RecordingBlockCallbacks()
+        val callbacks = PolicyAwareBlockCallbacks(
+            delegate,
+            EditorInteractionPolicy.Editable.copy(canSelectBlocks = false),
+        )
+        val blockId = BlockId("block")
+        val update = UpdateBlockText(blockId, "updated")
+        val selection = ToggleBlockSelection(blockId)
+
+        callbacks.dispatch(update)
+        callbacks.dispatch(selection)
+
+        assertEquals(listOf(RecordedCall.Dispatch(update)), delegate.calls)
+    }
+
+    @Test
+    fun `partial policy blocks only drag actions and direct drag start when dragging is disabled`() {
+        val delegate = RecordingBlockCallbacks()
+        val callbacks = PolicyAwareBlockCallbacks(
+            delegate,
+            EditorInteractionPolicy.Editable.copy(canDragBlocks = false),
+        )
+        val blockId = BlockId("block")
+        val update = UpdateBlockText(blockId, "updated")
+        val dragActions = listOf(
+            StartDrag(blockId, touchOffsetY = 0f),
+            UpdateDragTarget(targetIndex = 1),
+            CompleteDrag,
+        )
+
+        callbacks.dispatch(update)
+        dragActions.forEach(callbacks::dispatch)
+        callbacks.onDragStart(blockId, touchOffsetY = 12.5f)
+
+        assertEquals(listOf(RecordedCall.Dispatch(update)), delegate.calls)
+    }
+
     private fun representativeMutatingActions(): List<EditorAction> {
         val blockId = BlockId("block")
         val otherId = BlockId("other")
