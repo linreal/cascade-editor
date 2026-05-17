@@ -2,7 +2,7 @@
 
 ## 1. Feature Overview
 
-The toolbar system provides inline editor controls at the bottom of the `CascadeEditor`. It lets users apply span styles (bold, italic, underline, strikethrough, inline code, highlight) to selected text or toggle pending styles at a collapsed cursor, and the built-in toolbar also exposes block indent/outdent controls. The feature is fully configurable: consumers can use the built-in config-driven toolbar, supply a completely custom composable toolbar, or hide it entirely. Keyboard shortcuts (Cmd/Ctrl+B/I/U) work independently of toolbar visibility, unless read-only mode disables editor-owned formatting mutations. An external `onFormattingStateChanged` callback enables out-of-editor UI (e.g., a floating toolbar or app bar) to reflect formatting state reactively, while indentation and link state/actions are available through CompositionLocals for custom chrome.
+The toolbar system provides inline editor controls at the bottom of the `CascadeEditor`. It lets users apply span styles (bold, italic, underline, strikethrough, inline code, highlight) to selected text or toggle pending styles at a collapsed cursor, and the built-in toolbar also exposes block indent/outdent controls. The feature is fully configurable: consumers can use the built-in config-driven toolbar, supply a completely custom composable toolbar, hide it entirely, or render a caller-owned external toolbar with `rememberCascadeEditorToolbarController(...)`. Keyboard shortcuts (Cmd/Ctrl+B/I/U) work independently of toolbar visibility, unless read-only mode disables editor-owned formatting mutations. `onFormattingStateChanged` remains available for observation-only external formatting state, while the controller exposes formatting, indentation, and link state/actions from explicit editor runtime holders. CompositionLocals remain available for custom chrome rendered inside `CascadeEditor`.
 
 ---
 
@@ -13,6 +13,7 @@ The toolbar system provides inline editor controls at the bottom of the `Cascade
 | Type | File | Role |
 |------|------|------|
 | `ToolbarSlot` | `ui/ToolbarSlot.kt` | Sealed interface controlling which toolbar variant renders: `Default`, `None`, or `Custom`. |
+| `CascadeEditorToolbarController` | `ui/CascadeEditorToolbarController.kt` | Public state/action facade for app-owned toolbars rendered outside `CascadeEditor`. |
 | `RichTextToolbarConfig` | `ui/RichTextToolbarConfig.kt` | `@Immutable` data class listing `ToolbarButtonSpec` entries plus default-toolbar feature flags. Ships a `Default` companion preset with 6 built-in styles and link enabled. |
 | `ToolbarButtonSpec` | `ui/RichTextToolbarConfig.kt` | Pairs a non-link `SpanStyle` with an accessibility `label`. Link editing uses `showLink` instead. |
 | `RichTextToolbar` | `ui/RichTextToolbar.kt` | `internal` composable — the default config-driven toolbar UI. Iterates `config.buttons`, renders toggle buttons reflecting `FormattingState`. |
@@ -24,6 +25,7 @@ The toolbar system provides inline editor controls at the bottom of the `Cascade
 | `SpanActionDispatcher` | `richtext/SpanActionDispatcher.kt` | Coordinates runtime `BlockSpanStates` update + snapshot `UpdateBlockContent` dispatch in one call. |
 | `TextBlockKeyHandler` | `ui/renderers/TextBlockKeyHandler.kt` | Handles Cmd/Ctrl+B/I/U shortcuts and slash popup keyboard navigation. |
 | `LocalFormattingActions` | `ui/LocalFormattingActions.kt` | `CompositionLocal` providing `FormattingActions?` to the composition tree. |
+| `rememberCascadeEditorToolbarController()` | `ui/CascadeEditorToolbarController.kt` | Public Compose factory that assembles formatting, indentation, and link state/actions from explicit editor runtime holders. |
 | `LocalSpanActionDispatcher` | `ui/LocalSpanActionDispatcher.kt` | `CompositionLocal` providing `SpanActionDispatcher?` to the composition tree. |
 | `IndentationState` | `indentation/IndentationState.kt` | `@Immutable` snapshot: `canIndentForward`, `canIndentBackward`, and document-ordered target root IDs. |
 | `IndentationActions` | `indentation/IndentationActions.kt` | `@Stable` interface with `indentForward()` and `indentBackward()`. |
@@ -34,7 +36,7 @@ The toolbar system provides inline editor controls at the bottom of the `Cascade
 | `LinkActions` | `richtext/LinkActions.kt` | `@Stable` interface for apply/edit/remove link mutations against captured `LinkTarget`s or the latest current target. |
 | `rememberLinkState()` | `richtext/LinkStateObserver.kt` | `internal` composable bridge producing lazy `State<LinkState>` from editor runtime state. |
 | `LocalLinkState` | `ui/LocalLinkState.kt` | `CompositionLocal` providing `State<LinkState>?` to custom editor chrome. |
-| `LocalLinkActions` | `ui/LocalLinkActions.kt` | `CompositionLocal` providing gated `LinkActions?` to custom editor chrome. |
+| `LocalLinkActions` | `ui/LocalLinkActions.kt` | `CompositionLocal` providing gated `LinkChromeActions?` to custom editor chrome. |
 | `LinkPopupSlot` | `ui/LinkPopupSlot.kt` | Public slot API for built-in, custom, or disabled editor-owned link popup UI. |
 | `LinkPopupState` | `ui/LinkPopupState.kt` | Public UI-ready state shape for custom popup content. |
 | `LinkPopupActions` | `ui/LinkPopupActions.kt` | Public action shape for custom popup content. |
@@ -51,13 +53,15 @@ The toolbar system provides inline editor controls at the bottom of the `Cascade
 
 **Link APIs are local-provided and toolbar-agnostic.** `CascadeEditor` provides `LocalLinkState` and `LocalLinkActions` in `ToolbarSlot.Default`, `ToolbarSlot.Custom`, and `ToolbarSlot.None`. Custom toolbar and surrounding editor chrome can add link UI without changing `ToolbarSlot.Custom` parameters.
 
+**External toolbar controller is caller-owned.** Apps that need a toolbar outside the `CascadeEditor` viewport use `rememberCascadeEditorToolbarController(...)` with the same `EditorStateHolder`, `BlockTextStates`, and `BlockSpanStates` they pass to `CascadeEditor`. The controller exposes formatting, indentation, and link state/actions without rendering UI. Consumers normally pair it with `ToolbarSlot.None`; no `ToolbarSlot.External` variant is needed.
+
 **Default link button is special, not a `ToolbarButtonSpec`.** `RichTextToolbarConfig.showLink` controls the built-in link entry point separately from generic span-style buttons because link editing depends on URL state, mixed-link selection state, and a popup slot rather than a simple style toggle.
 
 **Theme-injected highlight color.** When the consumer uses the exact `RichTextToolbarConfig.Default` sentinel, `CascadeEditor` replaces the placeholder `SpanStyle.Highlight` color with `theme.colors.highlight.toArgb()`. Custom configs are left untouched. This avoids a mismatch between the toolbar button's style and the rendered highlight color.
 
 **`FormattingActions` always created — even without a toolbar.** Keyboard shortcuts (Cmd+B/I/U) consume `FormattingActions` via `LocalFormattingActions`. The actions are created unconditionally so shortcuts work regardless of `ToolbarSlot.None`.
 
-**`FormattingState` lazily created.** The expensive `rememberFormattingState()` observer chain is only instantiated when `resolvedToolbar !is ToolbarSlot.None || onFormattingStateChanged != null`. This avoids unnecessary `derivedStateOf` overhead in headless/no-toolbar configurations.
+**`FormattingState` lazily created inside `CascadeEditor`.** The editor-owned `rememberFormattingState()` observer chain is only instantiated when `resolvedToolbar !is ToolbarSlot.None || onFormattingStateChanged != null`. This avoids unnecessary `derivedStateOf` overhead in headless/no-toolbar editor configurations. `rememberCascadeEditorToolbarController(...)` creates its own formatting observer because external toolbar state is the requested output of that factory.
 
 **`LinkState` uses a lazy `State` wrapper.** The link local is always provided, but its target resolution is inside `derivedStateOf`; it only computes when a consumer reads `LocalLinkState.current?.value`.
 
@@ -231,6 +235,36 @@ ToolbarSlot.Custom(
 )
 ```
 
+### `CascadeEditorToolbarController`
+
+```kotlin
+@Stable
+interface CascadeEditorToolbarController {
+    val formattingState: State<FormattingState>
+    val formattingActions: FormattingActions
+
+    val indentationState: State<IndentationState>
+    val indentationActions: IndentationActions
+
+    val linkState: State<LinkState>
+    val linkActions: LinkChromeActions
+}
+
+@Composable
+fun rememberCascadeEditorToolbarController(
+    stateHolder: EditorStateHolder,
+    textStates: BlockTextStates,
+    spanStates: BlockSpanStates,
+    trackedStyles: List<SpanStyle> =
+        RichTextToolbarConfig.Default.buttons.map { it.style },
+    config: CascadeEditorConfig = CascadeEditorConfig.Default,
+): CascadeEditorToolbarController
+```
+
+Use this controller when toolbar UI must live outside `CascadeEditor`. The
+controller does not render UI, does not own link popup placement, and does not
+include slash insertion or platform keyboard dismissal helpers.
+
 ### `RichTextToolbarConfig` / `ToolbarButtonSpec`
 
 ```kotlin
@@ -347,7 +381,7 @@ class SpanActionDispatcher(dispatchFn, textStates, spanStates) {
 | `LocalIndentationState` | `State<IndentationState>?` | `CascadeEditor` |
 | `LocalIndentationActions` | `IndentationActions?` | `CascadeEditor` |
 | `LocalLinkState` | `State<LinkState>?` | `CascadeEditor` |
-| `LocalLinkActions` | `LinkActions?` | `CascadeEditor` |
+| `LocalLinkActions` | `LinkChromeActions?` | `CascadeEditor` |
 
 ---
 
@@ -363,7 +397,8 @@ class SpanActionDispatcher(dispatchFn, textStates, spanStates) {
 | Custom toolbar indentation UI | `LocalIndentationState`, `LocalIndentationActions` | CompositionLocals inside `CascadeEditor` |
 | Custom toolbar link UI | `LocalLinkState`, `LocalLinkActions` | CompositionLocals inside `CascadeEditor` |
 | `TextBlockKeyHandler` | `FormattingActions` | Constructor parameter (sourced from `LocalFormattingActions`) |
-| External app code | `FormattingState` | `onFormattingStateChanged` callback |
+| External observation-only app code | `FormattingState` | `onFormattingStateChanged` callback |
+| External app-owned toolbar | Formatting, indentation, and link state/actions | `rememberCascadeEditorToolbarController(...)` with the same runtime holders passed to `CascadeEditor` |
 
 ### Depends On
 

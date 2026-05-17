@@ -183,6 +183,41 @@ CascadeEditor(
 )
 ```
 
+For a fully external toolbar, create a controller with the same runtime holders
+you pass to the editor, hide the editor-owned toolbar, and render your toolbar
+wherever your app needs it:
+
+```kotlin
+val textStates = remember { BlockTextStates() }
+val spanStates = remember { BlockSpanStates() }
+val editorConfig = CascadeEditorConfig(readOnly = isReadOnly)
+val toolbarController = rememberCascadeEditorToolbarController(
+    stateHolder = stateHolder,
+    textStates = textStates,
+    spanStates = spanStates,
+    config = editorConfig,
+)
+
+Column {
+    MyToolbar(
+        formattingState = toolbarController.formattingState,
+        formattingActions = toolbarController.formattingActions,
+        indentationState = toolbarController.indentationState,
+        indentationActions = toolbarController.indentationActions,
+        linkState = toolbarController.linkState,
+        linkActions = toolbarController.linkActions,
+    )
+
+    CascadeEditor(
+        stateHolder = stateHolder,
+        textStates = textStates,
+        spanStates = spanStates,
+        toolbar = ToolbarSlot.None,
+        config = editorConfig,
+    )
+}
+```
+
 ## Undo & Redo
 
 Undo/redo is built into `EditorStateHolder`. Continuous typing is coalesced into user-friendly history steps, while structural edits such as split, merge, drag reorder, slash commands, list conversion, and todo toggles replay as semantic document transactions instead of raw UI events.

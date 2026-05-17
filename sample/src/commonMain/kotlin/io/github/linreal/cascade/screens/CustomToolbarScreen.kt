@@ -5,7 +5,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,6 +62,7 @@ import io.github.linreal.cascade.editor.ui.LocalCascadeEditorConfig
 import io.github.linreal.cascade.editor.ui.ToolbarSlot
 import io.github.linreal.cascade.editor.ui.visibleSelection
 import io.github.linreal.cascade.ui.PageScaffold
+import io.github.linreal.cascade.ui.nonFocusableTap
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
@@ -512,14 +512,3 @@ private fun buildToolbarDemoBlocks(): List<Block> = listOf(
     Block.paragraph(""),
     Block.paragraph(""),
 )
-
-@Composable
-private fun Modifier.nonFocusableTap(
-    enabled: Boolean = true,
-    onClick: () -> Unit,
-): Modifier {
-    if (!enabled) return this
-    return this
-        .clickable(onClick = onClick)
-        .focusProperties { canFocus = false }
-}
