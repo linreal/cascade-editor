@@ -107,6 +107,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Formatting state | `richtext/FormattingState.kt` | `FormattingState` |
 | Formatting actions | `richtext/FormattingActions.kt` | `FormattingActions` |
 | Toolbar slot | `ui/ToolbarSlot.kt` | `ToolbarSlot` |
+| External toolbar controller | `ui/CascadeEditorToolbarController.kt` | `CascadeEditorToolbarController`, `rememberCascadeEditorToolbarController()` |
 | Toolbar config | `ui/RichTextToolbarConfig.kt` | `RichTextToolbarConfig`, `ToolbarButtonSpec` |
 | Link popup slot | `ui/LinkPopupSlot.kt` | `LinkPopupSlot` |
 | Link popup contract | `ui/LinkPopupState.kt`, `ui/LinkPopupActions.kt` | `LinkPopupState`, `LinkPopupActions` |
@@ -300,6 +301,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Code block | Done | `BlockType.Code` (plain monospace, `supportsSpans = false`), `/code` slash command (`ConvertInPlace`), `CodeBlock` composable in `TextBlockRenderer` with `codeBlockBackground` tint, multi-line `\n` Enter with trailing-blank-line exit, Backspace-at-start convert-to-Paragraph, slash/list-auto-detect observer suppression keyed on `block.type` |
 | Rich text spans — domain model | Done | `TextSpan`, `SpanStyle`, `BlockContent.Text.spans` |
 | Link spans — model, URL policy, persistence, algorithms, rendering, state/actions, popup editing, unfocused opening | Done | `SpanStyle.Link`, `LinkUrlPolicy`, stable `LinkValidationError`, `RichTextSchema` link encode/decode, URL-exact merge identity, URL-agnostic link remove/query, non-overlapping link normalization, theme-colored underline rendering, `LinkState`, `LinkTarget`, `LinkActions`, `LinkActionDispatcher`, `LocalLinkState`, `LocalLinkActions`, default toolbar link entry point, `LinkPopupSlot`, `LinkPopupSession`, default/custom/none popup editing, `LinkHitTester`, `onOpenLink` |
+| External toolbar controller | Done | `CascadeEditorToolbarController` and `rememberCascadeEditorToolbarController(...)` expose formatting, indentation, and link state/actions for app-owned toolbars outside `CascadeEditor` |
 | Rich text spans — algorithms | Done | `SpanAlgorithms`: normalize, adjust, split/merge, apply/remove/toggle, query, link range canonicalization |
 | Rich text spans — runtime holder | Done | `BlockSpanStates` + `LocalBlockSpanStates`, strict ingress normalization/clamping |
 | Rich text spans — lifecycle wiring | Done | `BlockSpanStates` provided in `CascadeEditor`, per-block init in `TextBlockRenderer`, text-only cleanup guard |

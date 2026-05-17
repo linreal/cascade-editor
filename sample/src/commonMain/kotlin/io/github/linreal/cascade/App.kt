@@ -21,8 +21,8 @@ import io.github.linreal.cascade.screens.CustomBlocksScreen
 import io.github.linreal.cascade.screens.CustomHtmlProfileScreen
 import io.github.linreal.cascade.screens.CustomToolbarScreen
 import io.github.linreal.cascade.screens.EditorDemoScreen
+import io.github.linreal.cascade.screens.external_toolbar.ExternalToolbarScreen
 import io.github.linreal.cascade.screens.LandingScreen
-import io.github.linreal.cascade.screens.PlaceholderScreen
 
 @Composable
 @Preview
@@ -67,6 +67,11 @@ fun App() {
                     onBack = { currentScreen = AppScreen.Landing },
                 )
                 AppScreen.CustomToolbar -> CustomToolbarScreen(
+                    isDark = isDark,
+                    onToggleTheme = { themeOverride = !isDark },
+                    onBack = { currentScreen = AppScreen.Landing },
+                )
+                AppScreen.ExternalToolbar -> ExternalToolbarScreen(
                     isDark = isDark,
                     onToggleTheme = { themeOverride = !isDark },
                     onBack = { currentScreen = AppScreen.Landing },

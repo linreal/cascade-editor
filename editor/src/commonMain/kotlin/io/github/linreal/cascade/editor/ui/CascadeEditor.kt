@@ -49,18 +49,10 @@ import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.SpanStyle
-import io.github.linreal.cascade.editor.indentation.DefaultIndentationActions
-import io.github.linreal.cascade.editor.indentation.rememberIndentationState
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
 import io.github.linreal.cascade.editor.registry.PolicyAwareBlockCallbacks
-import io.github.linreal.cascade.editor.richtext.DefaultFormattingActions
-import io.github.linreal.cascade.editor.richtext.DefaultLinkActions
 import io.github.linreal.cascade.editor.richtext.FormattingState
-import io.github.linreal.cascade.editor.richtext.LinkActionDispatcher
-import io.github.linreal.cascade.editor.richtext.SpanActionDispatcher
-import io.github.linreal.cascade.editor.richtext.rememberFormattingState
-import io.github.linreal.cascade.editor.richtext.rememberLinkState
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandFactory
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
 import io.github.linreal.cascade.editor.slash.SlashCommandItem
@@ -172,7 +164,6 @@ public fun CascadeEditor(
     val interactionPolicy = remember(config) {
         config.toInteractionPolicy()
     }
-    val currentInteractionPolicy = rememberUpdatedState(interactionPolicy)
     val orderedListPrefixStyles = remember(state.blocks) {
         resolveOrderedListPrefixStyles(state.blocks)
     }
@@ -258,16 +249,6 @@ public fun CascadeEditor(
         }
     }
 
-    // Create span action dispatcher for coordinated runtime + snapshot style updates
-    val spanActionDispatcher = remember(stateHolder, textStates, spanStates) {
-        SpanActionDispatcher(
-            dispatchFn = { action -> stateHolder.dispatch(action) },
-            textStates = textStates,
-            spanStates = spanStates,
-            stateHolder = stateHolder,
-        )
-    }
-
     // Create callbacks with state access and text states for proper merge handling.
     val defaultCallbacks = remember(stateHolder, textStates, spanStates) {
         DefaultBlockCallbacks(
@@ -304,9 +285,10 @@ public fun CascadeEditor(
         } else toolbar
     }
 
-    // Formatting state observer + actions
-    // Only created when a toolbar is visible or an external callback is set.
-
+    // Formatting state observer + actions are assembled by the shared toolbar
+    // runtime factory. The formatting state observer is created only when a
+    // toolbar is visible or an external callback is set, to avoid the
+    // derivedStateOf chain in headless configurations.
     val needsFormattingState =
         resolvedToolbar !is ToolbarSlot.None || onFormattingStateChanged != null
 
@@ -318,65 +300,21 @@ public fun CascadeEditor(
         }
     }
 
-    val formattingState = if (needsFormattingState) {
-        rememberFormattingState(
-            stateHolder = stateHolder,
-            textStates = textStates,
-            spanStates = spanStates,
-            trackedStyles = trackedStyles,
-            policy = interactionPolicy,
-        )
-    } else {
-        null
-    }
-
-    // Always created — used by keyboard shortcuts (Cmd+B/I/U) even without a toolbar.
-    // interactionPolicy is intentionally NOT a remember key: the action object
-    // is stateless and reads policy through currentInteractionPolicy.value at
-    // invocation time, so a policy flip needs no wrapper rebuild.
-    val formattingActions = remember(
-        stateHolder,
-        textStates,
-        spanActionDispatcher,
-    ) {
-        DefaultFormattingActions(
-            stateHolder = stateHolder,
-            textStates = textStates,
-            spanActionDispatcher = spanActionDispatcher,
-            policyProvider = { currentInteractionPolicy.value },
-        )
-    }
-
-    val indentationState = rememberIndentationState(stateHolder, interactionPolicy)
-    val indentationActions = remember(stateHolder, indentationState) {
-        DefaultIndentationActions(
-            stateProvider = { indentationState.value },
-            dispatchAction = { action -> stateHolder.dispatchStructuralAction(action) },
-            policyProvider = { currentInteractionPolicy.value },
-        )
-    }
-
-    val linkState = rememberLinkState(
+    val toolbarRuntime = rememberEditorToolbarRuntime(
         stateHolder = stateHolder,
         textStates = textStates,
         spanStates = spanStates,
-        policy = interactionPolicy,
+        trackedStyles = trackedStyles,
+        interactionPolicy = interactionPolicy,
+        needsFormattingState = needsFormattingState,
     )
-    val linkActionDispatcher = remember(stateHolder, textStates, spanStates) {
-        LinkActionDispatcher(
-            dispatchFn = { action -> stateHolder.dispatch(action) },
-            textStates = textStates,
-            spanStates = spanStates,
-            stateHolder = stateHolder,
-        )
-    }
-    val linkActions = remember(linkState, linkActionDispatcher) {
-        DefaultLinkActions(
-            stateProvider = { linkState.value },
-            delegate = linkActionDispatcher,
-            policyProvider = { currentInteractionPolicy.value },
-        )
-    }
+    val formattingState = toolbarRuntime.formattingState
+    val formattingActions = toolbarRuntime.formattingActions
+    val spanActionDispatcher = toolbarRuntime.spanActionDispatcher
+    val indentationState = toolbarRuntime.indentationState
+    val indentationActions = toolbarRuntime.indentationActions
+    val linkState = toolbarRuntime.linkState
+    val linkActions = toolbarRuntime.linkActions
     val uriHandler = LocalUriHandler.current
     val linkOpener = remember(onOpenLink, uriHandler) {
         createLinkOpener(onOpenLink, uriHandler)

@@ -113,13 +113,25 @@ fun LandingScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            SectionCard(
-                icon = Res.drawable.ic_code,
-                title = "Custom HTML Profile",
-                description = "Import and export a Custom HTML dialect",
-                onClick = { onNavigate(AppScreen.CustomHtmlProfile) },
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-            )
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                SectionCard(
+                    icon = Res.drawable.ic_palette,
+                    title = "External Toolbar",
+                    description = "Render toolbar controls outside the editor",
+                    onClick = { onNavigate(AppScreen.ExternalToolbar) },
+                    modifier = Modifier.weight(1f),
+                )
+                SectionCard(
+                    icon = Res.drawable.ic_code,
+                    title = "Custom HTML Profile",
+                    description = "Import and export a Custom HTML dialect",
+                    onClick = { onNavigate(AppScreen.CustomHtmlProfile) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
         }
