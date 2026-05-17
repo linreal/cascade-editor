@@ -167,7 +167,7 @@ class PolicyAwareBlockCallbacksTest {
         callbacks.dispatch(update)
         callbacks.dispatch(selection)
 
-        assertEquals(listOf(RecordedCall.Dispatch(update)), delegate.calls)
+        assertEquals<List<RecordedCall>>(listOf(RecordedCall.Dispatch(update)), delegate.calls)
     }
 
     @Test
@@ -189,7 +189,7 @@ class PolicyAwareBlockCallbacksTest {
         dragActions.forEach(callbacks::dispatch)
         callbacks.onDragStart(blockId, touchOffsetY = 12.5f)
 
-        assertEquals(listOf(RecordedCall.Dispatch(update)), delegate.calls)
+        assertEquals<List<RecordedCall>>(listOf(RecordedCall.Dispatch(update)), delegate.calls)
     }
 
     private fun representativeMutatingActions(): List<EditorAction> {
