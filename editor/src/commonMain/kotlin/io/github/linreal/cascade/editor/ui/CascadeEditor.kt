@@ -1,6 +1,7 @@
 package io.github.linreal.cascade.editor.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -417,6 +418,10 @@ public fun CascadeEditor(
     ) {
         val lazyListState = rememberLazyListState()
         val focusManager = LocalFocusManager.current
+        val density = LocalDensity.current
+        val focusedBlockBottomMarginPx = with(density) {
+            FocusedBlockBottomMargin.roundToPx()
+        }
 
         // Scroll-to-focus: ensure the focused block is visible before its
         // TextBlockField requests Compose focus. Also clears Compose focus
@@ -424,7 +429,7 @@ public fun CascadeEditor(
         // This prevents keyboard blink when pressing Enter near the bottom
         // of the viewport; the old block keeps keyboard open while we scroll
         // the new block into view.
-        LaunchedEffect(stateHolder, lazyListState) {
+        LaunchedEffect(stateHolder, lazyListState, focusedBlockBottomMarginPx) {
             snapshotFlow {
                 val currentState = stateHolder.state
                 currentState.hasSelection to currentState.focusedBlockId
@@ -437,10 +442,26 @@ public fun CascadeEditor(
                 val index = currentState.blocks.indexOfFirst { it.id == focusedId }
                 if (index < 0) return@collectLatest
 
-                val visibleItems = lazyListState.layoutInfo.visibleItemsInfo
-                val isVisible = visibleItems.any { it.index == index }
-                if (!isVisible) {
-                    lazyListState.animateScrollToItem(index)
+                val layoutInfo = lazyListState.layoutInfo
+                val target = focusedBlockScrollTarget(
+                    focusedIndex = index,
+                    visibleItems = layoutInfo.visibleItemsInfo.map { item ->
+                        VisibleLazyListItemBounds(
+                            index = item.index,
+                            offset = item.offset,
+                            size = item.size,
+                        )
+                    },
+                    viewportStartOffset = layoutInfo.viewportStartOffset,
+                    viewportEndOffset = layoutInfo.viewportEndOffset,
+                    bottomMarginPx = focusedBlockBottomMarginPx,
+                )
+                when (target) {
+                    is FocusedBlockScrollTarget.By ->
+                        lazyListState.animateScrollBy(target.deltaPx.toFloat())
+                    is FocusedBlockScrollTarget.ToItem ->
+                        lazyListState.animateScrollToItem(target.index, target.scrollOffset)
+                    null -> Unit
                 }
             }
         }
@@ -463,7 +484,6 @@ public fun CascadeEditor(
             LocalCascadeTheme.current.colors.selectionOverlay
         val dimensions = LocalCascadeTheme.current.dimensions
         val blockHorizontalPadding = dimensions.blockHorizontalPadding
-        val density = LocalDensity.current
         val indentUnitPx = with(density) { dimensions.indentUnit.toPx() }
         val dragHoverOutlineIndex = remember(state.blocks) {
             DragHoverOutlineIndex(state.blocks)
