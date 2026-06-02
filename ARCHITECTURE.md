@@ -6,6 +6,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 
 | Concept | File | Key Symbol |
 |---------|------|------------|
+| Sample app shell/navigation | `sample/src/commonMain/kotlin/io/github/linreal/cascade/App.kt`, `sample/src/commonMain/kotlin/io/github/linreal/cascade/navigation/AppScreen.kt` | `App()`, `AppScreen.saveKey`, `AppScreen.fromSaveKey()` |
 | Main composable | `ui/CascadeEditor.kt` | `CascadeEditor(stateHolder, textStates, spanStates, registry, slashRegistry, slashCommand, ...)` |
 | Editor behavior config | `ui/CascadeEditorConfig.kt`, `ui/LocalCascadeEditorConfig.kt` | `CascadeEditorConfig`, `LocalCascadeEditorConfig` |
 | Editor interaction policy | `ui/EditorInteractionPolicy.kt`, `ui/LocalEditorInteractionPolicy.kt` | `EditorInteractionPolicy` (internal) |
