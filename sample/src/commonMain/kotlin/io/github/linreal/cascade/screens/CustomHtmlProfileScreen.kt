@@ -380,4 +380,7 @@ private fun HtmlDecodeWarning.describe(): String = when (this) {
         "Dropped $attr on <$tag> at offset $charOffset: $reason"
     is HtmlDecodeWarning.DecoderException ->
         "Decoder exception${tag?.let { " in <$it>" }.orEmpty()} at offset $charOffset: $message"
+    is HtmlDecodeWarning.InputLimitExceeded ->
+        "Decoder exception: document length is $actual, while max is $limit "
+
 }

@@ -61,6 +61,8 @@ import io.github.linreal.cascade.editor.ui.LocalSlashPopupItems
 import io.github.linreal.cascade.editor.ui.LocalSlashSessionAnchorBlockId
 import io.github.linreal.cascade.editor.ui.visibleSelection
 import io.github.linreal.cascade.editor.ui.visibleText
+import io.github.linreal.cascade.editor.guarded
+import io.github.linreal.cascade.editor.ui.LocalCascadeEditorConfig
 import io.github.linreal.cascade.editor.state.TextEditHistoryTracker
 import io.github.linreal.cascade.editor.state.captureCheckpoint
 import io.github.linreal.cascade.editor.state.captureFocusedEditingUiState
@@ -143,6 +145,9 @@ internal fun TextBlockField(
     val highlightBackground = colors.highlight
     val linkText = colors.linkText
     val baseDecoration = textStyle.textDecoration
+    val crashConfig = LocalCascadeEditorConfig.current
+    val crashPolicy = crashConfig.crashPolicy
+    val crashReporter = crashConfig.onInternalError
     val outputTransformation: OutputTransformation? = remember(
         block.id,
         spanState,
@@ -151,12 +156,23 @@ internal fun TextBlockField(
         highlightBackground,
         linkText,
         baseDecoration,
+        crashPolicy,
+        crashReporter,
     ) {
         if (!supportsSpans) {
             null
         } else {
             OutputTransformation {
-                SpanMapper.run { applyStyles(spanState.value, inlineCodeBackground, highlightBackground, linkText, baseDecoration) }
+                guarded(
+                    policy = crashPolicy,
+                    reporter = crashReporter,
+                    context = "spanOutputTransformation",
+                    fallback = { /* leave buffer as plain, unstyled text */ },
+                ) {
+                    SpanMapper.run {
+                        applyStyles(spanState.value, inlineCodeBackground, highlightBackground, linkText, baseDecoration)
+                    }
+                }
             }
         }
     }

@@ -9,6 +9,7 @@ import io.github.linreal.cascade.editor.core.CustomBlockType
 import io.github.linreal.cascade.editor.core.UnknownBlockType
 import io.github.linreal.cascade.editor.core.normalizeIndentationOutlineWithReport
 import io.github.linreal.cascade.editor.core.renumberNumberedLists
+import io.github.linreal.cascade.editor.loge
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -88,13 +89,26 @@ public object DocumentSchema {
 
     /**
      * Decodes a JSON string to a list of [Block]s, discarding warnings.
+     *
+     * **Lossy on failure.** Malformed JSON, an unsupported version, or any other decode
+     * failure is contained and yields an *empty list* — byte-identical to a legitimately
+     * empty document, so the caller cannot tell a parse failure from genuinely-empty input.
+     * The failure is logged via [loge] so it is not entirely invisible, but if you need to
+     * react to it programmatically (surface an error, fall back, retry) use
+     * [decodeFromStringWithReport] and inspect [DocumentDecodeWarning.DocumentParseFailed].
      */
     public fun decodeFromString(
         jsonString: String,
         options: DocumentDecodeOptions = DocumentDecodeOptions(),
         typeCodec: BlockTypeCodec? = null,
         contentCodec: BlockContentCodec? = null,
-    ): List<Block> = decode(Json.parseToJsonElement(jsonString).jsonObject, options, typeCodec, contentCodec)
+    ): List<Block> {
+        val result = decodeFromStringWithReport(jsonString, options, typeCodec, contentCodec)
+        result.warnings.filterIsInstance<DocumentDecodeWarning.DocumentParseFailed>().forEach {
+            loge("decodeFromString: document parse failed, returning empty list: ${it.reason}")
+        }
+        return result.blocks
+    }
 
     /**
      * Decodes a [JsonObject] to a [DocumentDecodeResult] with blocks and warnings.
@@ -155,7 +169,18 @@ public object DocumentSchema {
         options: DocumentDecodeOptions = DocumentDecodeOptions(),
         typeCodec: BlockTypeCodec? = null,
         contentCodec: BlockContentCodec? = null,
-    ): DocumentDecodeResult = decodeWithReport(Json.parseToJsonElement(jsonString).jsonObject, options, typeCodec, contentCodec)
+    ): DocumentDecodeResult = try {
+        decodeWithReport(Json.parseToJsonElement(jsonString).jsonObject, options, typeCodec, contentCodec)
+    } catch (throwable: Throwable) {
+        DocumentDecodeResult(
+            blocks = emptyList(),
+            warnings = listOf(
+                DocumentDecodeWarning.DocumentParseFailed(
+                    throwable.message ?: throwable::class.simpleName ?: "parse error",
+                ),
+            ),
+        )
+    }
 
     // Private encode helpers
 

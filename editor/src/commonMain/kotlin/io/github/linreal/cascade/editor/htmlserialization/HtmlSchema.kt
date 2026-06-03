@@ -36,6 +36,9 @@ public object HtmlSchema {
     /**
      * Decode [html] to a list of blocks using [profile], returning warnings.
      */
-    public fun decodeWithReport(html: String, profile: HtmlProfile): HtmlDecodeResult =
-        HtmlDecodeEngine.decodeWithReport(html, profile)
+    public fun decodeWithReport(
+        html: String,
+        profile: HtmlProfile,
+        limits: HtmlDecodeLimits = HtmlDecodeLimits.Default,
+    ): HtmlDecodeResult = HtmlDecodeEngine.decodeWithReport(html, profile, limits)
 }

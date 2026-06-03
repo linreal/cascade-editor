@@ -61,7 +61,7 @@ class FormattingStateCalculatorTest {
     }
 
     @Test
-    fun `Code block (text-supporting but spans-incapable) returns canFormat false`() {
+    fun `Code block - text-supporting but spans-incapable - returns canFormat false`() {
         val result = compute(
             focusedBlockType = BlockType.Code,
             selStart = 0,

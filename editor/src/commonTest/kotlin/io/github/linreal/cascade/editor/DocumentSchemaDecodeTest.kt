@@ -236,10 +236,18 @@ class DocumentSchemaDecodeTest {
     }
 
     @Test
-    fun `future version throws`() {
+    fun `future version is contained as DocumentParseFailed`() {
         val json = """{"version":3,"blocks":[]}"""
+        val result = DocumentSchema.decodeFromStringWithReport(json)
+        assertTrue(result.blocks.isEmpty())
+        assertTrue(result.warnings.any { it is DocumentDecodeWarning.DocumentParseFailed })
+    }
+
+    @Test
+    fun `future version via JsonObject overload still throws`() {
+        val json = Json.parseToJsonElement("""{"version":3,"blocks":[]}""").jsonObject
         assertFailsWith<IllegalArgumentException> {
-            DocumentSchema.decodeFromString(json)
+            DocumentSchema.decodeWithReport(json)
         }
     }
 
@@ -548,13 +556,25 @@ class DocumentSchemaDecodeTest {
     }
 
     @Test
-    fun `duplicate ID fail-fast throws`() {
+    fun `duplicate ID fail-fast via string entry is contained as DocumentParseFailed`() {
         val json = """{"version":1,"blocks":[
             {"id":"dup","type":{"typeId":"paragraph"},"content":{"kind":"text","version":1,"text":"a","spans":[]}},
             {"id":"dup","type":{"typeId":"paragraph"},"content":{"kind":"text","version":1,"text":"b","spans":[]}}
         ]}"""
+        val result = DocumentSchema.decodeFromStringWithReport(json, DocumentDecodeOptions(duplicateIdMode = DuplicateIdMode.FailFast))
+        assertTrue(result.blocks.isEmpty())
+        assertTrue(result.warnings.any { it is DocumentDecodeWarning.DocumentParseFailed })
+    }
+
+    @Test
+    fun `duplicate ID fail-fast via JsonObject overload still throws`() {
+        val json = """{"version":1,"blocks":[
+            {"id":"dup","type":{"typeId":"paragraph"},"content":{"kind":"text","version":1,"text":"a","spans":[]}},
+            {"id":"dup","type":{"typeId":"paragraph"},"content":{"kind":"text","version":1,"text":"b","spans":[]}}
+        ]}"""
+        val jsonObj = Json.parseToJsonElement(json).jsonObject
         assertFailsWith<IllegalArgumentException> {
-            DocumentSchema.decodeFromString(json, DocumentDecodeOptions(duplicateIdMode = DuplicateIdMode.FailFast))
+            DocumentSchema.decodeWithReport(jsonObj, DocumentDecodeOptions(duplicateIdMode = DuplicateIdMode.FailFast))
         }
     }
 
@@ -809,16 +829,14 @@ class DocumentSchemaDecodeTest {
     // Invalid JSON input
 
     @Test
-    fun `decodeFromString with invalid JSON throws SerializationException`() {
-        assertFailsWith<kotlinx.serialization.SerializationException> {
-            DocumentSchema.decodeFromString("not valid json at all")
-        }
+    fun `decodeFromString with invalid JSON returns empty list`() {
+        assertEquals(emptyList(), DocumentSchema.decodeFromString("not valid json at all"))
     }
 
     @Test
-    fun `decodeFromStringWithReport with invalid JSON throws SerializationException`() {
-        assertFailsWith<kotlinx.serialization.SerializationException> {
-            DocumentSchema.decodeFromStringWithReport("{{broken")
-        }
+    fun `decodeFromStringWithReport with invalid JSON returns DocumentParseFailed`() {
+        val result = DocumentSchema.decodeFromStringWithReport("{{broken")
+        assertTrue(result.blocks.isEmpty())
+        assertTrue(result.warnings.any { it is DocumentDecodeWarning.DocumentParseFailed })
     }
 }

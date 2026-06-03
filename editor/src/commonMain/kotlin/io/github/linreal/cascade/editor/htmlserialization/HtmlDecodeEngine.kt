@@ -9,23 +9,37 @@ import io.github.linreal.cascade.editor.core.renumberNumberedLists
 
 internal object HtmlDecodeEngine {
 
-    internal fun decodeWithReport(html: String, profile: HtmlProfile): HtmlDecodeResult = try {
-        val parsed = HtmlParser.parse(html, profile)
-        val warnings = parsed.warnings.toMutableList()
-        val rootNodes = parsed.nodes.map(HtmlNodeViewMapper::toView)
-        val runner = Runner(
-            rawSource = html,
-            profile = profile,
-            warnings = warnings,
-        )
-        val decodedBlocks = runner.decodeBlocks(rootNodes, parentTag = null)
-        val blocks = renumberNumberedLists(normalizeIndentationOutline(decodedBlocks))
-        HtmlDecodeResult(blocks = blocks, warnings = warnings)
-    } catch (throwable: Throwable) {
-        HtmlDecodeResult(
-            blocks = emptyList(),
-            warnings = listOf(decoderExceptionWarning(tag = null, throwable = throwable, charOffset = 0)),
-        )
+    internal fun decodeWithReport(
+        html: String,
+        profile: HtmlProfile,
+        limits: HtmlDecodeLimits = HtmlDecodeLimits.Default,
+    ): HtmlDecodeResult {
+        if (html.length > limits.maxInputChars) {
+            return HtmlDecodeResult(
+                blocks = emptyList(),
+                warnings = listOf(
+                    HtmlDecodeWarning.InputLimitExceeded(limit = limits.maxInputChars, actual = html.length),
+                ),
+            )
+        }
+        return try {
+            val parsed = HtmlParser.parse(html, profile)
+            val warnings = parsed.warnings.toMutableList()
+            val rootNodes = parsed.nodes.map(HtmlNodeViewMapper::toView)
+            val runner = Runner(
+                rawSource = html,
+                profile = profile,
+                warnings = warnings,
+            )
+            val decodedBlocks = runner.decodeBlocks(rootNodes, parentTag = null)
+            val blocks = renumberNumberedLists(normalizeIndentationOutline(decodedBlocks))
+            HtmlDecodeResult(blocks = blocks, warnings = warnings)
+        } catch (throwable: Throwable) {
+            HtmlDecodeResult(
+                blocks = emptyList(),
+                warnings = listOf(decoderExceptionWarning(tag = null, throwable = throwable, charOffset = 0)),
+            )
+        }
     }
 
     private class Runner(
