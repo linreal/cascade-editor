@@ -18,6 +18,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,9 +30,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import io.github.linreal.cascade.editor.action.ClearFocus
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
-import io.github.linreal.cascade.editor.state.BlockSpanStates
-import io.github.linreal.cascade.editor.state.BlockTextStates
-import io.github.linreal.cascade.editor.state.rememberEditorState
 import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
 import io.github.linreal.cascade.editor.ui.CascadeEditor
 import io.github.linreal.cascade.editor.ui.CascadeEditorConfig
@@ -58,10 +56,12 @@ fun ExternalToolbarScreen(
 ) {
     val editorTheme = if (isDark) CascadeEditorTheme.dark() else CascadeEditorTheme.light()
 
-    val textStates = remember { BlockTextStates() }
-    val spanStates = remember { BlockSpanStates() }
-    val initialBlocks = remember { buildExternalToolbarDemoBlocks() }
-    val editorState = rememberEditorState(initialBlocks)
+    val screenModel = rememberSaveable(saver = ExternalToolbarScreenModel.Saver) {
+        ExternalToolbarScreenModel()
+    }
+    val textStates = screenModel.textStates
+    val spanStates = screenModel.spanStates
+    val editorState = screenModel.editorState
     val focusManager = LocalFocusManager.current
     val callbacks = remember(editorState, textStates, spanStates) {
         DefaultBlockCallbacks(
@@ -73,7 +73,7 @@ fun ExternalToolbarScreen(
         )
     }
 
-    var isReadOnly by remember { mutableStateOf(false) }
+    val isReadOnly = screenModel.isReadOnly
     val editorConfig =
         CascadeEditorConfig(readOnly = isReadOnly, blockSelectionEnabled = false, blockDraggingEnabled = false)
 
@@ -105,7 +105,7 @@ fun ExternalToolbarScreen(
             isReadOnly = isReadOnly,
             isDark = isDark,
             onBack = onBack,
-            onToggleReadOnly = { isReadOnly = !isReadOnly },
+            onToggleReadOnly = screenModel::toggleReadOnly,
             onToggleTheme = onToggleTheme,
         )
 

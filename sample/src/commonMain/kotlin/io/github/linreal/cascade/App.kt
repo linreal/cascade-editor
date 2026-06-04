@@ -12,6 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,6 +25,11 @@ import io.github.linreal.cascade.screens.CustomToolbarScreen
 import io.github.linreal.cascade.screens.EditorDemoScreen
 import io.github.linreal.cascade.screens.external_toolbar.ExternalToolbarScreen
 import io.github.linreal.cascade.screens.LandingScreen
+
+private val AppScreenSaver = Saver<AppScreen, String>(
+    save = { it.saveKey },
+    restore = { AppScreen.fromSaveKey(it) },
+)
 
 @Composable
 @Preview
@@ -44,7 +51,9 @@ fun App() {
     }
 
     MaterialTheme(colorScheme = colorScheme) {
-        var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.Landing) }
+        var currentScreen by rememberSaveable(stateSaver = AppScreenSaver) {
+            mutableStateOf<AppScreen>(AppScreen.Landing)
+        }
 
         Box(
             modifier = Modifier

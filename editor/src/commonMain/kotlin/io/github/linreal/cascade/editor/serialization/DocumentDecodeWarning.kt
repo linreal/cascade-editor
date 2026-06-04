@@ -62,4 +62,9 @@ public sealed class DocumentDecodeWarning {
         val param: String,
         val fallback: String,
     ) : DocumentDecodeWarning()
+
+    /** The JSON document could not be parsed or its version was unsupported; load aborted with an empty result. */
+    public data class DocumentParseFailed(
+        val reason: String,
+    ) : DocumentDecodeWarning()
 }

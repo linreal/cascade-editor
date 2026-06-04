@@ -37,8 +37,9 @@ public fun EditorStateHolder.loadFromHtml(
     textStates: BlockTextStates,
     spanStates: BlockSpanStates,
     profile: HtmlProfile,
+    limits: HtmlDecodeLimits = HtmlDecodeLimits.Default,
 ): HtmlDecodeResult {
-    val result = HtmlSchema.decodeWithReport(html, profile)
+    val result = HtmlSchema.decodeWithReport(html, profile, limits)
     textStates.clear()
     spanStates.clear()
     setState(EditorState.withBlocks(result.blocks))

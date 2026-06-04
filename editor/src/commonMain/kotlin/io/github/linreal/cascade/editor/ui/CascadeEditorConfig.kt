@@ -1,6 +1,8 @@
 package io.github.linreal.cascade.editor.ui
 
 import androidx.compose.runtime.Immutable
+import io.github.linreal.cascade.editor.CascadeErrorReporter
+import io.github.linreal.cascade.editor.CrashPolicy
 
 /**
  * Cross-cutting behavior configuration for [CascadeEditor].
@@ -24,6 +26,17 @@ public data class CascadeEditorConfig(
     val readOnly: Boolean = false,
     val blockSelectionEnabled: Boolean = true,
     val blockDraggingEnabled: Boolean = true,
+    /**
+     * How the editor reacts to a contained internal failure (render, span transform,
+     * document load). Default contains and reports; pass [CrashPolicy.Rethrow] in tests
+     * or debug builds to surface bugs.
+     */
+    val crashPolicy: CrashPolicy = CrashPolicy.ContainAndReport,
+    /**
+     * Host hook invoked with every contained internal failure (for routing into the
+     * host's own crash reporting). Never invoked under [CrashPolicy.Rethrow].
+     */
+    val onInternalError: CascadeErrorReporter? = null,
 ) {
     public companion object {
         /** Editable default used when callers do not provide a config. */

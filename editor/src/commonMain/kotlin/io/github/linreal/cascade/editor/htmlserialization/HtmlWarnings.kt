@@ -93,6 +93,13 @@ public sealed class HtmlDecodeWarning {
         val message: String,
         override val charOffset: Int,
     ) : HtmlDecodeWarning()
+
+    /** Input exceeded a decode size limit; decoding was aborted with an empty result. */
+    public data class InputLimitExceeded(
+        val limit: Int,
+        val actual: Int,
+        override val charOffset: Int = 0,
+    ) : HtmlDecodeWarning()
 }
 
 /**

@@ -35,6 +35,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.dp
@@ -72,6 +74,9 @@ import io.github.linreal.cascade.editor.theme.LocalCascadeStrings
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 import io.github.linreal.cascade.editor.ui.renderers.LocalOrderedListPrefixStyles
 import io.github.linreal.cascade.editor.ui.renderers.resolveOrderedListPrefixStyles
+import io.github.linreal.cascade.editor.CascadeErrorReporter
+import io.github.linreal.cascade.editor.CrashPolicy
+import io.github.linreal.cascade.editor.guarded
 
 /**
  * Main editor composable for CascadeEditor.
@@ -165,6 +170,8 @@ public fun CascadeEditor(
     val interactionPolicy = remember(config) {
         config.toInteractionPolicy()
     }
+    val crashPolicy = config.crashPolicy
+    val crashReporter = config.onInternalError
     val orderedListPrefixStyles = remember(state.blocks) {
         resolveOrderedListPrefixStyles(state.blocks)
     }
@@ -568,6 +575,7 @@ public fun CascadeEditor(
                                 isSelected = isSelected,
                                 isFocused = isFocused,
                                 modifier = Modifier
+                                    .guardedBlockRender(crashPolicy, crashReporter, block.type.typeId)
                                     .then(
                                         if (isSelected && renderer.handlesSelectionVisual.not()) {
                                             Modifier
@@ -887,4 +895,40 @@ internal fun createMergedSlashRegistry(
         builtInItems.forEach(::register)
         customItems.forEach(::register)
     }
+}
+
+/**
+ * This guard catches measure/draw failures: a
+ * failing block collapses to zero size / draws nothing and the failure is reported,
+ * rather than crashing the host. Under [CrashPolicy.Rethrow] the guard is a no-op so
+ * tests and debug builds see raw failures.
+ */
+private fun Modifier.guardedBlockRender(
+    policy: CrashPolicy,
+    reporter: CascadeErrorReporter?,
+    typeId: String,
+): Modifier {
+    if (policy == CrashPolicy.Rethrow) return this
+    return this
+        .layout { measurable, constraints ->
+            val placeable = guarded(
+                policy = policy,
+                reporter = reporter,
+                context = "blockMeasure:$typeId",
+                fallback = { null },
+            ) { measurable.measure(constraints) }
+            if (placeable == null) {
+                layout(0, 0) {}
+            } else {
+                layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+            }
+        }
+        .drawWithContent {
+            guarded(
+                policy = policy,
+                reporter = reporter,
+                context = "blockDraw:$typeId",
+                fallback = {},
+            ) { drawContent() }
+        }
 }

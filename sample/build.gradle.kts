@@ -51,6 +51,7 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.editor)
             implementation(libs.compose.runtime)
+            implementation(libs.compose.saveable)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)

@@ -6,8 +6,10 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 
 | Concept | File | Key Symbol |
 |---------|------|------------|
+| Sample app shell/navigation | `sample/src/commonMain/kotlin/io/github/linreal/cascade/App.kt`, `sample/src/commonMain/kotlin/io/github/linreal/cascade/navigation/AppScreen.kt` | `App()`, `AppScreen.saveKey`, `AppScreen.fromSaveKey()` |
 | Main composable | `ui/CascadeEditor.kt` | `CascadeEditor(stateHolder, textStates, spanStates, registry, slashRegistry, slashCommand, ...)` |
-| Editor behavior config | `ui/CascadeEditorConfig.kt`, `ui/LocalCascadeEditorConfig.kt` | `CascadeEditorConfig`, `LocalCascadeEditorConfig` |
+| Editor behavior config | `ui/CascadeEditorConfig.kt`, `ui/LocalCascadeEditorConfig.kt` | `CascadeEditorConfig` (incl. `crashPolicy`/`onInternalError`), `LocalCascadeEditorConfig` |
+| Crash handling | `CrashHandling.kt` | `CrashPolicy`, `CascadeError`, `CascadeErrorReporter`, `guarded()`/`reportContainedFailure()` (internal) |
 | Editor interaction policy | `ui/EditorInteractionPolicy.kt`, `ui/LocalEditorInteractionPolicy.kt` | `EditorInteractionPolicy` (internal) |
 | Text input | `ui/BackspaceAwareTextEdit.kt` | `BackspaceAwareTextField()`, `TextFieldState.selectedVisibleText()` |
 | Shared text field | `ui/renderers/TextBlockField.kt` | `TextBlockField()` |
@@ -82,6 +84,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Editor serialization ext | `serialization/DocumentSerializationExt.kt` | `EditorStateHolder.toJson()`, `EditorStateHolder.loadFromJson()` |
 | Editor HTML serialization ext | `htmlserialization/HtmlSerializationExt.kt` | `EditorStateHolder.toHtml()`, `EditorStateHolder.loadFromHtml()` |
 | HTML schema entry point | `htmlserialization/HtmlSchema.kt` | `HtmlSchema` (`decode` and `encode` wired through profile-driven engines) |
+| HTML decode limits | `htmlserialization/HtmlDecodeLimits.kt` | `HtmlDecodeLimits` (input-size bound; `loadFromHtml` / `HtmlSchema.decodeWithReport` `limits` param) |
 | HTML parser internals | `htmlserialization/HtmlParser.kt`, `htmlserialization/HtmlPolicyApplier.kt`, `htmlserialization/HtmlTokenizer.kt`, `htmlserialization/HtmlTreeBuilder.kt`, `htmlserialization/HtmlNode.kt`, `htmlserialization/HtmlToken.kt` | `HtmlParser.parse()` (internal), `HtmlPolicyApplier`, `HtmlNode`, `HtmlToken` |
 | HTML decode engine | `htmlserialization/HtmlDecodeEngine.kt`, `htmlserialization/TagDecodeContextImpl.kt`, `htmlserialization/HtmlNodeViewMapper.kt`, `htmlserialization/DefaultTagDecoders.kt`, `htmlserialization/PreservedHtmlBlockType.kt` | `HtmlDecodeEngine` (internal; normalizes indentation + numbered lists after decode), `TagDecodeContextImpl`, default tag decoders, `PreservedHtmlBlockType`; default list-item decoders honor `class="cascade-indent-N"` as the lossless default-profile list-depth escape hatch, while default `<ul>` / `<ol>` containers delegate to a profile-level custom `<li>` decoder when one is registered |
 | HTML encode engine | `htmlserialization/HtmlEncodeEngine.kt`, `htmlserialization/HtmlEncodeContextImpl.kt`, `htmlserialization/DefaultBlockEncoders.kt`, `htmlserialization/DefaultSpanEncoders.kt`, `htmlserialization/DefaultListOutlineEncoder.kt`, `htmlserialization/DefaultEncoderFallbacks.kt` | `HtmlEncodeEngine` (internal), `HtmlEncodeContextImpl`, canonical default block/span encoders, one default `listOutline` encoder for mixed bullet/numbered runs, default block/span encode fallbacks |
@@ -272,7 +275,8 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 - **Performance**: prefer `graphicsLayer { }` lambdas over Modifier params for draw-phase-only changes (e.g., alpha, translationY)
 - **Drag gesture** lives on the Box wrapper, NOT on LazyColumn items (survives recycling)
 - **Auto-scroll** uses `dispatchRawDelta` to avoid MutatorMutex contention with gesture scroll
-- **Tests** go in `editor/src/commonTest/`. Run: `./gradlew :editor:allTests`
+- **Crash containment has two regimes** — UI-runtime guards (per-block measure/draw via `guardedBlockRender`, span `OutputTransformation`) are policy-gated by `CascadeEditorConfig.crashPolicy` (`Rethrow` in tests/debug, `ContainAndReport` in release) and route through `guarded()`; the serialization layer (`loadFromJson`/`loadFromHtml` string entry points, HTML decode) is always-contain-and-warn (returns `DocumentParseFailed`/`InputLimitExceeded` warning lists, not policy-gated). Compose forbids `try/catch` around `@Composable` calls, so composition-phase renderer throws are not containable in-tree (host trust boundary for custom renderers)
+- **Tests** go in `editor/src/commonTest/` (Compose UI tests in `editor/src/desktopTest/`). Run: `./gradlew :editor:allTests`
 
 ## Implementation Status
 
