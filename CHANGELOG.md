@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.6.0] - 2026-06-07
+
+### Added
+
+- Added crash containment for built-in editor surfaces: per-block measure/draw failures are caught at a containment boundary so a failing block degrades to a safe fallback instead of crashing the host
+- Added `CrashPolicy` (`Rethrow` / `ContainAndReport`), `CascadeError`, and the `CascadeErrorReporter` host hook for routing contained failures into application crash reporting
+- Added `CascadeEditorConfig(crashPolicy = ..., onInternalError = ...)` to control containment behavior; defaults to `ContainAndReport` for release and supports `Rethrow` for tests and debug builds
+- Added always-contain-and-warn guarantees for serialization entry points: `loadFromJson()` / `loadFromHtml()` no longer throw on malformed input, returning `DocumentDecodeWarning.DocumentParseFailed` / `HtmlDecodeWarning.InputLimitExceeded` instead
+
+### Changed
+
+- Updated dependencies: Compose Multiplatform 1.11.0, Kotlin 2.3.21
+
+### Fixed
+
+- Fixed scroll-to-unfocused-block behavior on the Android target
+
 ## [1.5.0] - 2026-05-17
 
 ### Added

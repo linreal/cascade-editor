@@ -4,10 +4,10 @@ The first native block-based editor for Compose Multiplatform.
 
 Notion/Craft-style editing, implemented as a shared Kotlin editor core for Android, iOS, and desktop: draggable blocks, outline indentation, slash commands, undo/redo, rich-text spans, custom block types, and versioned document serialization, all without WebView, HTML/contentEditable, or embedded JavaScript editors.
 
-Shared `commonMain` editor core | Android + iOS + Desktop | 1000+ tests | Extensible block registry
+Shared `commonMain` editor core | Android + iOS + Desktop | 1600+ tests | Extensible block registry
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
-[![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.10-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
+[![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.11-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Android](https://img.shields.io/badge/Android-minSdk_28-3DDC84?logo=android)](https://developer.android.com/)
 [![iOS](https://img.shields.io/badge/iOS-16+-000000?logo=apple)](https://developer.apple.com/)
@@ -48,13 +48,14 @@ If you only need a formatted text area, a single-buffer editor is simpler. Casca
 - **Shared multiplatform editor core** — one Kotlin codebase for Android, iOS, and desktop with native Compose rendering instead of HTML/contentEditable or embedded JavaScript editors
 - **Theming and localization** — configurable colors, typography, and UI strings for integrating the editor into product-specific design systems
 - **Read-only mode** — render a selectable, scrollable document with links still openable while editor-owned mutation controls are disabled
+- **Crash containment** — opt-in `CrashPolicy` that catches per-block render failures and reports them through a host hook instead of crashing the app, plus always-no-throw JSON/HTML decode with structured warnings
 
 ## Quick Start
 
 Create a native block document with an initial heading and paragraph:
 
 ```groovy
-implementation("io.github.linreal:cascade-editor:1.4.0")
+implementation("io.github.linreal:cascade-editor:1.6.0")
 ```
 
 ```kotlin
@@ -378,6 +379,26 @@ val result = stateHolder.loadFromHtml(html, textStates, spanStates, HtmlProfile.
 
 `HtmlProfile.Default` ships an HTML5-ish canonical mapping. For dialect-specific HTML (Quill-flavored payloads, custom link attributes, flat `ql-indent-N` lists, and so on), compose a custom profile from `HtmlProfile.Default` using `withTagDecoder()`, `withSpanEncoder()`, `withBlockGroupEncoder()`, and `withParserPolicy()`. See [HtmlImportExportFeatureContext.md](docs/HtmlImportExport.md) for the full extension recipe and the reference `CustomHtmlProfile` in `sample/`.
 
+## Crash Handling
+
+The editor can contain its own internal failures so a single misbehaving block does not take down the host app. By default `CascadeEditorConfig` uses `CrashPolicy.ContainAndReport`: per-block measure/draw failures are caught at a containment boundary, the failing block degrades to a safe fallback, and the failure is surfaced through an optional host hook.
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    config = CascadeEditorConfig(
+        crashPolicy = if (BuildConfig.DEBUG) CrashPolicy.Rethrow else CrashPolicy.ContainAndReport,
+        onInternalError = { error -> crashReporter.log(error.context, error.cause) },
+    ),
+)
+```
+
+Use `CrashPolicy.Rethrow` in tests and debug builds to surface bugs instead of hiding them. The `onInternalError` reporter receives a `CascadeError(context, cause)` for routing into your own telemetry; it is never invoked under `Rethrow`.
+
+Serialization entry points are always contain-and-warn, regardless of `crashPolicy`: `loadFromJson()` and `loadFromHtml()` never throw on malformed input. They abort to an empty/partial result and report `DocumentDecodeWarning.DocumentParseFailed` or `HtmlDecodeWarning.InputLimitExceeded` in the returned warning list. HTML decode is additionally bounded by `HtmlDecodeLimits` to guard against OOM on pathological input.
+
+Composition-phase throws from custom renderers cannot be contained in-tree (Compose forbids `try/catch` around `@Composable` calls), so custom renderers remain a host trust boundary.
+
 ## Architecture
 
 ```
@@ -422,7 +443,7 @@ This is not a styled text field. CascadeEditor combines block-structured documen
 
 ## Testing
 
-950+ tests across 52 test files — reducers, history/undo/redo, span algorithms, slash commands, serialization, drag-and-drop, and integration workflows. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
+1600+ tests across 117 test files — reducers, history/undo/redo, span algorithms, slash commands, serialization, crash containment, drag-and-drop, and integration workflows. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
 
 ```bash
 ./gradlew :editor:allTests
@@ -432,8 +453,8 @@ This is not a styled text field. CascadeEditor combines block-structured documen
 
 | | Version |
 |---|---|
-| Kotlin | 2.3.20 |
-| Compose Multiplatform | 1.10.3 |
+| Kotlin | 2.3.21 |
+| Compose Multiplatform | 1.11.0 |
 | Android minSdk | 28 |
 | Android compileSdk | 36 |
 | iOS min version | 16.0 |
