@@ -1,24 +1,16 @@
 package io.github.linreal.cascade.screens
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,20 +22,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import cascadeeditor.sample.generated.resources.Res
-import cascadeeditor.sample.generated.resources.ic_arrow_back
-import cascadeeditor.sample.generated.resources.ic_dark_mode
-import cascadeeditor.sample.generated.resources.ic_delete
-import cascadeeditor.sample.generated.resources.ic_edit
-import cascadeeditor.sample.generated.resources.ic_edit_off
-import cascadeeditor.sample.generated.resources.ic_light_mode
-import cascadeeditor.sample.generated.resources.ic_redo
-import cascadeeditor.sample.generated.resources.ic_undo
 import io.github.linreal.cascade.editor.action.ClearSelection
 import io.github.linreal.cascade.editor.action.DeleteSelectedOrFocused
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
@@ -53,7 +34,7 @@ import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorStateHolder
 import io.github.linreal.cascade.editor.state.rememberEditorState
-import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
+import io.github.linreal.cascade.theme.SampleEditorTheme
 import io.github.linreal.cascade.editor.ui.CascadeEditor
 import io.github.linreal.cascade.editor.ui.CascadeEditorConfig
 import io.github.linreal.cascade.storage.DocumentStorage
@@ -64,8 +45,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun EditorDemoScreen(
@@ -73,7 +52,7 @@ fun EditorDemoScreen(
     onToggleTheme: () -> Unit,
     onBack: () -> Unit,
 ) {
-    val editorTheme = if (isDark) CascadeEditorTheme.dark() else CascadeEditorTheme.light()
+    val editorTheme = if (isDark) SampleEditorTheme.dark() else SampleEditorTheme.light()
     val storage = rememberDocumentStorage()
     val scope = rememberCoroutineScope()
 
@@ -120,8 +99,6 @@ fun EditorDemoScreen(
             isDark = isDark,
             canUndo = editorState.canUndo,
             canRedo = editorState.canRedo,
-            saveStatus = saveStatus,
-            lastOpenedLink = lastOpenedLink,
             onCancelSelection = { editorState.dispatch(ClearSelection) },
             onDeleteSelected = { callbacks.dispatch(DeleteSelectedOrFocused) },
             onBack = {
@@ -145,23 +122,34 @@ fun EditorDemoScreen(
                 }
             },
         )
-        if (isLoaded) {
-            CascadeEditor(
-                stateHolder = editorState,
-                textStates = textStates,
-                spanStates = spanStates,
-                theme = editorTheme,
-                onOpenLink = { url ->
-                    lastOpenedLink = url
-                    scope.launch {
-                        delay(3_000)
-                        if (lastOpenedLink == url) lastOpenedLink = ""
-                    }
-                    runCatching { uriHandler.openUri(url) }
-                },
-                config = CascadeEditorConfig(readOnly = isReadOnly),
-                modifier = Modifier.fillMaxSize().imePadding(),
-            )
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            if (isLoaded) {
+                CascadeEditor(
+                    stateHolder = editorState,
+                    textStates = textStates,
+                    spanStates = spanStates,
+                    theme = editorTheme,
+                    onOpenLink = { url ->
+                        lastOpenedLink = url
+                        scope.launch {
+                            delay(3_000)
+                            if (lastOpenedLink == url) lastOpenedLink = ""
+                        }
+                        runCatching { uriHandler.openUri(url) }
+                    },
+                    config = CascadeEditorConfig(readOnly = isReadOnly),
+                    modifier = Modifier.fillMaxSize().imePadding(),
+                )
+            }
+            // Floating status indicators, centered just below the top bar.
+            Column(
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                SavedPill(status = saveStatus)
+                OpenedLinkPill(link = lastOpenedLink)
+            }
         }
     }
 }
@@ -225,8 +213,6 @@ private fun EditorDemoHeader(
     isDark: Boolean,
     canUndo: Boolean,
     canRedo: Boolean,
-    saveStatus: String,
-    lastOpenedLink: String,
     onCancelSelection: () -> Unit,
     onDeleteSelected: () -> Unit,
     onBack: () -> Unit,
@@ -242,20 +228,18 @@ private fun EditorDemoHeader(
         label = "header",
     ) { selectionMode ->
         if (selectionMode) {
-            SelectionHeader(
+            SelectionTopBar(
                 selectedCount = selectedCount,
                 isReadOnly = isReadOnly,
                 onCancelSelection = onCancelSelection,
                 onDeleteSelected = onDeleteSelected,
             )
         } else {
-            EditingHeader(
+            EditorTopBar(
                 isReadOnly = isReadOnly,
                 isDark = isDark,
                 canUndo = canUndo,
                 canRedo = canRedo,
-                saveStatus = saveStatus,
-                lastOpenedLink = lastOpenedLink,
                 onBack = onBack,
                 onUndo = onUndo,
                 onRedo = onRedo,
@@ -264,173 +248,6 @@ private fun EditorDemoHeader(
                 onReset = onReset,
             )
         }
-    }
-}
-
-@Composable
-private fun SelectionHeader(
-    selectedCount: Int,
-    isReadOnly: Boolean,
-    onCancelSelection: () -> Unit,
-    onDeleteSelected: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onCancelSelection) {
-                Text("Cancel")
-            }
-            Text(
-                text = "$selectedCount selected",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(start = 4.dp),
-            )
-        }
-        HeaderIconButton(
-            icon = Res.drawable.ic_delete,
-            contentDescription = "Delete selected blocks",
-            tint = MaterialTheme.colorScheme.error.copy(
-                alpha = if (isReadOnly) 0.38f else 1f,
-            ),
-            iconSize = 24.dp,
-            enabled = !isReadOnly,
-            onClick = onDeleteSelected,
-        )
-    }
-}
-
-@Composable
-private fun EditingHeader(
-    isReadOnly: Boolean,
-    isDark: Boolean,
-    canUndo: Boolean,
-    canRedo: Boolean,
-    saveStatus: String,
-    lastOpenedLink: String,
-    onBack: () -> Unit,
-    onUndo: () -> Unit,
-    onRedo: () -> Unit,
-    onToggleReadOnly: () -> Unit,
-    onToggleTheme: () -> Unit,
-    onReset: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            HeaderIconButton(
-                icon = Res.drawable.ic_arrow_back,
-                contentDescription = "Back",
-                tint = MaterialTheme.colorScheme.onBackground,
-                iconSize = 24.dp,
-                onClick = onBack,
-            )
-            HeaderIconButton(
-                icon = Res.drawable.ic_undo,
-                contentDescription = "Undo",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                    alpha = if (!isReadOnly && canUndo) 1f else 0.38f,
-                ),
-                enabled = !isReadOnly && canUndo,
-                onClick = onUndo,
-            )
-            HeaderIconButton(
-                icon = Res.drawable.ic_redo,
-                contentDescription = "Redo",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                    alpha = if (!isReadOnly && canRedo) 1f else 0.38f,
-                ),
-                enabled = !isReadOnly && canRedo,
-                onClick = onRedo,
-            )
-            EditorStatusLabels(
-                saveStatus = saveStatus,
-                lastOpenedLink = lastOpenedLink,
-            )
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            HeaderIconButton(
-                icon = if (isReadOnly) Res.drawable.ic_edit_off else Res.drawable.ic_edit,
-                contentDescription = if (isReadOnly) "Read-only" else "Editable",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                onClick = onToggleReadOnly,
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            HeaderIconButton(
-                icon = if (isDark) Res.drawable.ic_light_mode else Res.drawable.ic_dark_mode,
-                contentDescription = if (isDark) "Switch to light" else "Switch to dark",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                onClick = onToggleTheme,
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            TextButton(
-                enabled = !isReadOnly,
-                onClick = onReset,
-            ) {
-                Text("Reset")
-            }
-        }
-    }
-}
-
-@Composable
-private fun EditorStatusLabels(
-    saveStatus: String,
-    lastOpenedLink: String,
-) {
-    AnimatedVisibility(
-        visible = saveStatus.isNotEmpty(),
-        enter = fadeIn(),
-        exit = fadeOut(),
-    ) {
-        Text(
-            text = saveStatus,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 12.dp),
-        )
-    }
-    AnimatedVisibility(
-        visible = lastOpenedLink.isNotEmpty(),
-        enter = fadeIn(),
-        exit = fadeOut(),
-    ) {
-        Text(
-            text = "Opened: $lastOpenedLink",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 12.dp),
-        )
-    }
-}
-
-@Composable
-private fun HeaderIconButton(
-    icon: DrawableResource,
-    contentDescription: String,
-    tint: Color,
-    modifier: Modifier = Modifier,
-    iconSize: Dp = 20.dp,
-    enabled: Boolean = true,
-    onClick: () -> Unit,
-) {
-    IconButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.size(35.dp),
-    ) {
-        Image(
-            painter = painterResource(icon),
-            contentDescription = contentDescription,
-            colorFilter = ColorFilter.tint(tint),
-            modifier = Modifier.size(iconSize),
-        )
     }
 }
 

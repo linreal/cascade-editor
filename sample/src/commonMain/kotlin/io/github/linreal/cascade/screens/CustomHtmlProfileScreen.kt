@@ -49,7 +49,7 @@ import io.github.linreal.cascade.editor.htmlserialization.toHtml
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.rememberEditorState
-import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
+import io.github.linreal.cascade.theme.SampleEditorTheme
 import io.github.linreal.cascade.editor.ui.CascadeEditor
 import io.github.linreal.cascade.profiles.CustomHtmlProfile
 import io.github.linreal.cascade.profiles.CustomHtmlSamples
@@ -62,7 +62,7 @@ fun CustomHtmlProfileScreen(
     onToggleTheme: () -> Unit,
     onBack: () -> Unit,
 ) {
-    val editorTheme = if (isDark) CascadeEditorTheme.dark() else CascadeEditorTheme.light()
+    val editorTheme = if (isDark) SampleEditorTheme.dark() else SampleEditorTheme.light()
     val textStates = remember { BlockTextStates() }
     val spanStates = remember { BlockSpanStates() }
     val initialBlocks = remember {

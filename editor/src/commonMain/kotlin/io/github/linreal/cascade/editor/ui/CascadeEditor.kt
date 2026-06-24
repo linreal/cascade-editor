@@ -52,9 +52,13 @@ import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.SpanStyle
+import io.github.linreal.cascade.editor.registry.BlockCallbacks
+import io.github.linreal.cascade.editor.registry.BlockRenderScope
+import io.github.linreal.cascade.editor.registry.BlockRenderer
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
 import io.github.linreal.cascade.editor.registry.PolicyAwareBlockCallbacks
+import io.github.linreal.cascade.editor.registry.ScopedBlockRenderer
 import io.github.linreal.cascade.editor.richtext.FormattingState
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandFactory
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
@@ -169,6 +173,15 @@ public fun CascadeEditor(
     val state = stateHolder.state
     val interactionPolicy = remember(config) {
         config.toInteractionPolicy()
+    }
+    val currentConfig by rememberUpdatedState(config)
+    val currentInteractionPolicy by rememberUpdatedState(interactionPolicy)
+    val blockRenderScope = remember(stateHolder) {
+        DefaultBlockRenderScope(
+            stateHolder = stateHolder,
+            configProvider = { currentConfig },
+            policyProvider = { currentInteractionPolicy },
+        )
     }
     val crashPolicy = config.crashPolicy
     val crashReporter = config.onInternalError
@@ -570,31 +583,35 @@ public fun CascadeEditor(
                                     fadeOutSpec = null,
                                 )
                         ) {
-                            renderer?.Render(
-                                block = block,
-                                isSelected = isSelected,
-                                isFocused = isFocused,
-                                modifier = Modifier
-                                    .guardedBlockRender(crashPolicy, crashReporter, block.type.typeId)
-                                    .then(
-                                        if (isSelected && renderer.handlesSelectionVisual.not()) {
-                                            Modifier
-                                                .padding(vertical = 2.dp)
-                                                .background(
-                                                    color = selectionOverlayColor,
-                                                    shape = SelectionOverlayShape,
-                                                )
-                                        } else {
-                                            Modifier.padding(vertical = 2.dp)
-                                        }
-                                    )
-                                    .padding(horizontal = blockHorizontalPadding, vertical = 2.dp)
-                                    .graphicsLayer {
-                                        // Apply 50% transparency to blocks being dragged
-                                        alpha = if (isDragging) 0.5f else 1f
-                                    },
-                                callbacks = callbacks
-                            )
+                            if (renderer != null) {
+                                RenderRegisteredBlock(
+                                    renderer = renderer,
+                                    block = block,
+                                    isSelected = isSelected,
+                                    isFocused = isFocused,
+                                    modifier = Modifier
+                                        .guardedBlockRender(crashPolicy, crashReporter, block.type.typeId)
+                                        .then(
+                                            if (isSelected && renderer.handlesSelectionVisual.not()) {
+                                                Modifier
+                                                    .padding(vertical = 2.dp)
+                                                    .background(
+                                                        color = selectionOverlayColor,
+                                                        shape = SelectionOverlayShape,
+                                                    )
+                                            } else {
+                                                Modifier.padding(vertical = 2.dp)
+                                            }
+                                        )
+                                        .padding(horizontal = blockHorizontalPadding, vertical = 2.dp)
+                                        .graphicsLayer {
+                                            // Apply 50% transparency to blocks being dragged
+                                            alpha = if (isDragging) 0.5f else 1f
+                                        },
+                                    callbacks = callbacks,
+                                    scope = blockRenderScope,
+                                )
+                            }
                             if (hasSelection) {
                                 // overlay to consume all clicks on elements inside blocks
                                 Box(
@@ -653,7 +670,8 @@ public fun CascadeEditor(
                             futureRootIndentationLevel = dragState.futureRootIndentationLevel,
                             payloadBlockCount = dragState.payloadBlockIds.size,
                             registry = registry,
-                            callbacks = callbacks
+                            callbacks = callbacks,
+                            scope = blockRenderScope,
                         )
                     }
                 }
@@ -744,6 +762,37 @@ private fun rememberIosHideKeyboardCallback(
 ): (() -> Unit)? {
     if (!isIos) return null
     return remember(stateHolder) { { stateHolder.dispatch(ClearFocus) } }
+}
+
+@Composable
+internal fun RenderRegisteredBlock(
+    renderer: BlockRenderer<*>,
+    block: Block,
+    isSelected: Boolean,
+    isFocused: Boolean,
+    modifier: Modifier,
+    callbacks: BlockCallbacks,
+    scope: BlockRenderScope,
+) {
+    val scopedRenderer = renderer as? ScopedBlockRenderer<*>
+    if (scopedRenderer != null) {
+        scopedRenderer.Render(
+            block = block,
+            isSelected = isSelected,
+            isFocused = isFocused,
+            modifier = modifier,
+            callbacks = callbacks,
+            scope = scope,
+        )
+    } else {
+        renderer.Render(
+            block = block,
+            isSelected = isSelected,
+            isFocused = isFocused,
+            modifier = modifier,
+            callbacks = callbacks,
+        )
+    }
 }
 
 /**

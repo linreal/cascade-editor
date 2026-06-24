@@ -351,6 +351,27 @@ registry.register(
 )
 ```
 
+For custom blocks that need to inspect editor state or commit block mutations from their own UI, implement `ScopedBlockRenderer`:
+
+```kotlin
+class TableRenderer : ScopedBlockRenderer<TableBlockType> {
+    @Composable
+    override fun Render(
+        block: Block,
+        isSelected: Boolean,
+        isFocused: Boolean,
+        modifier: Modifier,
+        callbacks: BlockCallbacks,
+        scope: BlockRenderScope,
+    ) {
+        val readOnly = scope.readOnly
+        val canMutate = !readOnly && scope.canUpdateBlock
+    }
+}
+```
+
+See [Interactive Custom Blocks](docs/CustomInteractiveBlocks.md) for scoped mutation patterns, read-only capability checks, and custom JSON payload guidance.
+
 ## Save & Load
 
 Save a document to JSON and restore it later — two lines:

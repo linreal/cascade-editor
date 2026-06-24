@@ -85,6 +85,13 @@ public data class CascadeEditorColors(
      * unless set explicitly.
      */
     val codeBlockBackground: Color = inlineCodeBackground,
+    /**
+     * Floating toolbar pill surface (default rich-text toolbar background).
+     *
+     * Defaults to [popupBackground] only when constructing [CascadeEditorColors];
+     * data-class [copy] retains the existing value unless set explicitly.
+     */
+    val toolbarBackground: Color = popupBackground,
 ) {
     public companion object {
         /**
@@ -117,6 +124,7 @@ public data class CascadeEditorColors(
             linkText = Color(0xFF1A73E8),
             error = Color(0xFFB3261E),
             codeBlockBackground = Color(0x0F000000),
+            toolbarBackground = Color.White,
         )
 
         /**
@@ -149,6 +157,7 @@ public data class CascadeEditorColors(
             linkText = Color(0xFF8AB4F8),
             error = Color(0xFFF2B8B5),
             codeBlockBackground = Color(0x1FFFFFFF),
+            toolbarBackground = Color(0xFF26262E),
         )
     }
 }

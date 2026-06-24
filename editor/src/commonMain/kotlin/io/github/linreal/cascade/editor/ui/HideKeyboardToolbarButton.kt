@@ -1,10 +1,11 @@
 package io.github.linreal.cascade.editor.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,7 +21,7 @@ import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 import org.jetbrains.compose.resources.painterResource
 
 /**
- * Toolbar button that dismisses the software keyboard.
+ * Toolbar button that dismisses the software keyboard
  *
  * Shown by default only on iOS (via [RichTextToolbar]). Consumers using
  * [ToolbarSlot.Custom] can include this composable in their own toolbar layout.
@@ -32,21 +33,28 @@ public fun HideKeyboardToolbarButton(
 ) {
     val colors = LocalCascadeTheme.current.colors
     val strings = LocalCascadeStrings.current
-    val shape = RoundedCornerShape(6.dp)
 
     Box(
         modifier = modifier
             .sizeIn(minWidth = 44.dp, minHeight = 44.dp)
-            .clip(shape)
+            .clip(CircleShape)
             .nonFocusableTap(onClick = onClick)
             .semantics { contentDescription = strings.hideKeyboard },
         contentAlignment = Alignment.Center,
     ) {
-        Image(
-            painter = painterResource(Res.drawable.ic_hide_keyboard),
-            contentDescription = null,
-            colorFilter = ColorFilter.tint(colors.toolbarIcon),
-            modifier = Modifier.size(20.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(colors.primary.copy(alpha = 0.10f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(Res.drawable.ic_hide_keyboard),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(colors.toolbarIcon),
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }

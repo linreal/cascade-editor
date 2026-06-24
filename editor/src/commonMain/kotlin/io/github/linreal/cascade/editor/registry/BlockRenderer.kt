@@ -635,6 +635,35 @@ public interface BlockRenderer<T : BlockType> {
 }
 
 /**
+ * Renderer variant for custom blocks that need a public editor scope.
+ *
+ * Implementers only need to override the scoped overload. CascadeEditor detects
+ * this interface and supplies a live [BlockRenderScope].
+ */
+public interface ScopedBlockRenderer<T : BlockType> : BlockRenderer<T> {
+    @Composable
+    public override fun Render(
+        block: Block,
+        isSelected: Boolean,
+        isFocused: Boolean,
+        modifier: Modifier,
+        callbacks: BlockCallbacks,
+    ) {
+        error("ScopedBlockRenderer requires CascadeEditor to supply BlockRenderScope")
+    }
+
+    @Composable
+    public fun Render(
+        block: Block,
+        isSelected: Boolean,
+        isFocused: Boolean,
+        modifier: Modifier,
+        callbacks: BlockCallbacks,
+        scope: BlockRenderScope,
+    )
+}
+
+/**
  * A simple renderer that delegates to a composable lambda.
  * Useful for simple block types that don't need a full class.
  */

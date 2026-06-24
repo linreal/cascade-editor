@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,6 +23,21 @@ public object Dividers {
             modifier
                 .fillMaxWidth()
                 .height(thickness)
+                .background(color)
+        )
+    }
+
+    @Composable
+    public fun Vertical(
+        color: Color,
+        modifier: Modifier = Modifier,
+        thickness: Dp = 1.dp,
+        height: Dp = 24.dp,
+    ) {
+        Box(
+            modifier
+                .height(height)
+                .width(thickness)
                 .background(color)
         )
     }

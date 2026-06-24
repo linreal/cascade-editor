@@ -1,6 +1,5 @@
 package io.github.linreal.cascade.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,23 +13,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import cascadeeditor.sample.generated.resources.Res
-import cascadeeditor.sample.generated.resources.ic_arrow_back
-import cascadeeditor.sample.generated.resources.ic_dark_mode
-import cascadeeditor.sample.generated.resources.ic_light_mode
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
@@ -46,14 +42,18 @@ import io.github.linreal.cascade.editor.slash.SlashCommandRegistry
 import io.github.linreal.cascade.editor.slash.SlashCommandResult
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
+import io.github.linreal.cascade.editor.state.EditorState
 import io.github.linreal.cascade.editor.state.rememberEditorState
-import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
+import io.github.linreal.cascade.theme.SampleEditorTheme
 import io.github.linreal.cascade.editor.ui.CascadeEditor
+import io.github.linreal.cascade.editor.ui.CascadeEditorConfig
 import io.github.linreal.cascade.editor.ui.createEditorRegistry
+import io.github.linreal.cascade.screens.customblocks.createTableDescriptor
+import io.github.linreal.cascade.screens.customblocks.createTableRenderer
+import io.github.linreal.cascade.screens.customblocks.sampleTableBlock
 import io.github.linreal.cascade.ui.PageScaffold
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.jetbrains.compose.resources.painterResource
 import kotlin.time.Clock
 
 // Metric Card Block Type
@@ -295,7 +295,13 @@ private fun buildDemoBlocks(): List<Block> = listOf(
     Block.paragraph(
         "This demo shows how to extend CascadeEditor with custom block types and slash commands."
     ),
-    Block.paragraph(""),
+    Block.heading(2, "Interactive Tables"),
+    Block.paragraph(
+        "Table blocks are implemented by the sample app with public custom block APIs."
+    ),
+    sampleTableBlock(),
+    Block.paragraph("Type /table to insert another table."),
+    Block.divider(),
     Block.heading(2, "Metric Cards"),
     Block.paragraph(
         "Metric cards are non-editable custom blocks \u2014 perfect for dashboards and status displays:"
@@ -334,7 +340,7 @@ fun CustomBlocksScreen(
     onToggleTheme: () -> Unit,
     onBack: () -> Unit,
 ) {
-    val editorTheme = if (isDark) CascadeEditorTheme.dark() else CascadeEditorTheme.light()
+    val editorTheme = if (isDark) SampleEditorTheme.dark() else SampleEditorTheme.light()
 
     val textStates = remember { BlockTextStates() }
     val spanStates = remember { BlockSpanStates() }
@@ -344,50 +350,26 @@ fun CustomBlocksScreen(
         createEditorRegistry().apply {
             register(createMetricDescriptor(), createMetricRenderer())
             register(createPaletteDescriptor(), createPaletteRenderer())
+            register(createTableDescriptor(), createTableRenderer())
         }
     }
 
     val slashRegistry = remember { createSlashRegistry() }
+    var isReadOnly by remember { mutableStateOf(false) }
 
     PageScaffold {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Image(
-                        painter = painterResource(Res.drawable.ic_arrow_back),
-                        contentDescription = "Back",
-                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground),
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-                Text(
-                    text = "Custom Blocks & Commands",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-            }
-            IconButton(
-                onClick = onToggleTheme,
-                modifier = Modifier.size(40.dp),
-            ) {
-                Image(
-                    painter = painterResource(
-                        if (isDark) Res.drawable.ic_light_mode else Res.drawable.ic_dark_mode
-                    ),
-                    contentDescription = if (isDark) "Switch to light" else "Switch to dark",
-                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        }
+        EditorTopBar(
+            isReadOnly = isReadOnly,
+            isDark = isDark,
+            canUndo = editorState.canUndo,
+            canRedo = editorState.canRedo,
+            onBack = onBack,
+            onUndo = { editorState.undo() },
+            onRedo = { editorState.redo() },
+            onToggleReadOnly = { isReadOnly = !isReadOnly },
+            onToggleTheme = onToggleTheme,
+            onReset = { editorState.setState(EditorState.withBlocks(buildDemoBlocks())) },
+        )
 
         CascadeEditor(
             stateHolder = editorState,
@@ -396,6 +378,7 @@ fun CustomBlocksScreen(
             registry = registry,
             slashRegistry = slashRegistry,
             theme = editorTheme,
+            config = CascadeEditorConfig(readOnly = isReadOnly),
             modifier = Modifier.fillMaxSize(),
         )
     }
