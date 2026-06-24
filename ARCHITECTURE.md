@@ -7,6 +7,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Concept | File | Key Symbol |
 |---------|------|------------|
 | Sample app shell/navigation | `sample/src/commonMain/kotlin/io/github/linreal/cascade/App.kt`, `sample/src/commonMain/kotlin/io/github/linreal/cascade/navigation/AppScreen.kt` | `App()`, `AppScreen.saveKey`, `AppScreen.fromSaveKey()` |
+| Sample editor top-bar chrome | `sample/src/commonMain/kotlin/io/github/linreal/cascade/screens/EditorChrome.kt` | `EditorTopBar()`, `SelectionTopBar()`, `SavedPill()`, `OpenedLinkPill()` (shared by editor screens; maps the chrome design onto `MaterialTheme.colorScheme`) |
 | Main composable | `ui/CascadeEditor.kt` | `CascadeEditor(stateHolder, textStates, spanStates, registry, slashRegistry, slashCommand, ...)` |
 | Editor behavior config | `ui/CascadeEditorConfig.kt`, `ui/LocalCascadeEditorConfig.kt` | `CascadeEditorConfig` (incl. `crashPolicy`/`onInternalError`), `LocalCascadeEditorConfig` |
 | Crash handling | `CrashHandling.kt` | `CrashPolicy`, `CascadeError`, `CascadeErrorReporter`, `guarded()`/`reportContainedFailure()` (internal) |
@@ -53,6 +54,10 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Outline utilities | `core/OutlineUtils.kt` | `shiftIndentation()` (internal), `resolveDragPayload()` (internal), `moveDragPayload()` (internal), `IndentationDirection` (internal) |
 | Registry | `registry/BlockRegistry.kt` | `BlockRegistry` |
 | Descriptors | `registry/BlockDescriptor.kt` | `BlockDescriptor` |
+| Block render scope | `registry/BlockRenderScope.kt` | `BlockRenderScope` |
+| Scoped renderer interface | `registry/BlockRenderer.kt` | `ScopedBlockRenderer<T>` |
+| Default scoped renderer scope | `ui/DefaultBlockRenderScope.kt` | `DefaultBlockRenderScope` (internal implementation) |
+| Sample table custom block | `sample/src/commonMain/kotlin/io/github/linreal/cascade/screens/customblocks/SampleTableBlock.kt`, `sample/src/commonMain/kotlin/io/github/linreal/cascade/screens/customblocks/SampleTableBlockRenderer.kt` | `SampleTableModel`, `createTableRenderer()` |
 | Built-in slash spec | `slash/BuiltInSlashCommandSpec.kt` | `BuiltInSlashCommandSpec`, `BuiltInBlockSlashBehavior` |
 | Built-in slash factory | `slash/BuiltInSlashCommandFactory.kt` | `BuiltInSlashCommandFactory` |
 | Built-in slash executor | `slash/SlashCommandExecutor.kt` | `createBuiltInSlashExecutor()` (internal) |
@@ -116,7 +121,8 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Link popup contract | `ui/LinkPopupState.kt`, `ui/LinkPopupActions.kt` | `LinkPopupState`, `LinkPopupActions` |
 | Link popup session/UI | `ui/LinkPopupSession.kt`, `ui/LinkPopup.kt` | `LinkPopupSession` (internal), `LinkPopup()` (internal), `LinkPopupDefaults.calculatePopupOffset(...)` (internal viewport-centered placement) |
 | Link opener local | `ui/LinkOpener.kt` | `LocalLinkOpener`, `createLinkOpener(...)` (internal) |
-| Default toolbar UI | `ui/RichTextToolbar.kt` | Formatting buttons plus indent/outdent/link buttons |
+| Default toolbar UI | `ui/RichTextToolbar.kt` | Floating pill: fixed `/` circle, scrollable formatting + indent/outdent/link, iOS hide-keyboard pinned right; active = accent tint |
+| Divider helpers | `ui/utils/Dividers.kt` | `Dividers.Horizontal`, `Dividers.Vertical` |
 | Formatting calculator | `richtext/FormattingStateCalculator.kt` | `FormattingStateCalculator` |
 | Formatting observer | `richtext/FormattingStateObserver.kt` | `rememberFormattingState()` |
 | Formatting actions impl | `richtext/DefaultFormattingActions.kt` | `DefaultFormattingActions` |
@@ -130,7 +136,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Slash popup items local | `ui/LocalSlashPopupItems.kt` | `LocalSlashPopupItems` |
 | Slash command slot | `ui/SlashCommandSlot.kt` | `SlashCommandSlot` (`Default`, `None`) |
 | Slash enabled local | `ui/LocalSlashCommandsEnabled.kt` | `LocalSlashCommandsEnabled` (internal) |
-| Theme colors | `theme/CascadeEditorColors.kt` | `CascadeEditorColors` |
+| Theme colors | `theme/CascadeEditorColors.kt` | `CascadeEditorColors` (includes `toolbarBackground` for the floating-pill surface, defaults to `popupBackground`) |
 | Theme typography | `theme/CascadeEditorTypography.kt` | `CascadeEditorTypography` |
 | Theme dimensions | `theme/CascadeEditorDimensions.kt` | `CascadeEditorDimensions` |
 | Theme top-level | `theme/CascadeEditorTheme.kt` | `CascadeEditorTheme` |

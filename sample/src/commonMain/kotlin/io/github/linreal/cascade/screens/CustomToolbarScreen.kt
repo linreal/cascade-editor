@@ -2,22 +2,18 @@ package io.github.linreal.cascade.screens
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -40,12 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import cascadeeditor.sample.generated.resources.Res
-import cascadeeditor.sample.generated.resources.ic_arrow_back
-import cascadeeditor.sample.generated.resources.ic_dark_mode
-import cascadeeditor.sample.generated.resources.ic_edit
-import cascadeeditor.sample.generated.resources.ic_edit_off
-import cascadeeditor.sample.generated.resources.ic_light_mode
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
@@ -55,7 +44,8 @@ import io.github.linreal.cascade.editor.richtext.StyleStatus
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.rememberEditorState
-import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
+import io.github.linreal.cascade.theme.SampleEditorTheme
+import io.github.linreal.cascade.theme.geistFontFamily
 import io.github.linreal.cascade.editor.ui.CascadeEditor
 import io.github.linreal.cascade.editor.ui.CascadeEditorConfig
 import io.github.linreal.cascade.editor.ui.LocalCascadeEditorConfig
@@ -65,7 +55,6 @@ import io.github.linreal.cascade.ui.PageScaffold
 import io.github.linreal.cascade.ui.nonFocusableTap
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.jetbrains.compose.resources.painterResource
 import kotlin.time.Clock
 
 private val TrackedStyles = listOf(
@@ -84,7 +73,7 @@ fun CustomToolbarScreen(
     onToggleTheme: () -> Unit,
     onBack: () -> Unit,
 ) {
-    val editorTheme = if (isDark) CascadeEditorTheme.dark() else CascadeEditorTheme.light()
+    val editorTheme = if (isDark) SampleEditorTheme.dark() else SampleEditorTheme.light()
 
     val textStates = remember { BlockTextStates() }
     val spanStates = remember { BlockSpanStates() }
@@ -92,59 +81,14 @@ fun CustomToolbarScreen(
     var isReadOnly by remember { mutableStateOf(false) }
 
     PageScaffold {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Image(
-                        painter = painterResource(Res.drawable.ic_arrow_back),
-                        contentDescription = "Back",
-                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground),
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-                Text(
-                    text = "Custom Toolbar",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = { isReadOnly = !isReadOnly },
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Image(
-                        painter = painterResource(
-                            if (isReadOnly) Res.drawable.ic_edit_off else Res.drawable.ic_edit
-                        ),
-                        contentDescription = if (isReadOnly) "Read-only" else "Editable",
-                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                IconButton(
-                    onClick = onToggleTheme,
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Image(
-                        painter = painterResource(
-                            if (isDark) Res.drawable.ic_light_mode else Res.drawable.ic_dark_mode
-                        ),
-                        contentDescription = if (isDark) "Switch to light" else "Switch to dark",
-                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-        }
+        TitledEditorTopBar(
+            title = "Custom Toolbar",
+            isReadOnly = isReadOnly,
+            isDark = isDark,
+            onBack = onBack,
+            onToggleReadOnly = { isReadOnly = !isReadOnly },
+            onToggleTheme = onToggleTheme,
+        )
 
         CascadeEditor(
             stateHolder = editorState,
@@ -358,7 +302,7 @@ private fun StyleToggleButton(
                 fontWeight = textStyle.fontWeight ?: FontWeight.Medium,
                 fontStyle = textStyle.fontStyle,
                 textDecoration = textStyle.textDecoration,
-                fontFamily = textStyle.fontFamily,
+                fontFamily = textStyle.fontFamily ?: geistFontFamily(),
                 color = contentColor.value,
             ),
         )
@@ -399,6 +343,7 @@ private fun ActionButton(
         Text(
             text = label,
             style = TextStyle(
+                fontFamily = geistFontFamily(),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = contentColor.value,
@@ -451,6 +396,7 @@ private fun ClearFormattingButton(
         Text(
             text = "CLR",
             style = TextStyle(
+                fontFamily = geistFontFamily(),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.5.sp,

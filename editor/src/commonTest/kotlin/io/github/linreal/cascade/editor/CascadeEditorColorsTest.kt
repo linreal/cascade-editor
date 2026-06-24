@@ -141,6 +141,14 @@ class CascadeEditorColorsTest {
     }
 
     @Test
+    fun `light and dark differ on toolbarBackground`() {
+        assertNotEquals(
+            CascadeEditorColors.light().toolbarBackground,
+            CascadeEditorColors.dark().toolbarBackground,
+        )
+    }
+
+    @Test
     fun `light and dark differ on primary`() {
         assertNotEquals(CascadeEditorColors.light().primary, CascadeEditorColors.dark().primary)
     }
@@ -215,5 +223,6 @@ class CascadeEditorColorsTest {
         "linkText" to c.linkText,
         "error" to c.error,
         "codeBlockBackground" to c.codeBlockBackground,
+        "toolbarBackground" to c.toolbarBackground,
     )
 }

@@ -10,7 +10,6 @@ internal object ExternalToolbarTokens {
     const val LinkEditorExitMillis = 160
     const val FieldBackgroundAlpha = 0.72f
 
-    val HeaderBottomPadding = 4.dp
     val FormTopPadding = 8.dp
     val FormBottomPadding = 132.dp
     val FormFieldSpacing = 22.dp
@@ -37,9 +36,6 @@ internal object ExternalToolbarTokens {
     val ToolbarOuterVerticalPadding = 12.dp
     val ToolbarButtonSize = 52.dp
     val ToolbarIconSize = 24.dp
-    val HeaderIconButtonSize = 40.dp
-    val HeaderBackIconSize = 24.dp
-    val HeaderActionIconSize = 20.dp
     val LinkEditorHorizontalPadding = 12.dp
     val LinkEditorTopPadding = 8.dp
     val LinkEditorBottomPadding = 10.dp

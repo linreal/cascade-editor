@@ -30,13 +30,14 @@ import androidx.compose.ui.platform.LocalFocusManager
 import io.github.linreal.cascade.editor.action.ClearFocus
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.DefaultBlockCallbacks
-import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
+import io.github.linreal.cascade.theme.SampleEditorTheme
 import io.github.linreal.cascade.editor.ui.CascadeEditor
 import io.github.linreal.cascade.editor.ui.CascadeEditorConfig
 import io.github.linreal.cascade.editor.ui.LinkPopupSlot
 import io.github.linreal.cascade.editor.ui.SlashCommandSlot
 import io.github.linreal.cascade.editor.ui.ToolbarSlot
 import io.github.linreal.cascade.editor.ui.rememberCascadeEditorToolbarController
+import io.github.linreal.cascade.screens.TitledEditorTopBar
 import io.github.linreal.cascade.ui.PageScaffold
 
 /**
@@ -54,7 +55,7 @@ fun ExternalToolbarScreen(
     onToggleTheme: () -> Unit,
     onBack: () -> Unit,
 ) {
-    val editorTheme = if (isDark) CascadeEditorTheme.dark() else CascadeEditorTheme.light()
+    val editorTheme = if (isDark) SampleEditorTheme.dark() else SampleEditorTheme.light()
 
     val screenModel = rememberSaveable(saver = ExternalToolbarScreenModel.Saver) {
         ExternalToolbarScreenModel()
@@ -101,7 +102,8 @@ fun ExternalToolbarScreen(
     }
 
     PageScaffold {
-        ExternalToolbarScreenHeader(
+        TitledEditorTopBar(
+            title = "External Toolbar",
             isReadOnly = isReadOnly,
             isDark = isDark,
             onBack = onBack,

@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
+import io.github.linreal.cascade.editor.registry.BlockRenderScope
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 
@@ -74,6 +75,7 @@ internal fun dragPreviewPayloadBadgeText(payloadBlockCount: Int): String? {
  *        communicates additional moved descendants/roots without rendering all ghosts.
  * @param registry Block registry to look up the correct renderer for this block type.
  * @param callbacks Block callbacks passed to the renderer (non-interactive during drag).
+ * @param scope Public editor scope passed to scoped custom renderers.
  * @param modifier Optional modifier for the preview container.
  */
 @Composable
@@ -85,6 +87,7 @@ internal fun DragPreview(
     payloadBlockCount: Int,
     registry: BlockRegistry,
     callbacks: BlockCallbacks,
+    scope: BlockRenderScope,
     modifier: Modifier = Modifier
 ) {
     val renderer = registry.getRenderer(block.type.typeId) ?: return
@@ -119,7 +122,8 @@ internal fun DragPreview(
                 shadowElevation = DragPreviewDefaults.ShadowElevationDp
             }
     ) {
-        renderer.Render(
+        RenderRegisteredBlock(
+            renderer = renderer,
             block = previewBlock,
             isSelected = false,
             isFocused = false,
@@ -128,7 +132,8 @@ internal fun DragPreview(
                 horizontal = theme.dimensions.blockHorizontalPadding,
                 vertical = 4.dp,
             ),
-            callbacks = callbacks
+            callbacks = callbacks,
+            scope = scope,
         )
         if (badgeText != null) {
             BasicText(
