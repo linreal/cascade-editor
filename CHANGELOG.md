@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.0] - 2026-06-28
+
+### Added
+
+- Added `ScopedBlockRenderer<T>` and the public `BlockRenderScope` seam for interactive custom blocks: scoped renderers receive a live, capability-gated scope to inspect editor state and apply block mutations (`updateBlock`, `replaceBlock`, `insertBlockBefore`/`insertBlockAfter`, `deleteBlock`, `focusBlock`), each producing a single structural undo/redo entry
+- Added read-only/policy capability flags on `BlockRenderScope` (`readOnly`, `canUpdateBlock`, `canEditBlockStructure`, `canSelectBlocks`, `canDragBlocks`) that are re-checked at call time so mutations are safe no-ops when disabled or when the target block is missing
+
+### Changed
+
+- Redesigned the default `RichTextToolbar` as a floating pill: a fixed `/` slash circle, scrollable formatting and indent/outdent/link controls, the iOS hide-keyboard button pinned right, and accent-tinted active states
+- Redesigned the sample app landing page, editor chrome, and theming
+
 ## [1.6.0] - 2026-06-07
 
 ### Added
