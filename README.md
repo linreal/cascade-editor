@@ -1,10 +1,10 @@
 # Cascade Editor
 
-The first native block-based editor for Compose Multiplatform.
+A Compose Multiplatform editor that starts as a rich text input and scales into a block-based document editor.
 
-Notion/Craft-style editing, implemented as a shared Kotlin editor core for Android, iOS, and desktop: draggable blocks, outline indentation, slash commands, undo/redo, rich-text spans, custom block types, and versioned document serialization, all without WebView, HTML/contentEditable, or embedded JavaScript editors.
+Use Cascade Editor for a simple formatted comment field today. Keep the same editor when that field grows into product-specific rich text, HTML/JSON persistence, read-only previews, custom toolbars, slash commands, draggable blocks, or full Notion/Craft-style document editing without moving your editor core to WebView, contentEditable, or JavaScript.
 
-Shared `commonMain` editor core | Android + iOS + Desktop | 1600+ tests | Extensible block registry
+Rich text input | HTML/JSON round-trip | Read-only rendering | Custom toolbars | Block editor | Android + iOS + Desktop
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
 [![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.11-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
@@ -15,69 +15,268 @@ Shared `commonMain` editor core | Android + iOS + Desktop | 1600+ tests | Extens
 
 **Try the live web demo:** [linreal.github.io/cascade-editor](https://linreal.github.io/cascade-editor/)
 
+**Start here:**
+[Rich text input](#i-need-a-rich-text-input) ·
+[Import/export](#i-need-product-specific-importexport) ·
+[Full block editor](#i-need-a-full-block-editor) ·
+[Custom blocks](#extending-the-editor)
+
 ![Demo](assets/demo.gif)
 
-## Why CascadeEditor?
+## Pick your starting point
 
-Notion and Craft feel different from ordinary rich-text fields because the document is not a single styled text buffer. It is an ordered block document: paragraphs, headings, todos, quotes, lists, code blocks, and dividers exist as structural units that can be inserted, converted, reordered, and serialized independently.
+Cascade Editor is designed for apps where rich text usually starts small and then grows.
 
-CascadeEditor brings that model to Compose Multiplatform natively. Each block has its own live text state, renderer, slash-command behavior, and serialization path, while rich-text spans still work inside text-capable blocks. That is what enables Notion-style editing on Android, iOS, and desktop without delegating the editor core to a WebView.
+### I need a rich text input
 
-| Capability | CascadeEditor | Typical single-buffer rich-text editors |
-|---|:---:|:---:|
-| Document model | Ordered block document | Single styled text buffer |
-| Independent block state/lifecycle | Yes | No |
-| Block split / merge / convert | Yes | Limited / manual |
-| Outline indentation | Yes | Limited / manual |
-| Drag-and-drop reorder | Yes | No |
-| Slash-command insertion | Yes | Rare / custom |
-| Custom block renderers | Yes | Limited |
-| Rich-text spans | Yes | Yes |
-| Versioned document serialization | Yes | Limited / app-specific |
+Use Cascade Editor as a constrained rich text field with bold, italic, links, inline code, toolbar controls, and predictable persistence.
 
-If you only need a formatted text area, a single-buffer editor is simpler. CascadeEditor is for apps that need a real document editor.
+Good for comments, notes, custom fields, descriptions, and short rich text inputs.
+
+### I need product-specific import/export
+
+Round-trip content through JSON or HTML-like formats, including custom backend dialects and app-specific rules.
+
+Good for apps that already store rich text on the backend and cannot simply adopt another editor's internal format.
+
+### I need a full block editor
+
+Use structured blocks: paragraphs, headings, todos, quotes, lists, code blocks, dividers, indentation, drag-and-drop, slash commands, undo/redo, read-only mode, and custom block types.
+
+Good for document editors, task descriptions, knowledge bases, note apps, and internal tools.
+
+## When Cascade Editor is a good fit
+
+| Need | Fit |
+|---|---|
+| Simple formatted input that may grow later | Strong fit |
+| HTML/JSON persistence or backend rich-text dialect | Strong fit |
+| Product-specific toolbar or formatting rules | Strong fit |
+| Custom block renderers | Strong fit |
+| Notion/Craft-style block editing | Strong fit |
+| One-off formatted text field with no growth path | A simpler editor may be enough |
 
 ## Features
 
-- **Structured document editing** — paragraphs, headings (H1-H6), todos, bullet lists, numbered lists, quotes, code blocks, and dividers as independent blocks that can be inserted, split, merged, converted, indented, reordered, and deleted
-- **Notion-style editing workflows** — native drag-and-drop block reordering, outline indentation, slash-command insertion, undo/redo, list continuation, and structural editing behaviors without WebView
-- **Rich-text spans inside blocks** — bold, italic, underline, strikethrough, inline code, highlight, links, and custom styles with span preservation across split, merge, and replace operations
-- **Versioned document serialization** — `toJson()` / `loadFromJson()` with explicit schemas, codec hooks, and support for custom block types
-- **HTML import/export** — `toHtml()` / `loadFromHtml()` with a profile-driven codec for round-tripping documents through HTML payloads; a default HTML5-ish profile plus public extension points (per-tag decoders, span encoders, block group encoders, parser policies, support-set claims) so consumers can express their dialect without forking the parser
-- **Custom block system** — extend the editor with your own `CustomBlockType`, `BlockRenderer`, slash commands, and block-specific behavior
-- **Shared multiplatform editor core** — one Kotlin codebase for Android, iOS, and desktop with native Compose rendering instead of HTML/contentEditable or embedded JavaScript editors
-- **Theming and localization** — configurable colors, typography, and UI strings for integrating the editor into product-specific design systems
-- **Read-only mode** — render a selectable, scrollable document with links still openable while editor-owned mutation controls are disabled
-- **Crash containment** — opt-in `CrashPolicy` that catches per-block render failures and reports them through a host hook instead of crashing the app, plus always-no-throw JSON/HTML decode with structured warnings
+- **Rich text input** — bold, italic, underline, strikethrough, inline code, highlight, links, and custom styles inside text-capable blocks
+- **Configurable formatting UI** — use the built-in toolbar, limit available actions, hide it, or render your own external toolbar
+- **JSON and HTML round-trip** — save/load documents through `toJson()` / `loadFromJson()` or `toHtml()` / `loadFromHtml()`
+- **HTML-like dialect support** — customize tag decoders, span encoders, block group encoders, parser policies, and backend-specific import/export rules
+- **Read-only rendering** — show selectable, scrollable content while editor-owned mutations are disabled
+- **Structured document editing** — paragraphs, headings, todos, bullet lists, numbered lists, quotes, code blocks, and dividers as independent blocks
+- **Block editor workflows** — split, merge, convert, indent, reorder, drag-and-drop, slash commands, undo/redo, and list continuation
+- **Custom block system** — add your own block types, renderers, slash commands, serialization, and product-specific behavior
+- **Shared multiplatform editor core** — Android, iOS, and desktop from one Kotlin/Compose codebase, without WebView, contentEditable, or an embedded JavaScript editor
+- **Reliability-oriented core** — crash containment, bounded no-throw JSON/HTML decode, structured warnings, deterministic reducers, and 1600+ tests
+
+## Why this is not just a styled text field
+
+Cascade Editor is built around a structured document model, not a single styled text buffer. Text formatting, block structure, undo/redo, indentation, drag-and-drop, serialization, read-only rendering, and custom block renderers all have to stay consistent across the same editor state.
+
+Some of the harder problems handled by the editor core:
+
+* each text-capable block owns a long-lived `TextFieldState`, while the document model remains serializable and reducer-driven;
+* rich-text spans are preserved through typing, split, merge, replace, undo, and redo;
+* structural edits such as list continuation, indentation, slash-command replacement, block conversion, and drag reorder are replayed as document transactions;
+* JSON and HTML import/export are designed for backend round-trips, including custom block codecs and HTML-like dialects;
+* most editor behavior lives in shared Kotlin `commonMain`, with platform-specific code kept to thin Compose adapters.
+
+## Cascade Editor vs single-buffer rich text editors
+
+| Area                | Cascade Editor                         | Single-buffer rich text editor   |
+| ------------------- | -------------------------------------- | -------------------------------- |
+| Content model       | Ordered block document                 | One styled text buffer           |
+| Best starting point | Rich input that may grow               | Simple formatted text field      |
+| Block operations    | Split, merge, convert, indent, reorder | Usually manual or unsupported    |
+| Custom blocks       | First-class extension point            | Usually outside the editor model |
+| Persistence         | Versioned JSON + HTML profiles         | App-specific                     |
+| Backend dialects    | Custom import/export profiles          | Usually custom glue code         |
+| Tradeoff            | More structure, more growth path       | Simpler initial integration      |
+
 
 ## Quick Start
 
-Create a native block document with an initial heading and paragraph:
+Start with the smallest useful setup: one paragraph block, a limited toolbar, and slash commands disabled.
 
 ```groovy
-implementation("io.github.linreal:cascade-editor:1.6.0")
+implementation("io.github.linreal:cascade-editor:1.7.0")
 ```
 
 ```kotlin
 @Composable
-fun MyEditor() {
+fun CommentInput() {
     val stateHolder = rememberEditorState(
         initialBlocks = listOf(
-            Block.heading(level = 1, text = "Hello"),
-            Block.paragraph(text = "Start editing..."),
+            Block.paragraph(text = "")
         )
     )
 
     CascadeEditor(
-        modifier = Modifier.fillMaxSize(),
-        stateHolder = stateHolder
+        modifier = Modifier.fillMaxWidth(),
+        stateHolder = stateHolder,
+        toolbar = ToolbarSlot.Default(
+            config = RichTextToolbarConfig(
+                buttons = listOf(
+                    ToolbarButtonSpec(SpanStyle.Bold, "Bold"),
+                    ToolbarButtonSpec(SpanStyle.Italic, "Italic"),
+                ),
+                showIndentation = false,
+                showLink = true,
+            )
+        ),
+        slashCommand = SlashCommandSlot.None,
     )
 }
 ```
 
-From here you can add undo/redo controls, slash commands, custom block renderers, theming, and JSON serialization.
+From here, you can keep the same editor state and add read-only previews, external toolbars, custom blocks, slash commands, drag-and-drop, and full document editing.
 
-## Theming
+## Common integration paths
+
+| Path                   | Start with | Add later                                  |
+|------------------------|---|--------------------------------------------|
+| Simple input           | Paragraph + limited toolbar | Custom spans, links, HTML export           |
+| Custom field           | Read-only preview + edit screen | Backend HTML-like dialect                  |
+| Task description       | Blocks + JSON/HTML persistence | Custom blocks, attachments, permissions    |
+| Knowledge base / notes | Full block editor | Slash commands, drag/drop, custom renderers |
+
+## Persistence and import/export
+
+Cascade Editor is useful when rich text is not just UI state, but product data that must survive backend round-trips.
+
+Save a document to JSON and restore it later:
+
+```kotlin
+// Save
+val json = stateHolder.toJson(textStates, spanStates)
+
+// Load
+val result = stateHolder.loadFromJson(json, textStates, spanStates)
+```
+
+All block types, text content, rich text formatting, and supported indentation attributes are preserved through the round-trip. Unknown block types from newer editor versions are kept as-is, so re-saving does not silently drop data.
+
+For custom block types, plug in `BlockTypeCodec` and `BlockContentCodec` to control how your types are serialized.
+
+Documents can also round-trip through HTML for interchange with HTML-native systems:
+
+```kotlin
+// Save
+val html = stateHolder.toHtml(textStates, spanStates, HtmlProfile.Default)
+
+// Load
+val result = stateHolder.loadFromHtml(html, textStates, spanStates, HtmlProfile.Default)
+```
+
+`HtmlProfile.Default` ships an HTML5-ish canonical mapping. For dialect-specific HTML, including Quill-flavored payloads, custom link attributes, flat `ql-indent-N` lists, and other backend rules, compose a custom profile from `HtmlProfile.Default` using `withTagDecoder()`, `withSpanEncoder()`, `withBlockGroupEncoder()`, and `withParserPolicy()`. See [HtmlImportExportFeatureContext.md](docs/HtmlImportExport.md) for the full extension recipe and the reference `CustomHtmlProfile` in `sample/`.
+
+## Read-only rendering
+
+A common pattern is to render content read-only in lists, previews, or permission-limited screens, then open the same document in edit mode elsewhere.
+
+Use `CascadeEditorConfig(readOnly = true)` when the current user can view a document but cannot edit it:
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    config = CascadeEditorConfig(readOnly = true),
+)
+```
+
+Read-only mode keeps normal viewer affordances: scrolling, native text selection/copy, and opening existing links from unfocused text blocks. The default toolbar remains visible, but mutating controls are disabled or no-op. To hide the toolbar, use the existing toolbar slot:
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    toolbar = ToolbarSlot.None,
+    config = CascadeEditorConfig(readOnly = true),
+)
+```
+
+This is a UI boundary inside `CascadeEditor`, not an application authorization layer. App-owned calls such as `stateHolder.dispatch(...)`, `undo()`, `redo()`, `loadFromJson(...)`, `loadFromHtml(...)`, autosave, remote sync, or direct `BlockTextStates` / `BlockSpanStates` writes remain the caller's responsibility. See [Read-Only Mode](docs/ReadOnlyMode.md) for the full behavior contract and custom renderer guidance.
+
+To keep editing enabled but suppress block-level affordances, use `CascadeEditorConfig(blockSelectionEnabled = false)` and/or `CascadeEditorConfig(blockDraggingEnabled = false)`. `readOnly = true` still overrides both flags and disables all editor-owned mutations.
+
+## Toolbar
+
+For simple inputs, the toolbar is usually the main integration surface: choose which formatting actions are allowed, hide block-level controls, or replace the toolbar with your own app UI.
+
+A built-in formatting toolbar ships with bold, italic, underline, strikethrough, inline code, highlight, and link editing. Keyboard shortcuts (Cmd/Ctrl+B/I/U) work even with the toolbar hidden.
+
+Customize which buttons appear and in what order:
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    toolbar = ToolbarSlot.Default(
+        config = RichTextToolbarConfig(
+            buttons = listOf(
+                ToolbarButtonSpec(SpanStyle.Bold, "Bold"),
+                ToolbarButtonSpec(SpanStyle.Italic, "Italic"),
+                ToolbarButtonSpec(SpanStyle.InlineCode, "Code"),
+            )
+        )
+    ),
+)
+```
+
+Or replace it entirely with your own composable. You get full access to `FormattingState` and `FormattingActions`:
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    toolbar = ToolbarSlot.Custom { formattingState, formattingActions ->
+        // Render your own toolbar with formattingState.value and formattingActions.
+    },
+)
+```
+
+Need to sync formatting state with an external UI, such as an app bar? Use the `onFormattingStateChanged` callback:
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    toolbar = ToolbarSlot.None,
+    onFormattingStateChanged = { formattingState ->
+        // Mirror formattingState into your app bar state.
+    },
+)
+```
+
+For a fully external toolbar, create a controller with the same runtime holders you pass to the editor, hide the editor-owned toolbar, and render your toolbar wherever your app needs it:
+
+```kotlin
+@Composable
+fun EditorWithExternalToolbar(
+    stateHolder: EditorStateHolder,
+    isReadOnly: Boolean,
+    toolbarContent: @Composable (CascadeEditorToolbarController) -> Unit,
+) {
+    val textStates = remember { BlockTextStates() }
+    val spanStates = remember { BlockSpanStates() }
+    val editorConfig = CascadeEditorConfig(readOnly = isReadOnly)
+    val toolbarController = rememberCascadeEditorToolbarController(
+        stateHolder = stateHolder,
+        textStates = textStates,
+        spanStates = spanStates,
+        config = editorConfig,
+    )
+
+    Column {
+        toolbarContent(toolbarController)
+
+        CascadeEditor(
+            stateHolder = stateHolder,
+            textStates = textStates,
+            spanStates = spanStates,
+            toolbar = ToolbarSlot.None,
+            config = editorConfig,
+        )
+    }
+}
+```
+
+## Theming and localization
 
 Built-in light and dark presets, or full control over every visual detail:
 
@@ -100,9 +299,10 @@ CascadeEditor(
     ),
 )
 ```
+
 ![Demo](assets/CascadeThemes.png)
 
-`CascadeEditorColors` exposes 20+ slots — cursor, selection, toolbar icons, slash popup, quote borders, inline code background, highlight, and more. `CascadeEditorTypography` controls font size, weight, and family for every text element from body to headings to code blocks.
+`CascadeEditorColors` exposes 20+ slots: cursor, selection, toolbar icons, slash popup, quote borders, inline code background, highlight, and more. `CascadeEditorTypography` controls font size, weight, and family for every text element from body to headings to code blocks.
 
 All UI strings are localizable via `CascadeEditorStrings` and `CascadeEditorBlockStrings`:
 
@@ -113,9 +313,35 @@ CascadeEditor(
 )
 ```
 
-## Slash Commands
+## Full block editor
 
-Type `/` in any text block to open a Notion-style command palette — fuzzy search, keyboard navigation, submenus — all without stealing focus from the text field.
+### Block types
+
+| Type | Supports Text | Supports Indentation | Notes |
+|------|:---:|:---:|-------|
+| `Paragraph` | Yes | Yes | Default block type |
+| `Heading(level)` | Yes | No | H1-H6 |
+| `Todo(checked)` | Yes | Yes | Checkbox with toggle action |
+| `BulletList` | Yes | Yes | Auto-detected from `- ` prefix |
+| `NumberedList(number)` | Yes | Yes | Auto-renumbering on insert/delete/move, including nested outlines |
+| `Quote` | Yes | No | Left border stripe + background tint |
+| `Code` | Yes | No | Multi-line monospace block, no rich-text spans |
+| `Divider` | No | No | Horizontal rule |
+
+Extend with custom types via the `CustomBlockType` interface. See [Extending the editor](#extending-the-editor).
+
+### Slash commands
+
+Slash commands are optional. Enable them for document-style editing, or disable them for constrained inputs such as comments and custom fields.
+
+```kotlin
+CascadeEditor(
+    stateHolder = stateHolder,
+    slashCommand = SlashCommandSlot.None,
+)
+```
+
+With slash commands enabled, typing `/` in any text block opens a Notion-style command palette with fuzzy search, keyboard navigation, and submenus without stealing focus from the text field.
 
 Built-in commands for all block types are generated automatically. Add your own:
 
@@ -140,86 +366,9 @@ CascadeEditor(
 )
 ```
 
-Custom commands get the full `SlashCommandContext` — replace text, swap blocks, insert new ones, or control focus. You can also organize commands into nested submenus with `SlashCommandMenu`.
+Custom commands get the full `SlashCommandContext`: replace text, swap blocks, insert new ones, or control focus. You can also organize commands into nested submenus with `SlashCommandMenu`.
 
-## Toolbar
-
-A built-in formatting toolbar ships with bold, italic, underline, strikethrough, inline code, highlight, and link editing — plus keyboard shortcuts (Cmd/Ctrl+B/I/U) that work even with the toolbar hidden.
-
-Customize which buttons appear and in what order:
-
-```kotlin
-CascadeEditor(
-    stateHolder = stateHolder,
-    toolbar = ToolbarSlot.Default(
-        config = RichTextToolbarConfig(
-            buttons = listOf(
-                ToolbarButtonSpec(SpanStyle.Bold, "Bold"),
-                ToolbarButtonSpec(SpanStyle.Italic, "Italic"),
-                ToolbarButtonSpec(SpanStyle.InlineCode, "Code"),
-            )
-        )
-    ),
-)
-```
-
-Or replace it entirely with your own composable — you get full access to `FormattingState` and `FormattingActions`:
-
-```kotlin
-CascadeEditor(
-    stateHolder = stateHolder,
-    toolbar = ToolbarSlot.Custom { formattingState, formattingActions ->
-        MyCustomToolbar(formattingState, formattingActions)
-    },
-)
-```
-
-Need to sync formatting state with an external UI (like an app bar)? Use the `onFormattingStateChanged` callback:
-
-```kotlin
-CascadeEditor(
-    stateHolder = stateHolder,
-    toolbar = ToolbarSlot.None,
-    onFormattingStateChanged = { state -> updateAppBar(state) },
-)
-```
-
-For a fully external toolbar, create a controller with the same runtime holders
-you pass to the editor, hide the editor-owned toolbar, and render your toolbar
-wherever your app needs it:
-
-```kotlin
-val textStates = remember { BlockTextStates() }
-val spanStates = remember { BlockSpanStates() }
-val editorConfig = CascadeEditorConfig(readOnly = isReadOnly)
-val toolbarController = rememberCascadeEditorToolbarController(
-    stateHolder = stateHolder,
-    textStates = textStates,
-    spanStates = spanStates,
-    config = editorConfig,
-)
-
-Column {
-    MyToolbar(
-        formattingState = toolbarController.formattingState,
-        formattingActions = toolbarController.formattingActions,
-        indentationState = toolbarController.indentationState,
-        indentationActions = toolbarController.indentationActions,
-        linkState = toolbarController.linkState,
-        linkActions = toolbarController.linkActions,
-    )
-
-    CascadeEditor(
-        stateHolder = stateHolder,
-        textStates = textStates,
-        spanStates = spanStates,
-        toolbar = ToolbarSlot.None,
-        config = editorConfig,
-    )
-}
-```
-
-## Undo & Redo
+### Undo & Redo
 
 Undo/redo is built into `EditorStateHolder`. Continuous typing is coalesced into user-friendly history steps, while structural edits such as split, merge, drag reorder, slash commands, list conversion, and todo toggles replay as semantic document transactions instead of raw UI events.
 
@@ -247,9 +396,9 @@ Hardware keyboard shortcuts are built in: `Cmd/Ctrl+Z` for undo, `Shift+Cmd/Ctrl
 
 See [Undo/Redo Feature Context](docs/UndoRedoFeatureContext.md) for the hybrid history model, replay behavior, and integration details.
 
-## Indentation
+### Indentation
 
-CascadeEditor supports flat-outline indentation for paragraphs, todos, bullet lists, and numbered lists. The document remains an ordered `List<Block>`: depth is stored in `BlockAttributes.indentationLevel`, rendered as an animated leading inset, and preserved through split/merge, undo/redo, drag-and-drop, and save/load.
+Cascade Editor supports flat-outline indentation for paragraphs, todos, bullet lists, and numbered lists. The document remains an ordered `List<Block>`: depth is stored in `BlockAttributes.indentationLevel`, rendered as an animated leading inset, and preserved through split/merge, undo/redo, drag-and-drop, and save/load.
 
 The default toolbar includes indent/outdent buttons when `RichTextToolbarConfig.showIndentation` is enabled, which it is by default. Commands shift the focused supported block or selected supported root blocks together with their descendants. Indentation is bounded to levels `0..5`; supported blocks can use any level in that range, and invalid outline moves no-op instead of producing hidden indentation on unsupported blocks.
 
@@ -282,47 +431,9 @@ Enter and Backspace understand nested list/todo behavior, and dragging can chang
 
 See [Indentation](docs/Indentation.md) for the flat-outline model, public API, serialization rules, and drag behavior.
 
-## Read-Only Mode
+## Extending the editor
 
-Use `CascadeEditorConfig(readOnly = true)` when the current user can view a document but cannot edit it:
-
-```kotlin
-CascadeEditor(
-    stateHolder = stateHolder,
-    config = CascadeEditorConfig(readOnly = true),
-)
-```
-
-Read-only mode keeps normal viewer affordances: scrolling, native text selection/copy, and opening existing links from unfocused text blocks. The default toolbar remains visible, but mutating controls are disabled or no-op. To hide the toolbar, use the existing toolbar slot:
-
-```kotlin
-CascadeEditor(
-    stateHolder = stateHolder,
-    toolbar = ToolbarSlot.None,
-    config = CascadeEditorConfig(readOnly = true),
-)
-```
-
-This is a UI boundary inside `CascadeEditor`, not an application authorization layer. App-owned calls such as `stateHolder.dispatch(...)`, `undo()`, `redo()`, `loadFromJson(...)`, `loadFromHtml(...)`, autosave, remote sync, or direct `BlockTextStates` / `BlockSpanStates` writes remain the caller's responsibility. See [Read-Only Mode](docs/ReadOnlyMode.md) for the full behavior contract and custom renderer guidance.
-
-To keep editing enabled but suppress block-level affordances, use `CascadeEditorConfig(blockSelectionEnabled = false)` and/or `CascadeEditorConfig(blockDraggingEnabled = false)`. `readOnly = true` still overrides both flags and disables all editor-owned mutations.
-
-## Block Types
-
-| Type | Supports Text | Supports Indentation | Notes |
-|------|:---:|:---:|-------|
-| `Paragraph` | Yes | Yes | Default block type |
-| `Heading(level)` | Yes | No | H1–H6 |
-| `Todo(checked)` | Yes | Yes | Checkbox with toggle action |
-| `BulletList` | Yes | Yes | Auto-detected from `- ` prefix |
-| `NumberedList(number)` | Yes | Yes | Auto-renumbering on insert/delete/move, including nested outlines |
-| `Quote` | Yes | No | Left border stripe + background tint |
-| `Code` | Yes | No | Multi-line monospace block, no rich-text spans |
-| `Divider` | No | No | Horizontal rule |
-
-Extend with custom types via the `CustomBlockType` interface (see [Custom Block Types](#custom-block-types)).
-
-## Custom Block Types
+When built-in blocks are not enough, add product-specific blocks without forking the editor.
 
 ```kotlin
 public data object CalloutBlock : CustomBlockType {
@@ -346,7 +457,19 @@ public class CalloutBlockRenderer : BlockRenderer<CalloutBlock> {
 
 val registry = createEditorRegistry()
 registry.register(
-    BlockDescriptor(typeId = "callout", displayName = "Callout"),
+    BlockDescriptor(
+        typeId = CalloutBlock.typeId,
+        displayName = CalloutBlock.displayName,
+        description = "Highlighted note block",
+        keywords = listOf("callout", "note"),
+        factory = { id ->
+            Block(
+                id = id,
+                type = CalloutBlock,
+                content = BlockContent.Text("")
+            )
+        },
+    ),
     CalloutBlockRenderer()
 )
 ```
@@ -354,7 +477,7 @@ registry.register(
 For custom blocks that need to inspect editor state or commit block mutations from their own UI, implement `ScopedBlockRenderer`:
 
 ```kotlin
-class TableRenderer : ScopedBlockRenderer<TableBlockType> {
+public class CalloutScopedRenderer : ScopedBlockRenderer<CalloutBlock> {
     @Composable
     override fun Render(
         block: Block,
@@ -372,35 +495,9 @@ class TableRenderer : ScopedBlockRenderer<TableBlockType> {
 
 See [Interactive Custom Blocks](docs/CustomInteractiveBlocks.md) for scoped mutation patterns, read-only capability checks, and custom JSON payload guidance.
 
-## Save & Load
+## Reliability
 
-Save a document to JSON and restore it later — two lines:
-
-```kotlin
-// Save
-val json = stateHolder.toJson(textStates, spanStates)
-
-// Load
-val result = stateHolder.loadFromJson(json, textStates, spanStates)
-```
-
-All block types, text content, rich text formatting (bold, italic, etc.), and supported indentation attributes are preserved through the round-trip. Unknown block types from newer editor versions are kept as-is — no silent data loss on re-save.
-
-For custom block types, plug in `BlockTypeCodec` and `BlockContentCodec` to control how your types are serialized.
-
-Documents can also round-trip through HTML for interchange with HTML-native systems:
-
-```kotlin
-// Save
-val html = stateHolder.toHtml(textStates, spanStates, HtmlProfile.Default)
-
-// Load
-val result = stateHolder.loadFromHtml(html, textStates, spanStates, HtmlProfile.Default)
-```
-
-`HtmlProfile.Default` ships an HTML5-ish canonical mapping. For dialect-specific HTML (Quill-flavored payloads, custom link attributes, flat `ql-indent-N` lists, and so on), compose a custom profile from `HtmlProfile.Default` using `withTagDecoder()`, `withSpanEncoder()`, `withBlockGroupEncoder()`, and `withParserPolicy()`. See [HtmlImportExportFeatureContext.md](docs/HtmlImportExport.md) for the full extension recipe and the reference `CustomHtmlProfile` in `sample/`.
-
-## Crash Handling
+### Crash handling
 
 The editor can contain its own internal failures so a single misbehaving block does not take down the host app. By default `CascadeEditorConfig` uses `CrashPolicy.ContainAndReport`: per-block measure/draw failures are caught at a containment boundary, the failing block degrades to a safe fallback, and the failure is surfaced through an optional host hook.
 
@@ -408,8 +505,10 @@ The editor can contain its own internal failures so a single misbehaving block d
 CascadeEditor(
     stateHolder = stateHolder,
     config = CascadeEditorConfig(
-        crashPolicy = if (BuildConfig.DEBUG) CrashPolicy.Rethrow else CrashPolicy.ContainAndReport,
-        onInternalError = { error -> crashReporter.log(error.context, error.cause) },
+        crashPolicy = CrashPolicy.ContainAndReport,
+        onInternalError = { error ->
+            println("${error.context}: ${error.cause}")
+        },
     ),
 )
 ```
@@ -418,9 +517,19 @@ Use `CrashPolicy.Rethrow` in tests and debug builds to surface bugs instead of h
 
 Serialization entry points are always contain-and-warn, regardless of `crashPolicy`: `loadFromJson()` and `loadFromHtml()` never throw on malformed input. They abort to an empty/partial result and report `DocumentDecodeWarning.DocumentParseFailed` or `HtmlDecodeWarning.InputLimitExceeded` in the returned warning list. HTML decode is additionally bounded by `HtmlDecodeLimits` to guard against OOM on pathological input.
 
-Composition-phase throws from custom renderers cannot be contained in-tree (Compose forbids `try/catch` around `@Composable` calls), so custom renderers remain a host trust boundary.
+Composition-phase throws from custom renderers cannot be contained in-tree because Compose forbids `try/catch` around `@Composable` calls, so custom renderers remain a host trust boundary.
+
+### Testing
+
+1600+ tests across 117 test files cover reducers, history/undo/redo, span algorithms, slash commands, serialization, crash containment, drag-and-drop, and integration workflows. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
+
+```bash
+./gradlew :editor:allTests
+```
 
 ## Architecture
+
+Cascade Editor uses a shared Kotlin editor core with strict layers for document state, text state, actions, registry, rendering, and serialization.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -438,37 +547,19 @@ Composition-phase throws from custom renderers cannot be contained in-tree (Comp
 └─────────────────────────────────────────────────────────┘
 ```
 
-Six layers with strict dependency direction. The reducer pattern ensures every state transition is deterministic — testable in isolation without mocks or UI infrastructure. `BlockTextStates` owns one `TextFieldState` per block directly, avoiding the cursor-jump and race-condition issues that `LaunchedEffect`-based syncing causes.
+Six layers with strict dependency direction keep editor behavior deterministic and testable. `BlockTextStates` owns one `TextFieldState` per block directly, avoiding cursor-jump and race-condition issues caused by reconstructing text state from composition side effects.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full quick-reference table (90+ public symbols), layer interactions, data flow details, and conventions.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full quick-reference table, layer interactions, data flow details, and conventions.
 
-## Engineering Challenges Solved
+## Engineering notes
 
-This is not a styled text field. CascadeEditor combines block-structured document editing, rich-text ranges, slash commands, drag-and-drop, undo/redo, and serialization in shared Compose Multiplatform code. The difficulty is preserving correct behavior across compound editing operations, not rendering individual UI controls.
+Cascade Editor handles several problems that usually become painful when a rich text field grows into a document editor:
 
-**Live runtime state and immutable document state must stay aligned.** Each text-capable block owns a long-lived `TextFieldState` for live editing, while the document model remains an immutable `EditorState` used by reducers, persistence, and structural operations. Split, merge, slash-command edits, and list conversion can mutate the live buffer first and the snapshot second, so `BlockTextStates` records pending programmatic commits and `SpanMaintenanceTextObserver` rebases against the committed result instead of treating it as user input. That is the mechanism that prevents runtime/snapshot drift during compound operations.
+- keeping live `TextFieldState` and immutable document state aligned;
+- preserving rich-text spans through split, merge, replace, typing, undo, and redo;
+- supporting indentation, drag/reorder, serialization, custom renderers, and editor behavior from shared multiplatform code.
 
-**Rich-text formatting has to survive split, merge, replace, and typing workflows.** Formatting is represented as `TextSpan` ranges in visible-text coordinates, not raw buffer coordinates. `SpanAlgorithms` handles normalization, edit adjustment, split, merge, apply/remove/toggle, and style queries, and the same algorithms are reused by runtime holders and snapshot reducers. If those paths diverge, formatting silently corrupts on the next operation. The pure algorithm suite in `SpanAlgorithmsTest.kt` currently covers this surface with 100 tests, with additional reducer and integration tests covering split/merge handoff.
-
-**Undo/redo has to replay both history checkpoints and live editing state.** The history model is hybrid and linear: typing, deletion, and eligible one-block formatting edits use compact block-local entries, while split, merge, drag reorder, slash commands, and other semantic document changes use full-document checkpoints. Replay restores the focused block, exact visible-text selection, and pending styles, and reuses existing `TextFieldState` instances where possible to avoid unnecessary IME reconnection during undo/redo.
-
-**Indentation has to behave like hierarchy without replacing the flat document model.** Supported blocks carry a bounded `BlockAttributes.indentationLevel`, and reducers treat a target root plus following deeper supported blocks as a semantic subtree. That keeps selection indentation, depth-aware numbered lists, serialization, undo/redo, and drag reindentation aligned while preserving the simple ordered block list.
-
-**The editor owns text buffers directly instead of reconstructing them from composition side effects.** `BlockTextStates` keeps one `TextFieldState` per block across recompositions. That enables direct buffer edits for merge, split, slash replacement, and list auto-detection without recreating text state from snapshot data or re-deriving cursor position after every structural change. This is an architectural choice that simplifies block-local editing invariants.
-
-**Span maintenance runs after commit, not inside the input pipeline.** `TextBlockField` observes committed text and selection with `snapshotFlow`, and `SpanMaintenanceTextObserver` updates span coordinates after the edit is accepted. It also resolves continuation rules for typing at formatting boundaries and explicit pending styles from toolbar actions. Keeping span maintenance post-commit isolates formatting logic from IME-driven text entry.
-
-**Drag auto-scroll has to coexist with an active gesture.** During block drag, the list must scroll while pointer input remains owned by the drag handler. `AutoScrollDuringDrag` uses `LazyListState.dispatchRawDelta()` instead of `scroll {}` because the standard scroll path acquires the scroll `MutatorMutex` and interferes with the active drag gesture. After each delta, the editor recomputes the drop target against the shifted viewport so reorder feedback stays correct while the list is moving.
-
-**Most of the hard logic lives in shared multiplatform code.** Core models, reducers, slash-command infrastructure, serialization, span algorithms, state holders, and most editor behavior live in `editor/src/commonMain`, with platform-specific code limited to thin Android/iOS/desktop adapters. That means the non-trivial parts are implemented once and have to remain correct across all supported targets, rather than being delegated to a platform-specific text widget.
-
-## Testing
-
-1600+ tests across 117 test files — reducers, history/undo/redo, span algorithms, slash commands, serialization, crash containment, drag-and-drop, and integration workflows. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
-
-```bash
-./gradlew :editor:allTests
-```
+Most of this logic lives in `editor/src/commonMain`, with platform-specific code limited to thin Android/iOS/desktop adapters.
 
 ## Platform Requirements
 
@@ -483,7 +574,6 @@ This is not a styled text field. CascadeEditor combines block-structured documen
 | Desktop runtime | JDK 11+ |
 | Desktop packaging | JDK 17+ |
 | JVM target | 11 |
-
 
 ## Contributing
 

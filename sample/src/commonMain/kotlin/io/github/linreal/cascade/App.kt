@@ -31,6 +31,7 @@ import io.github.linreal.cascade.screens.CustomBlocksScreen
 import io.github.linreal.cascade.screens.CustomHtmlProfileScreen
 import io.github.linreal.cascade.screens.CustomToolbarScreen
 import io.github.linreal.cascade.screens.EditorDemoScreen
+import io.github.linreal.cascade.screens.comments.CommentsScreen
 import io.github.linreal.cascade.screens.external_toolbar.ExternalToolbarScreen
 import io.github.linreal.cascade.screens.LandingScreen
 import io.github.linreal.cascade.theme.CascadeSampleColors
@@ -111,6 +112,11 @@ fun App() {
                         onBack = { currentScreen = AppScreen.Landing },
                     )
                     AppScreen.CustomHtmlProfile -> CustomHtmlProfileScreen(
+                        isDark = isDark,
+                        onToggleTheme = { themeOverride = !isDark },
+                        onBack = { currentScreen = AppScreen.Landing },
+                    )
+                    AppScreen.Comments -> CommentsScreen(
                         isDark = isDark,
                         onToggleTheme = { themeOverride = !isDark },
                         onBack = { currentScreen = AppScreen.Landing },

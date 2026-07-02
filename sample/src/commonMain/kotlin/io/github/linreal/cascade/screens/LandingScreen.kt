@@ -40,6 +40,7 @@ import cascadeeditor.sample.generated.resources.ic_arrow_up_right
 import cascadeeditor.sample.generated.resources.ic_brackets_angle
 import cascadeeditor.sample.generated.resources.ic_caret_right
 import cascadeeditor.sample.generated.resources.ic_code
+import cascadeeditor.sample.generated.resources.ic_comment
 import cascadeeditor.sample.generated.resources.ic_editor
 import cascadeeditor.sample.generated.resources.ic_palette
 import cascadeeditor.sample.generated.resources.ic_puzzle
@@ -109,7 +110,7 @@ fun LandingScreen(
                     ),
                 )
                 Text(
-                    text = "4 modules",
+                    text = "5 modules",
                     style = TextStyle(
                         fontFamily = geist,
                         fontSize = 13.sp,
@@ -154,6 +155,14 @@ fun LandingScreen(
                     title = "Custom HTML Profile",
                     description = "Import and export a custom HTML profile",
                     onClick = { onNavigate(AppScreen.CustomHtmlProfile) },
+                )
+                ModuleCard(
+                    colors = colors,
+                    icon = Res.drawable.ic_comment,
+                    tile = colors.tileBlocks,
+                    title = "Comments",
+                    description = "Embed the editor as a chat composer",
+                    onClick = { onNavigate(AppScreen.Comments) },
                 )
             }
 
