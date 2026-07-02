@@ -114,15 +114,16 @@ internal fun EditorTopBar(
 // Titled variant for screens without undo/redo or reset (e.g. the custom
 // toolbar demo): back chip plus screen title on the left, and the same grouped
 // soft-container of edit/theme actions on the right.
+
 @Composable
 internal fun TitledEditorTopBar(
     title: String,
-    isReadOnly: Boolean,
     isDark: Boolean,
     onBack: () -> Unit,
-    onToggleReadOnly: () -> Unit,
     onToggleTheme: () -> Unit,
     modifier: Modifier = Modifier,
+    isReadOnly: Boolean = false,
+    onToggleReadOnly: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -148,7 +149,9 @@ internal fun TitledEditorTopBar(
             )
         }
         ChromeActionGroup {
-            EditModeButton(isReadOnly = isReadOnly, onClick = onToggleReadOnly)
+            if (onToggleReadOnly != null) {
+                EditModeButton(isReadOnly = isReadOnly, onClick = onToggleReadOnly)
+            }
             ThemeButton(isDark = isDark, onClick = onToggleTheme)
         }
     }
