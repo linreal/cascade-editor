@@ -96,7 +96,7 @@ fun CommentsScreen(
     }
 }
 
-private val FeedBottomInset = 96.dp
+private val FeedBottomInset = 150.dp
 
 @Composable
 private fun CommentBubble(comment: Comment) {
