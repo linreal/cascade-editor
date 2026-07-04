@@ -29,6 +29,8 @@ Cascade Editor is designed for apps where rich text usually starts small and the
 
 ### I need a rich text input
 
+![Demo](assets/comments_input.png)
+
 Use Cascade Editor as a constrained rich text field with bold, italic, links, inline code, toolbar controls, and predictable persistence.
 
 Good for comments, notes, custom fields, descriptions, and short rich text inputs.
@@ -40,6 +42,8 @@ Round-trip content through JSON or HTML-like formats, including custom backend d
 Good for apps that already store rich text on the backend and cannot simply adopt another editor's internal format.
 
 ### I need a full block editor
+
+![Demo](assets/full_editor.png)
 
 Use structured blocks: paragraphs, headings, todos, quotes, lists, code blocks, dividers, indentation, drag-and-drop, slash commands, undo/redo, read-only mode, and custom block types.
 
