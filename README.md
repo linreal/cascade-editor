@@ -47,6 +47,8 @@ Good for apps that already store rich text on the backend and cannot simply adop
 
 Use structured blocks: paragraphs, headings, todos, quotes, lists, code blocks, dividers, indentation, drag-and-drop, slash commands, undo/redo, read-only mode, and custom block types.
 
+When built-in behavior is not enough, extend the editor with custom block types, renderers, slash commands, toolbar actions, serialization codecs, and HTML import/export rules.
+
 Good for document editors, task descriptions, knowledge bases, note apps, and internal tools.
 
 ## When Cascade Editor is a good fit
