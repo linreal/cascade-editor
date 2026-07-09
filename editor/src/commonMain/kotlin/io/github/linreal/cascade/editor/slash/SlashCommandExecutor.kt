@@ -2,6 +2,8 @@ package io.github.linreal.cascade.editor.slash
 
 import io.github.linreal.cascade.editor.action.ConvertBlockType
 import io.github.linreal.cascade.editor.action.NavigateSlashSubmenu
+import io.github.linreal.cascade.editor.action.ReplaceBlock
+import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
@@ -20,9 +22,15 @@ import kotlinx.coroutines.launch
  * not on [SlashCommandRegistry], so it can be created before the merged registry is available.
  *
  * When behavior is [ConvertInPlace][BuiltInBlockSlashBehavior.ConvertInPlace]:
- * the anchor block's type is changed in-place via [ConvertBlockType]. Query text
- * is already removed (all built-in actions use [SlashQueryTextPolicy.RemoveBeforeExecute]),
- * so remaining text and spans are preserved as-is.
+ * for a text target the anchor block's type is changed in-place via [ConvertBlockType].
+ * Query text is already removed (all built-in actions use [SlashQueryTextPolicy.RemoveBeforeExecute]),
+ * so remaining text and spans are preserved as-is. For a non-text target (e.g. a custom
+ * block whose default content is [BlockContent.Custom]/[BlockContent.Empty]) the anchor's
+ * text content is not a valid shape for the new type: when the anchor is blank after
+ * query removal the whole block is replaced with the descriptor's default block —
+ * preserving the anchor's id and position — and when text remains the anchor keeps it
+ * and the new block is inserted after the anchor instead, so converting never silently
+ * discards user-typed text.
  *
  * When behavior is [AlwaysInsert][BuiltInBlockSlashBehavior.AlwaysInsert]:
  * a new block is created from the descriptor factory and inserted above the anchor
@@ -40,8 +48,26 @@ internal fun createBuiltInSlashExecutor(
         } else {
             when (behavior) {
                 is BuiltInBlockSlashBehavior.ConvertInPlace -> {
-                    val targetType = descriptor.createBlock(anchorBlockId).type
-                    stateHolder.dispatch(ConvertBlockType(anchorBlockId, targetType))
+                    val target = descriptor.createBlock(anchorBlockId)
+                    if (target.content is BlockContent.Text) {
+                        // Text target: swap type only, keeping the anchor's text/spans.
+                        stateHolder.dispatch(ConvertBlockType(anchorBlockId, target.type))
+                    } else if (editor.getAnchorVisibleText().isNullOrBlank()) {
+                        // Non-text target on a blank anchor: the anchor's text is not a
+                        // valid shape for the new type. Replace the whole block,
+                        // preserving id and position.
+                        editor.replaceAnchorBlock(target, preserveAnchorId = true, requestFocus = false)
+                        // SlashCommandEditorHost currently rebuilds a replacement with
+                        // the anchor id and otherwise preserves only type/content. Restore
+                        // descriptor-provided attributes so custom indentation/defaults are
+                        // not lost by this built-in conversion path.
+                        stateHolder.dispatch(ReplaceBlock(anchorBlockId, target.copy(id = anchorBlockId)))
+                    } else {
+                        // Non-text target with text remaining after query removal:
+                        // converting would discard that text, so keep the anchor and
+                        // insert the new block right after it instead.
+                        editor.insertBlockAfterAnchor(descriptor.createBlock(), requestFocus = false)
+                    }
                     SlashCommandResult.Done
                 }
                 is BuiltInBlockSlashBehavior.AlwaysInsert -> {

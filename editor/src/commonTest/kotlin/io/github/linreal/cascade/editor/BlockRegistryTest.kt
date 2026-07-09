@@ -274,6 +274,26 @@ class BlockRegistryTest {
     }
 
     @Test
+    fun `revision increments on registration so mounted derivations can observe changes`() {
+        val registry = createEditorRegistry()
+        val startRevision = registry.revision
+
+        registry.registerDescriptor(
+            BlockDescriptor(
+                typeId = "custom:rev",
+                displayName = "Rev",
+                description = "",
+                factory = { id -> Block(id, BlockType.Paragraph, BlockContent.Text("")) },
+            ),
+        )
+        assertTrue(registry.revision > startRevision, "registering a descriptor must bump the revision")
+
+        val afterDescriptor = registry.revision
+        registry.registerRenderer("custom:rev", registry.getRenderer("paragraph")!!)
+        assertTrue(registry.revision > afterDescriptor, "registering a renderer must bump the revision")
+    }
+
+    @Test
     fun `custom descriptor with slash spec is preserved`() {
         val registry = BlockRegistry.create()
         val customSpec = BuiltInSlashCommandSpec(

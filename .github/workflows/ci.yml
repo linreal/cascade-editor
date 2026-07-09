@@ -13,8 +13,8 @@ concurrency:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: macos-latest
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -26,8 +26,33 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build
-        run: ./gradlew :editor:assembleDebug
+      - name: Boot iOS simulator
+        shell: bash
+        run: |
+          simulator="$(
+            xcrun simctl list devices available --json |
+              jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0] | [.udid, .state] | @tsv'
+          )"
+          IFS=$'\t' read -r simulator_udid simulator_state <<< "$simulator"
+          if [[ -z "$simulator_udid" || "$simulator_udid" == "null" ]]; then
+            echo "No available iPhone simulator was found."
+            exit 1
+          fi
+          if [[ "$simulator_state" != "Booted" ]]; then
+            xcrun simctl boot "$simulator_udid"
+          fi
+          xcrun simctl bootstatus "$simulator_udid" --block
 
-      - name: Test
-        run: ./gradlew :editor:testDebugUnitTest
+      - name: Check editor
+        run: |
+          ./gradlew \
+            :editor:assembleDebug \
+            :editor:allTests \
+            :editor:apiCheck
+
+      - name: Check native iOS SDK
+        run: |
+          ./gradlew \
+            :editor-ios-sdk:allTests \
+            :editor-ios-sdk:apiCheck \
+            :editor-ios-sdk:assembleCascadeEditorDebugXCFramework

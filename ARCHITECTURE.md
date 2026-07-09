@@ -10,6 +10,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Sample editor top-bar chrome | `sample/src/commonMain/kotlin/io/github/linreal/cascade/screens/EditorChrome.kt` | `EditorTopBar()`, `SelectionTopBar()`, `SavedPill()`, `OpenedLinkPill()` (shared by editor screens; maps the chrome design onto `MaterialTheme.colorScheme`) |
 | Sample comments screen | `sample/src/commonMain/kotlin/io/github/linreal/cascade/screens/comments/CommentsScreen.kt`, `CommentComposer.kt`, `CommentsScreenModel.kt`, `CommentModel.kt` | `CommentsScreen()`, `CommentComposer()` (editor-as-chat-composer: focus-driven fade-in formatting bar via `rememberCascadeEditorToolbarController` + Send), `CommentsScreenModel` (`buildOwnComment()`/`resetComposer()`), `Comment` + `rememberCommentAnnotatedString()` (consumer-side `SpanStyle`→`AnnotatedString`) |
 | Main composable | `ui/CascadeEditor.kt` | `CascadeEditor(stateHolder, textStates, spanStates, registry, slashRegistry, slashCommand, ...)` |
+| Native iOS SDK technical context | `docs/iOsNativeSdk.md` | Swift controller facade, UIKit host, native custom blocks/slash commands, public API, integration constraints |
 | Editor behavior config | `ui/CascadeEditorConfig.kt`, `ui/LocalCascadeEditorConfig.kt` | `CascadeEditorConfig` (incl. `crashPolicy`/`onInternalError`), `LocalCascadeEditorConfig` |
 | Crash handling | `CrashHandling.kt` | `CrashPolicy`, `CascadeError`, `CascadeErrorReporter`, `guarded()`/`reportContainedFailure()` (internal) |
 | Editor interaction policy | `ui/EditorInteractionPolicy.kt`, `ui/LocalEditorInteractionPolicy.kt` | `EditorInteractionPolicy` (internal) |
@@ -60,12 +61,12 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Default scoped renderer scope | `ui/DefaultBlockRenderScope.kt` | `DefaultBlockRenderScope` (internal implementation) |
 | Sample table custom block | `sample/src/commonMain/kotlin/io/github/linreal/cascade/screens/customblocks/SampleTableBlock.kt`, `sample/src/commonMain/kotlin/io/github/linreal/cascade/screens/customblocks/SampleTableBlockRenderer.kt` | `SampleTableModel`, `createTableRenderer()` |
 | Built-in slash spec | `slash/BuiltInSlashCommandSpec.kt` | `BuiltInSlashCommandSpec`, `BuiltInBlockSlashBehavior` |
-| Built-in slash factory | `slash/BuiltInSlashCommandFactory.kt` | `BuiltInSlashCommandFactory` |
+| Built-in slash factory | `slash/BuiltInSlashCommandFactory.kt` | `BuiltInSlashCommandFactory`, `builtInBlockSlashCommandId()`, `BUILTIN_BLOCK_SLASH_COMMAND_ID_PREFIX` |
 | Built-in slash executor | `slash/SlashCommandExecutor.kt` | `createBuiltInSlashExecutor()` (internal) |
 | Slash editor host | `slash/SlashCommandEditorHost.kt` | `SlashCommandEditorHost` (internal) |
 | List auto-detect observer | `ui/observers/ListAutoDetectObserver.kt` | `ListAutoDetectObserver` (internal) |
 | Slash text observer | `slash/SlashCommandTextObserver.kt` | `SlashCommandTextObserver` (internal) |
-| Renderer interface | `registry/BlockRenderer.kt` | `BlockRenderer<T>` (+ `handlesSelectionVisual`), `BlockCallbacks`, `DefaultBlockCallbacks` |
+| Renderer interface | `registry/BlockRenderer.kt` | `BlockRenderer<T>` (+ `handlesSelectionVisual`, `supportsDragPreview` — platform-view hosts opt out of the live drag ghost), `BlockCallbacks`, `DefaultBlockCallbacks` |
 | Policy-aware renderer callbacks | `registry/PolicyAwareBlockCallbacks.kt` | `PolicyAwareBlockCallbacks` (internal) |
 | Unknown block type | `core/UnknownBlockType.kt` | `UnknownBlockType` (implements `CustomBlockType`) |
 | Document serialization | `serialization/DocumentSchema.kt` | `DocumentSchema` (encode/decode full document) |
@@ -87,7 +88,7 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Doc decode result | `serialization/DocumentDecodeResult.kt` | `DocumentDecodeResult` |
 | Block type codec | `serialization/BlockTypeCodec.kt` | `BlockTypeCodec` |
 | Block content codec | `serialization/BlockContentCodec.kt` | `BlockContentCodec` |
-| Editor serialization ext | `serialization/DocumentSerializationExt.kt` | `EditorStateHolder.toJson()`, `EditorStateHolder.loadFromJson()` |
+| Editor serialization ext | `serialization/DocumentSerializationExt.kt` | `EditorStateHolder.toJson()`, `EditorStateHolder.loadFromJson()` (hard replacement, including parse failure), `EditorStateHolder.resolveDocumentBlocks()` (JSON-free authoritative blocks with live text/spans folded in; cheap content-change signal) |
 | Editor HTML serialization ext | `htmlserialization/HtmlSerializationExt.kt` | `EditorStateHolder.toHtml()`, `EditorStateHolder.loadFromHtml()` |
 | HTML schema entry point | `htmlserialization/HtmlSchema.kt` | `HtmlSchema` (`decode` and `encode` wired through profile-driven engines) |
 | HTML decode limits | `htmlserialization/HtmlDecodeLimits.kt` | `HtmlDecodeLimits` (input-size bound; `loadFromHtml` / `HtmlSchema.decodeWithReport` `limits` param) |
@@ -284,6 +285,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 - **Auto-scroll** uses `dispatchRawDelta` to avoid MutatorMutex contention with gesture scroll
 - **Crash containment has two regimes** — UI-runtime guards (per-block measure/draw via `guardedBlockRender`, span `OutputTransformation`) are policy-gated by `CascadeEditorConfig.crashPolicy` (`Rethrow` in tests/debug, `ContainAndReport` in release) and route through `guarded()`; the serialization layer (`loadFromJson`/`loadFromHtml` string entry points, HTML decode) is always-contain-and-warn (returns `DocumentParseFailed`/`InputLimitExceeded` warning lists, not policy-gated). Compose forbids `try/catch` around `@Composable` calls, so composition-phase renderer throws are not containable in-tree (host trust boundary for custom renderers)
 - **Tests** go in `editor/src/commonTest/` (Compose UI tests in `editor/src/desktopTest/`). Run: `./gradlew :editor:allTests`
+- **Public-API snapshots** — binary-compatibility-validator guards `:editor` (and `:editor-ios-sdk`): JVM/Android dumps in `editor/api/{desktop,android}/`, klib (iOS/wasm) dumps in `editor/api/editor.klib.api`. `apiCheck` runs with `check` and fails on unbaselined public-surface changes; after an intentional API change run `./gradlew :editor:apiDump :editor-ios-sdk:apiDump` and commit the diff
 
 ## Implementation Status
 
@@ -298,7 +300,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | TextBlockRenderer | Done | All text-supporting types except todo |
 | TextBlockField (shared) | Done | Extracted text editing composable used by all text renderers |
 | Heading font sizes | Done | No bold weight yet |
-| Slash commands (backend) | Done | Session state with query range, submenu nav, highlight; enriched reducer API; `BuiltInSlashCommandSpec` on descriptors with `ConvertInPlace`/`AlwaysInsert` behavior policies; `BuiltInSlashCommandFactory` generates `SlashCommandAction`s from descriptor metadata; `SlashCommandEditorHost` provides safe runtime/snapshot editing; `BlockTextStates.replaceVisibleRange()` + `BlockSpanStates.adjustForRangeReplacement()` primitives; `CascadeEditor` exposes public `slashRegistry` parameter for consumer custom commands |
+| Slash commands (backend) | Done | Session state with query range, submenu nav, highlight; enriched reducer API; `BuiltInSlashCommandSpec` on descriptors with `ConvertInPlace`/`AlwaysInsert` behavior policies; `BuiltInSlashCommandFactory` generates `SlashCommandAction`s from descriptor metadata; `SlashCommandEditorHost` provides safe runtime/snapshot editing; `BlockTextStates.replaceVisibleRange()` + `BlockSpanStates.adjustForRangeReplacement()` primitives; `CascadeEditor` exposes public `slashRegistry` parameter for consumer custom commands; public `builtInBlockSlashCommandId(typeId)` exposes the built-in id format (`builtin.block.<typeId>`) for collision detection by consumers |
 | Slash commands (integration) | Done | `shouldInvalidateSlashSession()` closes session on drag, selection, or anchor deletion; reactive `LaunchedEffect` + `snapshotFlow` wiring in `CascadeEditor` |
 | Slash commands (text observer) | Done | `SlashCommandTextObserver` detects `/`, tracks `queryRange`, dismisses on invalid state; wired in `TextBlockField` via combined text+selection `snapshotFlow`; observer is `null` for `BlockType.Code` (call-site suppression keyed in `remember(...)` so same-id Paragraph ↔ Code conversion drops/recreates it) |
 | Slash commands (UI) | Done | Popup overlay with grouped items, caret-relative positioning, keyboard nav (Up/Down/Enter/Escape), auto-highlight, submenu back-nav, `focusProperties { canFocus = false }` pattern |
@@ -352,6 +354,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `EditorStateTest.kt` | All action reducers incl. span actions, split/merge span transfer, snapshot stability (~87 tests) |
 | `SlashCommandStateTest.kt` | Slash session reducers: open/update/navigate/highlight/close, submenu path, no-op guards |
 | `SlashCommandRegistryTest.kt` | Registry: registration order, dedup, ranking tiers, path-based submenu search, menu discoverability, tie-breaking |
+| `BuiltInBlockSlashCommandIdTest.kt` | `builtInBlockSlashCommandId()` prefix format and equivalence with the ids `BuiltInSlashCommandFactory` generates |
 | `DragActionsTest.kt` | Drag state transitions, subtree payload resolution, depth-aware target clearing, self-drop rejection, depth rewrite, drag renumbering |
 | `DragSelectionTest.kt` | `isDropAtOriginalPosition` boundary cases for long-press-to-select detection |
 | `BlockSelectionIntegrationTest.kt` | Block selection workflows: enter/exit selection, multi-select, delete selected, insertion preserves selection, slash invalidation, full lifecycle (11 scenarios) |

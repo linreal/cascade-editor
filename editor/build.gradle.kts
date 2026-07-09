@@ -6,6 +6,18 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.vanniktechPublish)
+    alias(libs.plugins.binaryCompatibilityValidator)
+}
+
+// Public-API snapshots under api/ are verified by `apiCheck` (wired into `check`):
+// .api files cover the JVM/Android surface, .klib.api covers klib-backed targets
+// (iOS/wasm) at Kotlin-declaration level. After an intentional API change, refresh
+// the baseline with `./gradlew :editor:apiDump` and commit the diff.
+apiValidation {
+    @OptIn(kotlinx.validation.ExperimentalBCVApi::class)
+    klib {
+        enabled = true
+    }
 }
 
 kotlin {
@@ -33,7 +45,7 @@ kotlin {
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
-            baseName = "CascadeEditor"
+            baseName = "CascadeEditorCore"
             isStatic = true
         }
     }

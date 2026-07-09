@@ -1,5 +1,7 @@
 package io.github.linreal.cascade.editor.slash
 
+import androidx.compose.runtime.mutableIntStateOf
+
 /**
  * Central registry and search engine for slash command items.
  *
@@ -20,12 +22,19 @@ public class SlashCommandRegistry {
 
     private val rootItems = linkedMapOf<SlashCommandId, IndexedItem>()
 
+    // Snapshot-backed change counter. Bumped on every registration so composables that
+    // derive from this registry (e.g. the merged slash registry the mounted editor
+    // searches) can observe commands registered while the editor is already mounted.
+    private val revisionState = mutableIntStateOf(0)
+    internal val revision: Int get() = revisionState.intValue
+
     /**
      * Registers a root-level slash command item (action or menu).
      * If an item with the same [SlashCommandItem.id] is already registered, it is replaced.
      */
     public fun register(item: SlashCommandItem) {
         rootItems[item.id] = IndexedItem(item)
+        revisionState.intValue++
     }
 
     /**

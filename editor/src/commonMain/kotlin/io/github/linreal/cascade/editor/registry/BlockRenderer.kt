@@ -616,6 +616,20 @@ public interface BlockRenderer<T : BlockType> {
     public val handlesSelectionVisual: Boolean get() = false
 
     /**
+     * Whether this renderer can be live-composed a second time as the floating
+     * drag-preview ghost.
+     *
+     * The drag preview re-invokes [Render] for the dragged block inside a
+     * translated overlay while the original block stays in the list. Renderers
+     * that host stateful platform views (e.g. a UIKit view controller) must
+     * opt out by returning `false`: instantiating a duplicate platform view
+     * mid-gesture is expensive, and interop views do not follow the preview's
+     * draw-phase translation. When `false`, the editor renders a generic
+     * placeholder ghost instead.
+     */
+    public val supportsDragPreview: Boolean get() = true
+
+    /**
      * Renders the block content.
      *
      * @param block The block to render

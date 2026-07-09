@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,6 +21,7 @@ import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.registry.BlockRenderScope
 import io.github.linreal.cascade.editor.registry.BlockRegistry
+import io.github.linreal.cascade.editor.registry.BlockRenderer
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 
 /**
@@ -122,19 +124,32 @@ internal fun DragPreview(
                 shadowElevation = DragPreviewDefaults.ShadowElevationDp
             }
     ) {
-        RenderRegisteredBlock(
-            renderer = renderer,
-            block = previewBlock,
-            isSelected = false,
-            isFocused = false,
-            // Match the same padding as regular blocks in CascadeEditor
-            modifier = Modifier.padding(
-                horizontal = theme.dimensions.blockHorizontalPadding,
-                vertical = 4.dp,
-            ),
-            callbacks = callbacks,
-            scope = scope,
-        )
+        if (renderer.supportsDragPreview) {
+            RenderRegisteredBlock(
+                renderer = renderer,
+                block = previewBlock,
+                isSelected = false,
+                isFocused = false,
+                // Match the same padding as regular blocks in CascadeEditor
+                modifier = Modifier.padding(
+                    horizontal = theme.dimensions.blockHorizontalPadding,
+                    vertical = 4.dp,
+                ),
+                callbacks = callbacks,
+                scope = scope,
+            )
+        } else {
+            // Renderers hosting stateful platform views opt out of live preview
+            // composition; show a lightweight labeled ghost instead.
+            DragPreviewPlaceholder(
+                label = registry.getDescriptor(previewBlock.type.typeId)?.displayName
+                    ?: previewBlock.type.typeId,
+                modifier = Modifier.padding(
+                    horizontal = theme.dimensions.blockHorizontalPadding,
+                    vertical = 4.dp,
+                ),
+            )
+        }
         if (badgeText != null) {
             BasicText(
                 text = badgeText,
@@ -155,6 +170,32 @@ internal fun DragPreview(
                     ),
             )
         }
+    }
+}
+
+/**
+ * Generic ghost used when the dragged block's renderer opts out of live
+ * drag-preview composition ([BlockRenderer.supportsDragPreview] is false).
+ */
+@Composable
+private fun DragPreviewPlaceholder(
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    val theme = LocalCascadeTheme.current
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                color = theme.colors.unknownBlockBackground,
+                shape = RoundedCornerShape(8.dp),
+            )
+            .padding(16.dp),
+    ) {
+        BasicText(
+            text = label,
+            style = theme.typography.body.copy(color = theme.colors.text),
+        )
     }
 }
 

@@ -39,6 +39,21 @@ class SlashCommandRegistryTest {
         children = children,
     )
 
+    // --- Revision signal ---
+
+    @Test
+    fun `revision increments on registration so mounted derivations can observe changes`() {
+        val registry = SlashCommandRegistry()
+        val startRevision = registry.revision
+
+        registry.register(action("one", "One"))
+        assertTrue(registry.revision > startRevision, "registering a command must bump the revision")
+
+        val afterFirst = registry.revision
+        registry.register(action("two", "Two"))
+        assertTrue(registry.revision > afterFirst, "each registration must bump the revision")
+    }
+
     // --- Registration order ---
 
     @Test

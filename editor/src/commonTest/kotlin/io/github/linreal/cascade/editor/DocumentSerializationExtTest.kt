@@ -336,6 +336,29 @@ class DocumentSerializationExtTest {
     }
 
     @Test
+    fun `loadFromJson hard replaces document and runtime state on parse failure`() {
+        val keptId = BlockId("kept")
+        val holder = EditorStateHolder(
+            EditorState.withBlocks(
+                listOf(Block(keptId, BlockType.Paragraph, BlockContent.Text("Keep me"))),
+            ),
+        )
+        val textStates = BlockTextStates()
+        val spanStates = BlockSpanStates()
+        textStates.getOrCreate(keptId, "Keep me edited")
+
+        val result = holder.loadFromJson("{ not json", textStates, spanStates)
+
+        assertTrue(result.warnings.any { it is DocumentDecodeWarning.DocumentParseFailed })
+        assertEquals(1, holder.state.blocks.size)
+        assertTrue(holder.state.blocks.single().content is BlockContent.Text)
+        assertEquals("", (holder.state.blocks.single().content as BlockContent.Text).text)
+        assertTrue(holder.state.blocks.none { it.id == keptId })
+        assertNull(textStates.get(keptId))
+        assertNull(spanStates.get(keptId))
+    }
+
+    @Test
     fun `loadFromJson returns warnings for duplicate IDs`() {
         val holder = EditorStateHolder()
         val textStates = BlockTextStates()

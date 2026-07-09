@@ -1,0 +1,17 @@
+{
+    "version": 2,
+    "blocks": [
+        {
+            "id": "composer-paragraph-1",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "",
+                "spans": []
+            }
+        }
+    ]
+}

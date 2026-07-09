@@ -27,6 +27,24 @@ public fun EditorStateHolder.toJson(
 }
 
 /**
+ * Resolves the current authoritative document blocks, incorporating live runtime
+ * text and span edits, without encoding to JSON.
+ *
+ * Runtime text/span state (from [textStates]/[spanStates]) takes priority over the
+ * snapshot content in [EditorStateHolder.state], exactly as [toJson] does. Blocks
+ * with no live edits keep their original object identity.
+ *
+ * This is the JSON-free primitive [toJson] is built on. Comparing consecutive
+ * results by structural equality is a cheap content-change signal that catches
+ * text/span edits which never alter [EditorState] identity — useful for change
+ * observers that must not pay full serialization cost on every snapshot tick.
+ */
+public fun EditorStateHolder.resolveDocumentBlocks(
+    textStates: BlockTextStates,
+    spanStates: BlockSpanStates,
+): List<Block> = resolveCurrentBlocks(this, textStates, spanStates)
+
+/**
  * Resolves the current authoritative document blocks without JSON encoding.
  *
  * Runtime text/span state takes priority over snapshot content exactly like
