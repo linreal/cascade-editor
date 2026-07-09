@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import io.github.linreal.cascade.editor.action.EditorAction
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.loge
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 
@@ -308,13 +309,32 @@ public class EditorStateHolder(initialState: EditorState = EditorState.Empty) {
     }
 
     /**
-     * Convenience wrapper for single-action structural edit sources.
+     * Dispatches a structural action as one history entry.
+     *
+     * This is the public integration point for external editor chrome and SDK
+     * bridges that need the same undo/redo semantics as built-in split, merge,
+     * slash, drag, and custom-renderer mutations.
+     *
+     * **History requires runtime holders.** The undo checkpoint snapshots live
+     * text/span state, so an entry is only recorded when holders are available —
+     * either bound by a composed `CascadeEditor` (the defaults) or passed
+     * explicitly by the caller. When neither is available (e.g. the action fires
+     * before the editor is first composed) the action still mutates the snapshot
+     * but records **no undo entry** — the mutation is not undoable. Callers that
+     * can run before first composition should pass their own [textStates] and
+     * [spanStates] explicitly, or gate the call on the editor being mounted.
      */
-    internal fun dispatchStructuralAction(
+    public fun dispatchStructuralAction(
         action: EditorAction,
         textStates: BlockTextStates? = boundHistoryTextStates,
         spanStates: BlockSpanStates? = boundHistorySpanStates,
     ) {
+        if (textStates == null || spanStates == null) {
+            loge(
+                "dispatchStructuralAction($action) applied without history: no runtime " +
+                    "text/span holders are bound or provided, so this mutation is not undoable."
+            )
+        }
         runStructuralHistoryTransaction(textStates, spanStates) {
             dispatch(action)
         }

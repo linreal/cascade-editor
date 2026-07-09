@@ -1,15 +1,22 @@
 package io.github.linreal.cascade.editor
 
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.core.BlockType
+import io.github.linreal.cascade.editor.core.CustomBlockType
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
+import io.github.linreal.cascade.editor.core.UnknownBlockType
+import io.github.linreal.cascade.editor.registry.BlockDescriptor
 import io.github.linreal.cascade.editor.registry.BlockRegistry
+import io.github.linreal.cascade.editor.slash.BuiltInBlockSlashBehavior
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandFactory
+import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandSpec
 import io.github.linreal.cascade.editor.slash.SlashCommandAction
 import io.github.linreal.cascade.editor.slash.SlashCommandExecutor
+import io.github.linreal.cascade.editor.slash.builtInBlockSlashCommandId
 import io.github.linreal.cascade.editor.slash.createBuiltInSlashExecutor
 import io.github.linreal.cascade.editor.slash.SlashCommandId
 import io.github.linreal.cascade.editor.slash.SlashCommandMenu
@@ -214,6 +221,96 @@ class SlashCommandExecutorTest {
         assertTrue(anchorIndex >= 1, "Expected block before anchor")
         val insertedBlock = blocks[anchorIndex - 1]
         assertEquals(BlockType.Divider, insertedBlock.type)
+    }
+
+    @Test
+    fun `ConvertInPlace to a non-text custom target replaces the whole block preserving id`() = runTest {
+        val env = createExecutorEnv(
+            text = "/widget",
+            queryRange = SlashQueryRange(0, 7),
+            query = "widget",
+        )
+        val widgetType = object : CustomBlockType {
+            override val typeId: String = "widget"
+            override val displayName: String = "Widget"
+            override val supportsIndentation: Boolean = true
+        }
+        val descriptor = BlockDescriptor(
+            typeId = "widget",
+            displayName = "Widget",
+            description = "A custom widget",
+            slash = BuiltInSlashCommandSpec(behavior = BuiltInBlockSlashBehavior.ConvertInPlace),
+            factory = { id ->
+                Block(
+                    id = id,
+                    type = widgetType,
+                    content = BlockContent.Custom("widget", mapOf("k" to "v")),
+                    attributes = BlockAttributes(indentationLevel = 2),
+                )
+            },
+        )
+        env.blockRegistry.registerDescriptor(descriptor)
+        val action = BuiltInSlashCommandFactory(env.executor.builtInExecutor)
+            .generate(listOf(descriptor))
+            .single()
+        env.registry.register(action)
+
+        env.executor.executeNow(builtInBlockSlashCommandId("widget"))
+
+        val block = env.stateHolder.state.getBlock(env.anchorId)
+        assertNotNull(block)
+        // Same block id/position, but now a valid custom-content block — not the old
+        // shape (custom type + leftover BlockContent.Text).
+        assertEquals(env.anchorId, block.id)
+        assertEquals(widgetType, block.type)
+        assertEquals(2, block.attributes.indentationLevel)
+        val content = block.content
+        assertTrue(content is BlockContent.Custom, "expected BlockContent.Custom, got $content")
+        assertEquals("v", content.data["k"])
+        assertNull(env.stateHolder.state.slashCommandState)
+    }
+
+    @Test
+    fun `ConvertInPlace to a non-text target with remaining text keeps the anchor and inserts after`() = runTest {
+        val env = createExecutorEnv(
+            text = "Q3 notes /widget",
+            queryRange = SlashQueryRange(9, 16), // "/widget"
+            query = "widget",
+        )
+        val descriptor = BlockDescriptor(
+            typeId = "widget",
+            displayName = "Widget",
+            description = "A custom widget",
+            slash = BuiltInSlashCommandSpec(behavior = BuiltInBlockSlashBehavior.ConvertInPlace),
+            factory = { id ->
+                Block(id, UnknownBlockType("widget", "{}"), BlockContent.Custom("widget", mapOf("k" to "v")))
+            },
+        )
+        env.blockRegistry.registerDescriptor(descriptor)
+        val action = BuiltInSlashCommandFactory(env.executor.builtInExecutor)
+            .generate(listOf(descriptor))
+            .single()
+        env.registry.register(action)
+
+        env.executor.executeNow(builtInBlockSlashCommandId("widget"))
+
+        // The anchor keeps its type and its remaining text — converting must not
+        // silently discard user-typed content.
+        val anchor = env.stateHolder.state.getBlock(env.anchorId)
+        assertNotNull(anchor)
+        assertEquals(BlockType.Paragraph, anchor.type)
+        assertEquals("Q3 notes ", env.textStates.getVisibleText(env.anchorId))
+
+        // The new block is inserted immediately after the anchor instead.
+        val blocks = env.stateHolder.state.blocks
+        val anchorIndex = blocks.indexOfFirst { it.id == env.anchorId }
+        val inserted = blocks.getOrNull(anchorIndex + 1)
+        assertNotNull(inserted, "expected a block inserted after the anchor")
+        assertEquals(UnknownBlockType("widget", "{}"), inserted.type)
+        val content = inserted.content
+        assertTrue(content is BlockContent.Custom, "expected BlockContent.Custom, got $content")
+        assertEquals("v", content.data["k"])
+        assertNull(env.stateHolder.state.slashCommandState)
     }
 
     // -- Exception handling --

@@ -1,5 +1,6 @@
 package io.github.linreal.cascade.editor.registry
 
+import androidx.compose.runtime.mutableIntStateOf
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockType
@@ -22,11 +23,19 @@ public class BlockRegistry {
     private val renderers = mutableMapOf<String, BlockRenderer<*>>()
     private var unknownBlockFallback: BlockRenderer<*>? = null
 
+    // Snapshot-backed change counter. Bumped on every mutation so composables that
+    // derive from the registry (e.g. the slash-command menu) can observe registrations
+    // made while the editor is already mounted. Read it as a remember/derivedStateOf
+    // key to re-derive when the registry changes reference-identically in place.
+    private val revisionState = mutableIntStateOf(0)
+    internal val revision: Int get() = revisionState.intValue
+
     /**
      * Registers a block descriptor.
      */
     public fun registerDescriptor(descriptor: BlockDescriptor) {
         descriptors[descriptor.typeId] = descriptor
+        revisionState.intValue++
     }
 
     /**
@@ -34,6 +43,7 @@ public class BlockRegistry {
      */
     public fun <T : BlockType> registerRenderer(typeId: String, renderer: BlockRenderer<T>) {
         renderers[typeId] = renderer
+        revisionState.intValue++
     }
 
     /**
@@ -73,6 +83,7 @@ public class BlockRegistry {
      */
     public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>) {
         unknownBlockFallback = renderer
+        revisionState.intValue++
     }
 
     /**

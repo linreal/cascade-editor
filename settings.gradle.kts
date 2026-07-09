@@ -30,3 +30,4 @@ dependencyResolutionManagement {
 
 include(":sample")
 include(":editor")
+include(":editor-ios-sdk")

@@ -209,7 +209,9 @@ public fun CascadeEditor(
         if (slashEnabled) createBuiltInSlashExecutor(stateHolder, registry) else null
     }
 
-    val builtInSlashItems = remember(registry, builtInExecutor, blockStrings) {
+    // registry.revision is a snapshot key: re-derive when descriptors are registered
+    // after mount (e.g. the iOS SDK's registerBlock), not only when the reference changes.
+    val builtInSlashItems = remember(registry, registry.revision, builtInExecutor, blockStrings) {
         if (builtInExecutor == null) {
             emptyList()
         } else {
@@ -218,9 +220,10 @@ public fun CascadeEditor(
         }
     }
 
-    // Use slashRegistry reference (stable) as the remember key — not getRootItems()
-    // which creates a new List on every recomposition with fragile data-class equality.
-    val effectiveSlashRegistry = remember(builtInSlashItems, slashRegistry, slashEnabled) {
+    // Use slashRegistry reference (stable) plus its revision as the remember key — not
+    // getRootItems() which creates a new List on every recomposition with fragile
+    // data-class equality. The revision catches commands registered after mount.
+    val effectiveSlashRegistry = remember(builtInSlashItems, slashRegistry, slashRegistry.revision, slashEnabled) {
         if (slashEnabled) {
             createMergedSlashRegistry(
                 builtInItems = builtInSlashItems,
@@ -572,8 +575,15 @@ public fun CascadeEditor(
                                 state.dragState?.draggingBlockIds?.contains(block.id) == true
                         val hasSelection = state.hasSelection
 
-                        // Look up renderer for this block type (includes unknown-block fallback)
-                        val renderer = registry.getRenderer(block.type)
+                        // Look up renderer for this block type (includes unknown-block fallback).
+                        // registry.revision is snapshot state: keying on it subscribes the
+                        // item to registrations made after mount (e.g. the iOS SDK's
+                        // registerBlock), so an already-visible block swaps from the
+                        // unknown-block fallback to its real renderer without waiting for an
+                        // unrelated state change.
+                        val renderer = remember(registry, registry.revision, block.type) {
+                            registry.getRenderer(block.type)
+                        }
 
                         Box(
                             modifier = Modifier

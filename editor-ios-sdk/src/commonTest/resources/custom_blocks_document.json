@@ -1,0 +1,357 @@
+{
+    "version": 2,
+    "blocks": [
+        {
+            "id": "custom-blocks-1",
+            "type": {
+                "typeId": "heading_1"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Custom Blocks & Commands",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-2",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "This demo shows how to extend CascadeEditor with custom block types and slash commands.",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-3",
+            "type": {
+                "typeId": "heading_2"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Interactive Tables",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-4",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Table blocks are implemented by the sample app with public custom block APIs.",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-5",
+            "type": {
+                "typeId": "table"
+            },
+            "content": {
+                "kind": "table",
+                "data": {
+                    "rows": [
+                        ["Name", "Role", "Status"],
+                        ["Ada", "Engineer", "Active"],
+                        ["Linus", "Maintainer", "Review"]
+                    ],
+                    "headerRow": true
+                }
+            }
+        },
+        {
+            "id": "custom-blocks-6",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Type /table to insert another table.",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-7",
+            "type": {
+                "typeId": "divider"
+            },
+            "content": {
+                "kind": "empty"
+            }
+        },
+        {
+            "id": "custom-blocks-8",
+            "type": {
+                "typeId": "heading_2"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Metric Cards",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-9",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Metric cards are non-editable custom blocks — perfect for dashboards and status displays:",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-10",
+            "type": {
+                "typeId": "metric"
+            },
+            "content": {
+                "kind": "metric",
+                "data": {
+                    "value": "2,847",
+                    "label": "Downloads",
+                    "trend": "up",
+                    "trendValue": "12.5%"
+                }
+            }
+        },
+        {
+            "id": "custom-blocks-11",
+            "type": {
+                "typeId": "metric"
+            },
+            "content": {
+                "kind": "metric",
+                "data": {
+                    "value": "99.9%",
+                    "label": "Uptime",
+                    "trend": "up",
+                    "trendValue": "0.1%"
+                }
+            }
+        },
+        {
+            "id": "custom-blocks-12",
+            "type": {
+                "typeId": "metric"
+            },
+            "content": {
+                "kind": "metric",
+                "data": {
+                    "value": "142ms",
+                    "label": "Avg Latency",
+                    "trend": "down",
+                    "trendValue": "23%"
+                }
+            }
+        },
+        {
+            "id": "custom-blocks-13",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Type /metric to insert a new metric card.",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-14",
+            "type": {
+                "typeId": "divider"
+            },
+            "content": {
+                "kind": "empty"
+            }
+        },
+        {
+            "id": "custom-blocks-15",
+            "type": {
+                "typeId": "heading_2"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Color Palettes",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-16",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Color palette blocks showcase full Compose rendering — circles, hex labels, and layout:",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-17",
+            "type": {
+                "typeId": "palette"
+            },
+            "content": {
+                "kind": "palette",
+                "data": {
+                    "name": "Ocean Breeze",
+                    "colors": "0077B6,00B4D8,90E0EF,CAF0F8"
+                }
+            }
+        },
+        {
+            "id": "custom-blocks-18",
+            "type": {
+                "typeId": "palette"
+            },
+            "content": {
+                "kind": "palette",
+                "data": {
+                    "name": "Sunset Warmth",
+                    "colors": "FF6B6B,FFA06B,FFD93D,6BCB77"
+                }
+            }
+        },
+        {
+            "id": "custom-blocks-19",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Type /palette to insert a new color palette.",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-20",
+            "type": {
+                "typeId": "divider"
+            },
+            "content": {
+                "kind": "empty"
+            }
+        },
+        {
+            "id": "custom-blocks-21",
+            "type": {
+                "typeId": "heading_2"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Custom Slash Commands",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-22",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Type /timestamp to insert the current date and time.",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-23",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Type /lorem to insert placeholder text.",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-24",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "These custom commands coexist with all built-in commands in the slash popup.",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-25",
+            "type": {
+                "typeId": "divider"
+            },
+            "content": {
+                "kind": "empty"
+            }
+        },
+        {
+            "id": "custom-blocks-26",
+            "type": {
+                "typeId": "heading_2"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Try It Out",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-27",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "Click on any empty paragraph and type / to see all available commands:",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-28",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "",
+                "spans": []
+            }
+        },
+        {
+            "id": "custom-blocks-29",
+            "type": {
+                "typeId": "paragraph"
+            },
+            "content": {
+                "kind": "text",
+                "version": 1,
+                "text": "",
+                "spans": []
+            }
+        }
+    ]
+}

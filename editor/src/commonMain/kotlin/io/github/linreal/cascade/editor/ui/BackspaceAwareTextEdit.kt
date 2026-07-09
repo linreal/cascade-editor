@@ -1,7 +1,6 @@
 package io.github.linreal.cascade.editor.ui
 
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldState
@@ -27,6 +26,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
+import io.github.linreal.cascade.editor.platformKeyboardOptions
 
 
 // The invisible zero-width space character used as a sentinel
@@ -149,7 +149,9 @@ public fun BackspaceAwareTextField(
         modifier = keyGuardModifier,
         onTextLayout = onTextLayout,
         readOnly = readOnly,
-        keyboardOptions = KeyboardOptions(
+        keyboardOptions = platformKeyboardOptions(
+            useNativeIosTextInput = true,
+        ).copy(
             imeAction = ImeAction.Next,
         ),
         onKeyboardAction = {

@@ -3,6 +3,19 @@ package io.github.linreal.cascade.editor.slash
 import io.github.linreal.cascade.editor.registry.BlockDescriptor
 import io.github.linreal.cascade.editor.theme.CascadeEditorBlockStrings
 
+/** Stable prefix shared by every built-in block slash command id. */
+public const val BUILTIN_BLOCK_SLASH_COMMAND_ID_PREFIX: String = "builtin.block."
+
+/**
+ * Returns the stable [SlashCommandId] the built-in slash command generated for the
+ * block type [typeId] is keyed by.
+ *
+ * Built-in block commands are registered under these ids, so this is the value to
+ * compare against when detecting id collisions between custom and built-in commands.
+ */
+public fun builtInBlockSlashCommandId(typeId: String): SlashCommandId =
+    SlashCommandId("$BUILTIN_BLOCK_SLASH_COMMAND_ID_PREFIX$typeId")
+
 /**
  * Generates [SlashCommandAction] instances from [BlockDescriptor]s that carry
  * [BuiltInSlashCommandSpec] metadata.
@@ -47,7 +60,7 @@ internal class BuiltInSlashCommandFactory(
             val localized = blockStrings?.forType(typeId)
 
             SlashCommandAction(
-                id = SlashCommandId("$ID_PREFIX$typeId"),
+                id = builtInBlockSlashCommandId(typeId),
                 title = localized?.displayName ?: descriptor.displayName,
                 description = localized?.description ?: descriptor.description,
                 keywords = if (localized != null) {
@@ -60,10 +73,5 @@ internal class BuiltInSlashCommandFactory(
                 onExecute = { builtInExecutor(typeId, behavior) },
             )
         }
-    }
-
-    internal companion object {
-        /** Stable prefix for all built-in block slash command IDs. */
-        internal const val ID_PREFIX: String = "builtin.block."
     }
 }
