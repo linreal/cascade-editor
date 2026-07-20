@@ -1567,6 +1567,874 @@ public final class io/github/linreal/cascade/editor/indentation/IndentationState
 	public final fun getEmpty ()Lio/github/linreal/cascade/editor/indentation/IndentationState;
 }
 
+public abstract interface class io/github/linreal/cascade/editor/markdown/EntityDecode {
+}
+
+public final class io/github/linreal/cascade/editor/markdown/EntityDecode$None : io/github/linreal/cascade/editor/markdown/EntityDecode {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/EntityDecode$None;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/EntityDecode$Standard : io/github/linreal/cascade/editor/markdown/EntityDecode {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/EntityDecode$Standard;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface annotation class io/github/linreal/cascade/editor/markdown/ExperimentalCascadeMarkdownApi : java/lang/annotation/Annotation {
+}
+
+public abstract interface class io/github/linreal/cascade/editor/markdown/HardBreakEncode {
+}
+
+public final class io/github/linreal/cascade/editor/markdown/HardBreakEncode$Backslash : io/github/linreal/cascade/editor/markdown/HardBreakEncode {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/HardBreakEncode$Backslash;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/HardBreakEncode$TwoSpaces : io/github/linreal/cascade/editor/markdown/HardBreakEncode {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/HardBreakEncode$TwoSpaces;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/github/linreal/cascade/editor/markdown/HtmlInMarkdown {
+}
+
+public final class io/github/linreal/cascade/editor/markdown/HtmlInMarkdown$Bridge : io/github/linreal/cascade/editor/markdown/HtmlInMarkdown {
+	public static final field $stable I
+	public fun <init> (Lio/github/linreal/cascade/editor/htmlserialization/HtmlProfile;)V
+	public final fun component1 ()Lio/github/linreal/cascade/editor/htmlserialization/HtmlProfile;
+	public final fun copy (Lio/github/linreal/cascade/editor/htmlserialization/HtmlProfile;)Lio/github/linreal/cascade/editor/markdown/HtmlInMarkdown$Bridge;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/HtmlInMarkdown$Bridge;Lio/github/linreal/cascade/editor/htmlserialization/HtmlProfile;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/HtmlInMarkdown$Bridge;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getHtmlProfile ()Lio/github/linreal/cascade/editor/htmlserialization/HtmlProfile;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/HtmlInMarkdown$Preserve : io/github/linreal/cascade/editor/markdown/HtmlInMarkdown {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/HtmlInMarkdown$Preserve;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/HtmlInMarkdown$Strip : io/github/linreal/cascade/editor/markdown/HtmlInMarkdown {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/HtmlInMarkdown$Strip;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/HtmlInMarkdown$WarnAndStrip : io/github/linreal/cascade/editor/markdown/HtmlInMarkdown {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/HtmlInMarkdown$WarnAndStrip;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/Markdown {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/Markdown;
+	public final fun codeSpanDelimiters (Ljava/lang/String;)Lio/github/linreal/cascade/editor/markdown/MarkdownCodeSpanDelimiters;
+	public final fun escapeInline (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeContext;)Ljava/lang/String;
+	public final fun escapeLinkDestination (Ljava/lang/String;)Ljava/lang/String;
+	public final fun escapeLinkText (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public abstract interface class io/github/linreal/cascade/editor/markdown/MarkdownBlockEncoder {
+	public abstract fun encode (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeContext;Lio/github/linreal/cascade/editor/core/Block;Lio/github/linreal/cascade/editor/core/BlockContent;)Lio/github/linreal/cascade/editor/markdown/MarkdownEmit;
+}
+
+public abstract interface class io/github/linreal/cascade/editor/markdown/MarkdownBlockGroupEncoder {
+	public abstract fun encodeGroup (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeContext;Ljava/util/List;)Lio/github/linreal/cascade/editor/markdown/MarkdownEmit;
+	public abstract fun groupKey (Lio/github/linreal/cascade/editor/core/Block;)Ljava/lang/Object;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownCodeSpanDelimiters {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;ZZ)V
+	public synthetic fun <init> (Ljava/lang/String;ZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Z
+	public final fun component3 ()Z
+	public final fun copy (Ljava/lang/String;ZZ)Lio/github/linreal/cascade/editor/markdown/MarkdownCodeSpanDelimiters;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownCodeSpanDelimiters;Ljava/lang/String;ZZILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownCodeSpanDelimiters;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClose ()Ljava/lang/String;
+	public final fun getFence ()Ljava/lang/String;
+	public final fun getOpen ()Ljava/lang/String;
+	public final fun getPadded ()Z
+	public final fun getRequiresFallback ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind : java/lang/Enum {
+	public static final field BlockNesting Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+	public static final field Blocks Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+	public static final field DelimiterRuns Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+	public static final field ReferenceDefinitions Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+	public static final field SpansPerBlock Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+	public static final field TotalSpans Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+	public static final field Warnings Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+	public static fun values ()[Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownCodecLimits {
+	public static final field $stable I
+	public static final field Companion Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits$Companion;
+	public static final field DEFAULT_MAX_BLOCKS I
+	public static final field DEFAULT_MAX_BLOCK_NESTING I
+	public static final field DEFAULT_MAX_DELIMITER_RUNS I
+	public static final field DEFAULT_MAX_INPUT_CHARS I
+	public static final field DEFAULT_MAX_OUTPUT_CHARS I
+	public static final field DEFAULT_MAX_REFERENCE_DEFINITIONS I
+	public static final field DEFAULT_MAX_SPANS_PER_BLOCK I
+	public static final field DEFAULT_MAX_TOTAL_SPANS I
+	public static final field DEFAULT_MAX_WARNINGS I
+	public fun <init> ()V
+	public fun <init> (IIIIIIIII)V
+	public synthetic fun <init> (IIIIIIIIIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun component3 ()I
+	public final fun component4 ()I
+	public final fun component5 ()I
+	public final fun component6 ()I
+	public final fun component7 ()I
+	public final fun component8 ()I
+	public final fun component9 ()I
+	public final fun copy (IIIIIIIII)Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;IIIIIIIIIILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMaxBlockNesting ()I
+	public final fun getMaxBlocks ()I
+	public final fun getMaxDelimiterRuns ()I
+	public final fun getMaxInputChars ()I
+	public final fun getMaxOutputChars ()I
+	public final fun getMaxReferenceDefinitions ()I
+	public final fun getMaxSpansPerBlock ()I
+	public final fun getMaxTotalSpans ()I
+	public final fun getMaxWarnings ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownCodecLimits$Companion {
+	public final fun getDefault ()Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownCodecStatus : java/lang/Enum {
+	public static final field Aborted Lio/github/linreal/cascade/editor/markdown/MarkdownCodecStatus;
+	public static final field Success Lio/github/linreal/cascade/editor/markdown/MarkdownCodecStatus;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/linreal/cascade/editor/markdown/MarkdownCodecStatus;
+	public static fun values ()[Lio/github/linreal/cascade/editor/markdown/MarkdownCodecStatus;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownDecodeResult {
+	public static final field $stable I
+	public static final field Companion Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult$Companion;
+	public synthetic fun <init> (Lio/github/linreal/cascade/editor/markdown/MarkdownCodecStatus;Ljava/util/List;Ljava/util/List;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceLocator;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getBlocks ()Ljava/util/List;
+	public final fun getSourceLocator ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceLocator;
+	public final fun getStatus ()Lio/github/linreal/cascade/editor/markdown/MarkdownCodecStatus;
+	public final fun getWarnings ()Ljava/util/List;
+	public final fun isAborted ()Z
+	public final fun isSuccess ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownDecodeResult$Companion {
+	public final fun aborted (Ljava/util/List;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceLocator;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult;
+	public static synthetic fun aborted$default (Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult$Companion;Ljava/util/List;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceLocator;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult;
+	public final fun success (Ljava/util/List;Ljava/util/List;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceLocator;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult;
+	public static synthetic fun success$default (Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult$Companion;Ljava/util/List;Ljava/util/List;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceLocator;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult;
+}
+
+public abstract class io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning : io/github/linreal/cascade/editor/markdown/MarkdownWarning {
+	public static final field $stable I
+	public abstract fun getRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$DroppedAttribute : io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$DroppedAttribute;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$DroppedAttribute;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$DroppedAttribute;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAttr ()Ljava/lang/String;
+	public final fun getConstruct ()Ljava/lang/String;
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public fun getRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public final fun getReason ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$DuplicateLinkDefinition : io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public final fun copy (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$DuplicateLinkDefinition;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$DuplicateLinkDefinition;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$DuplicateLinkDefinition;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getLabel ()Ljava/lang/String;
+	public fun getRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$EngineFailure : io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)V
+	public synthetic fun <init> (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public final fun copy (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$EngineFailure;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$EngineFailure;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$EngineFailure;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getMessage ()Ljava/lang/String;
+	public fun getRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$HtmlBridged : io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning {
+	public static final field $stable I
+	public fun <init> (Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)V
+	public final fun component1 ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public final fun copy (Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$HtmlBridged;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$HtmlBridged;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$HtmlBridged;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public fun getRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$HtmlStripped : io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public final fun copy (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$HtmlStripped;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$HtmlStripped;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$HtmlStripped;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public fun getRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public final fun getTag ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$InputLimitExceeded : io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning {
+	public static final field $stable I
+	public fun <init> (IILio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)V
+	public synthetic fun <init> (IILio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun component3 ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public final fun copy (IILio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$InputLimitExceeded;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$InputLimitExceeded;IILio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$InputLimitExceeded;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getActual ()I
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getLimit ()I
+	public fun getRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$LimitExceeded : io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning {
+	public static final field $stable I
+	public fun <init> (Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;ILio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)V
+	public final fun component1 ()Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+	public final fun component2 ()I
+	public final fun component3 ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public final fun copy (Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;ILio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$LimitExceeded;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$LimitExceeded;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;ILio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$LimitExceeded;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getKind ()Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+	public final fun getLimit ()I
+	public fun getRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$PreservedSyntax : io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public final fun copy (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$PreservedSyntax;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$PreservedSyntax;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$PreservedSyntax;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getKind ()Ljava/lang/String;
+	public fun getRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$UnsupportedEntity : io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public final fun copy (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$UnsupportedEntity;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$UnsupportedEntity;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$UnsupportedEntity;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getName ()Ljava/lang/String;
+	public fun getRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$UnsupportedSyntax : io/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$UnsupportedSyntax;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$UnsupportedSyntax;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeWarning$UnsupportedSyntax;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getConstruct ()Ljava/lang/String;
+	public final fun getDetail ()Ljava/lang/String;
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public fun getRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEditModeRecommendation : java/lang/Enum {
+	public static final field Native Lio/github/linreal/cascade/editor/markdown/MarkdownEditModeRecommendation;
+	public static final field RawFallback Lio/github/linreal/cascade/editor/markdown/MarkdownEditModeRecommendation;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/linreal/cascade/editor/markdown/MarkdownEditModeRecommendation;
+	public static fun values ()[Lio/github/linreal/cascade/editor/markdown/MarkdownEditModeRecommendation;
+}
+
+public abstract interface class io/github/linreal/cascade/editor/markdown/MarkdownEmit {
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEmit$Raw : io/github/linreal/cascade/editor/markdown/MarkdownEmit {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/github/linreal/cascade/editor/markdown/MarkdownEmit$Raw;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEmit$Raw;Ljava/lang/String;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEmit$Raw;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMarkdown ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEmit$Skip : io/github/linreal/cascade/editor/markdown/MarkdownEmit {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/MarkdownEmit$Skip;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEmit$Verbatim : io/github/linreal/cascade/editor/markdown/MarkdownEmit {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/github/linreal/cascade/editor/markdown/MarkdownEmit$Verbatim;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEmit$Verbatim;Ljava/lang/String;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEmit$Verbatim;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMarkdown ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class io/github/linreal/cascade/editor/markdown/MarkdownEncodeContext {
+	public static final field $stable I
+	public abstract fun encodeInlineLines (Lio/github/linreal/cascade/editor/core/Block;)Ljava/util/List;
+	public abstract fun encodeTextOnly (Lio/github/linreal/cascade/editor/core/Block;)Ljava/lang/String;
+	public abstract fun prefixLines (Ljava/util/List;Ljava/lang/String;Ljava/lang/String;)Ljava/util/List;
+	public abstract fun warn (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning;)V
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEncodeResult {
+	public static final field $stable I
+	public static final field Companion Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeResult$Companion;
+	public synthetic fun <init> (Lio/github/linreal/cascade/editor/markdown/MarkdownCodecStatus;Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getMarkdown ()Ljava/lang/String;
+	public final fun getStatus ()Lio/github/linreal/cascade/editor/markdown/MarkdownCodecStatus;
+	public final fun getWarnings ()Ljava/util/List;
+	public final fun isAborted ()Z
+	public final fun isSuccess ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEncodeResult$Companion {
+	public final fun aborted (Ljava/util/List;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeResult;
+	public final fun success (Ljava/lang/String;Ljava/util/List;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeResult;
+	public static synthetic fun success$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeResult$Companion;Ljava/lang/String;Ljava/util/List;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeResult;
+}
+
+public abstract class io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning : io/github/linreal/cascade/editor/markdown/MarkdownWarning {
+	public static final field $stable I
+	public abstract fun getBlockId-ticUwL4 ()Ljava/lang/String;
+	public abstract fun getTextRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$AmbiguousEmphasis : io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning {
+	public static final field $stable I
+	public synthetic fun <init> (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-ticUwL4 ()Ljava/lang/String;
+	public final fun component2 ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public final fun copy-421T0j4 (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$AmbiguousEmphasis;
+	public static synthetic fun copy-421T0j4$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$AmbiguousEmphasis;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$AmbiguousEmphasis;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getBlockId-ticUwL4 ()Ljava/lang/String;
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public fun getTextRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$DroppedAttribute : io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning {
+	public static final field $stable I
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3-ticUwL4 ()Ljava/lang/String;
+	public final fun component4 ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public final fun copy-9Un3DiA (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$DroppedAttribute;
+	public static synthetic fun copy-9Un3DiA$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$DroppedAttribute;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$DroppedAttribute;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAttr ()Ljava/lang/String;
+	public fun getBlockId-ticUwL4 ()Ljava/lang/String;
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getReason ()Ljava/lang/String;
+	public fun getTextRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$DroppedSpanOverlap : io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning {
+	public static final field $stable I
+	public synthetic fun <init> (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-ticUwL4 ()Ljava/lang/String;
+	public final fun component2 ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy-w7YA71c (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;Ljava/lang/String;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$DroppedSpanOverlap;
+	public static synthetic fun copy-w7YA71c$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$DroppedSpanOverlap;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;Ljava/lang/String;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$DroppedSpanOverlap;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getBlockId-ticUwL4 ()Ljava/lang/String;
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getReason ()Ljava/lang/String;
+	public fun getTextRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$EncoderException : io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning {
+	public static final field $stable I
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3-ticUwL4 ()Ljava/lang/String;
+	public final fun component4 ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public final fun copy-9Un3DiA (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$EncoderException;
+	public static synthetic fun copy-9Un3DiA$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$EncoderException;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$EncoderException;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getBlockId-ticUwL4 ()Ljava/lang/String;
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getMessage ()Ljava/lang/String;
+	public fun getTextRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public final fun getTypeId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$EngineFailure : io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning {
+	public static final field $stable I
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2-ticUwL4 ()Ljava/lang/String;
+	public final fun component3 ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public final fun copy-mf-9-9k (Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$EngineFailure;
+	public static synthetic fun copy-mf-9-9k$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$EngineFailure;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$EngineFailure;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getBlockId-ticUwL4 ()Ljava/lang/String;
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getMessage ()Ljava/lang/String;
+	public fun getTextRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$LimitExceeded : io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning {
+	public static final field $stable I
+	public synthetic fun <init> (Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;ILjava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;ILjava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+	public final fun component2 ()I
+	public final fun component3-ticUwL4 ()Ljava/lang/String;
+	public final fun component4 ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public final fun copy-9Un3DiA (Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;ILjava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$LimitExceeded;
+	public static synthetic fun copy-9Un3DiA$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$LimitExceeded;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;ILjava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$LimitExceeded;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getBlockId-ticUwL4 ()Ljava/lang/String;
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getKind ()Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimitKind;
+	public final fun getLimit ()I
+	public fun getTextRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$OutputLimitExceeded : io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning {
+	public static final field $stable I
+	public synthetic fun <init> (ILjava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (ILjava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2-ticUwL4 ()Ljava/lang/String;
+	public final fun component3 ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public final fun copy-mf-9-9k (ILjava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$OutputLimitExceeded;
+	public static synthetic fun copy-mf-9-9k$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$OutputLimitExceeded;ILjava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$OutputLimitExceeded;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getBlockId-ticUwL4 ()Ljava/lang/String;
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getLimit ()I
+	public fun getTextRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$UnsupportedBlock : io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning {
+	public static final field $stable I
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3-ticUwL4 ()Ljava/lang/String;
+	public final fun component4 ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public final fun copy-9Un3DiA (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$UnsupportedBlock;
+	public static synthetic fun copy-9Un3DiA$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$UnsupportedBlock;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$UnsupportedBlock;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getBlockId-ticUwL4 ()Ljava/lang/String;
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getReason ()Ljava/lang/String;
+	public fun getTextRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public final fun getTypeId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$UnsupportedSpan : io/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning {
+	public static final field $stable I
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3-ticUwL4 ()Ljava/lang/String;
+	public final fun component4 ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public final fun copy-9Un3DiA (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$UnsupportedSpan;
+	public static synthetic fun copy-9Un3DiA$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$UnsupportedSpan;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeWarning$UnsupportedSpan;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getBlockId-ticUwL4 ()Ljava/lang/String;
+	public fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public final fun getReason ()Ljava/lang/String;
+	public fun getTextRange ()Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public final fun getTypeId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEscapeContext {
+	public static final field $stable I
+	public static final field Companion Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeContext$Companion;
+	public fun <init> (ZLjava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeTextKind;)V
+	public synthetic fun <init> (ZLjava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeTextKind;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeTextKind;
+	public final fun copy (ZLjava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeTextKind;)Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeContext;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeContext;ZLjava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeTextKind;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeContext;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAtLineStart ()Z
+	public final fun getContainerPrefix ()Ljava/lang/String;
+	public final fun getKind ()Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeTextKind;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEscapeContext$Companion {
+	public final fun getLineStart ()Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeContext;
+	public final fun getMidLine ()Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeContext;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownEscapeTextKind : java/lang/Enum {
+	public static final field LinkLabel Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeTextKind;
+	public static final field LinkText Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeTextKind;
+	public static final field Plain Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeTextKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeTextKind;
+	public static fun values ()[Lio/github/linreal/cascade/editor/markdown/MarkdownEscapeTextKind;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact : java/lang/Enum {
+	public static final field Canonicalization Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public static final field DataLoss Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public static final field Fatal Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public static final field Informational Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public static final field OpaquePreservation Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+	public static fun values ()[Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownFidelityReport {
+	public static final field $stable I
+	public final fun getDataLossWarnings ()Ljava/util/List;
+	public final fun getDecodeResult ()Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult;
+	public final fun getEncodeResult ()Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeResult;
+	public final fun getNativeEditingSafe ()Z
+	public final fun getPreservedBlockCount ()I
+	public final fun getRecommendedMode ()Lio/github/linreal/cascade/editor/markdown/MarkdownEditModeRecommendation;
+	public final fun getWouldRewriteSource ()Ljava/lang/Boolean;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownLineEnding : java/lang/Enum {
+	public static final field CrLf Lio/github/linreal/cascade/editor/markdown/MarkdownLineEnding;
+	public static final field Lf Lio/github/linreal/cascade/editor/markdown/MarkdownLineEnding;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/linreal/cascade/editor/markdown/MarkdownLineEnding;
+	public static fun values ()[Lio/github/linreal/cascade/editor/markdown/MarkdownLineEnding;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownMarkPair {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;)Lio/github/linreal/cascade/editor/markdown/MarkdownMarkPair;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownMarkPair;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownMarkPair;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClose ()Ljava/lang/String;
+	public final fun getOpen ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownProfile {
+	public static final field $stable I
+	public static final field Companion Lio/github/linreal/cascade/editor/markdown/MarkdownProfile$Companion;
+	public final fun getSupportSet ()Lio/github/linreal/cascade/editor/markdown/MarkdownProfileSupportSet;
+	public final fun withCustomMarkdownBlockEncoder (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownBlockEncoder;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withCustomMarkdownSpanEncoder (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownSpanEncoder;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withEncoderBlockFallback (Lio/github/linreal/cascade/editor/markdown/MarkdownBlockEncoder;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withEncoderSpanFallback (Lio/github/linreal/cascade/editor/markdown/MarkdownSpanEncoder;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withEntityDecode (Lio/github/linreal/cascade/editor/markdown/EntityDecode;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withHardBreakEncode (Lio/github/linreal/cascade/editor/markdown/HardBreakEncode;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withHtmlInMarkdown (Lio/github/linreal/cascade/editor/markdown/HtmlInMarkdown;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withMarkdownBlockEncoderInternal (Lkotlin/reflect/KClass;Lio/github/linreal/cascade/editor/markdown/MarkdownBlockEncoder;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withMarkdownBlockGroupEncoder (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownBlockGroupEncoder;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withMarkdownSpanEncoderInternal (Lkotlin/reflect/KClass;Lio/github/linreal/cascade/editor/markdown/MarkdownSpanEncoder;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withNewlineSemantics (Lio/github/linreal/cascade/editor/markdown/NewlineSemantics;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withSoftBreak (Lio/github/linreal/cascade/editor/markdown/SoftBreak;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withSupportSet (Lio/github/linreal/cascade/editor/markdown/MarkdownProfileSupportSet;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withUnsupportedSyntax (Lio/github/linreal/cascade/editor/markdown/UnsupportedSyntax;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withoutHtmlBridge ()Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+	public final fun withoutMarkdownBlockGroupEncoder (Ljava/lang/String;)Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownProfile$Companion {
+	public final fun getDefault ()Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownProfileSupportSet {
+	public static final field $stable I
+	public static final field Companion Lio/github/linreal/cascade/editor/markdown/MarkdownProfileSupportSet$Companion;
+	public fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+	public final fun getSupportsBlockPredicate ()Lkotlin/jvm/functions/Function1;
+	public final fun getSupportsDocumentPredicate ()Lkotlin/jvm/functions/Function1;
+	public final fun getSupportsSpanPredicate ()Lkotlin/jvm/functions/Function1;
+	public final fun supportsBlock (Lio/github/linreal/cascade/editor/core/Block;)Z
+	public final fun supportsDocument (Ljava/util/List;)Z
+	public final fun supportsSpan (Lio/github/linreal/cascade/editor/core/SpanStyle;)Z
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownProfileSupportSet$Companion {
+	public final fun getNone ()Lio/github/linreal/cascade/editor/markdown/MarkdownProfileSupportSet;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownSchema {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/MarkdownSchema;
+	public final fun analyze (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;)Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityReport;
+	public static synthetic fun analyze$default (Lio/github/linreal/cascade/editor/markdown/MarkdownSchema;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityReport;
+	public final fun decode (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;)Ljava/util/List;
+	public static synthetic fun decode$default (Lio/github/linreal/cascade/editor/markdown/MarkdownSchema;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;ILjava/lang/Object;)Ljava/util/List;
+	public final fun decodeWithReport (Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult;
+	public static synthetic fun decodeWithReport$default (Lio/github/linreal/cascade/editor/markdown/MarkdownSchema;Ljava/lang/String;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult;
+	public final fun encode (Ljava/util/List;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;Lio/github/linreal/cascade/editor/markdown/MarkdownLineEnding;)Ljava/lang/String;
+	public static synthetic fun encode$default (Lio/github/linreal/cascade/editor/markdown/MarkdownSchema;Ljava/util/List;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;Lio/github/linreal/cascade/editor/markdown/MarkdownLineEnding;ILjava/lang/Object;)Ljava/lang/String;
+	public final fun encodeWithReport (Ljava/util/List;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;Lio/github/linreal/cascade/editor/markdown/MarkdownLineEnding;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeResult;
+	public static synthetic fun encodeWithReport$default (Lio/github/linreal/cascade/editor/markdown/MarkdownSchema;Ljava/util/List;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;Lio/github/linreal/cascade/editor/markdown/MarkdownLineEnding;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeResult;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownSerializationExtKt {
+	public static final fun applyMarkdownDecodeResult (Lio/github/linreal/cascade/editor/state/EditorStateHolder;Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult;Lio/github/linreal/cascade/editor/state/BlockTextStates;Lio/github/linreal/cascade/editor/state/BlockSpanStates;)V
+	public static final fun loadFromMarkdown (Lio/github/linreal/cascade/editor/state/EditorStateHolder;Ljava/lang/String;Lio/github/linreal/cascade/editor/state/BlockTextStates;Lio/github/linreal/cascade/editor/state/BlockSpanStates;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult;
+	public static synthetic fun loadFromMarkdown$default (Lio/github/linreal/cascade/editor/state/EditorStateHolder;Ljava/lang/String;Lio/github/linreal/cascade/editor/state/BlockTextStates;Lio/github/linreal/cascade/editor/state/BlockSpanStates;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownDecodeResult;
+	public static final fun toMarkdown (Lio/github/linreal/cascade/editor/state/EditorStateHolder;Lio/github/linreal/cascade/editor/state/BlockTextStates;Lio/github/linreal/cascade/editor/state/BlockSpanStates;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;Lio/github/linreal/cascade/editor/markdown/MarkdownLineEnding;)Ljava/lang/String;
+	public static synthetic fun toMarkdown$default (Lio/github/linreal/cascade/editor/state/EditorStateHolder;Lio/github/linreal/cascade/editor/state/BlockTextStates;Lio/github/linreal/cascade/editor/state/BlockSpanStates;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;Lio/github/linreal/cascade/editor/markdown/MarkdownLineEnding;ILjava/lang/Object;)Ljava/lang/String;
+	public static final fun toMarkdownWithReport (Lio/github/linreal/cascade/editor/state/EditorStateHolder;Lio/github/linreal/cascade/editor/state/BlockTextStates;Lio/github/linreal/cascade/editor/state/BlockSpanStates;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;Lio/github/linreal/cascade/editor/markdown/MarkdownLineEnding;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeResult;
+	public static synthetic fun toMarkdownWithReport$default (Lio/github/linreal/cascade/editor/state/EditorStateHolder;Lio/github/linreal/cascade/editor/state/BlockTextStates;Lio/github/linreal/cascade/editor/state/BlockSpanStates;Lio/github/linreal/cascade/editor/markdown/MarkdownProfile;Lio/github/linreal/cascade/editor/markdown/MarkdownCodecLimits;Lio/github/linreal/cascade/editor/markdown/MarkdownLineEnding;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownEncodeResult;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownSourceLocation {
+	public static final field $stable I
+	public fun <init> (II)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun copy (II)Lio/github/linreal/cascade/editor/markdown/MarkdownSourceLocation;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownSourceLocation;IIILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownSourceLocation;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getColumn ()I
+	public final fun getLine ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownSourceLocator {
+	public static final field $stable I
+	public final fun locate (I)Lio/github/linreal/cascade/editor/markdown/MarkdownSourceLocation;
+	public final fun locate (Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;)Lio/github/linreal/cascade/editor/markdown/MarkdownSourceLocation;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownSourceRange {
+	public static final field $stable I
+	public fun <init> (II)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun copy (II)Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;IIILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownSourceRange;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEndExclusive ()I
+	public final fun getLength ()I
+	public final fun getStart ()I
+	public fun hashCode ()I
+	public final fun isEmpty ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/github/linreal/cascade/editor/markdown/MarkdownSpanEncoder {
+	public abstract fun encode (Lio/github/linreal/cascade/editor/core/SpanStyle;)Lio/github/linreal/cascade/editor/markdown/MarkdownMarkPair;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/MarkdownTextRange {
+	public static final field $stable I
+	public fun <init> (II)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun copy (II)Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;IIILjava/lang/Object;)Lio/github/linreal/cascade/editor/markdown/MarkdownTextRange;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEndExclusive ()I
+	public final fun getStart ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/github/linreal/cascade/editor/markdown/MarkdownWarning {
+	public abstract fun getImpact ()Lio/github/linreal/cascade/editor/markdown/MarkdownFidelityImpact;
+}
+
+public abstract interface class io/github/linreal/cascade/editor/markdown/NewlineSemantics {
+}
+
+public final class io/github/linreal/cascade/editor/markdown/NewlineSemantics$CommonMark : io/github/linreal/cascade/editor/markdown/NewlineSemantics {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/NewlineSemantics$CommonMark;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/NewlineSemantics$HardBreak : io/github/linreal/cascade/editor/markdown/NewlineSemantics {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/NewlineSemantics$HardBreak;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/github/linreal/cascade/editor/markdown/SoftBreak {
+}
+
+public final class io/github/linreal/cascade/editor/markdown/SoftBreak$LineBreak : io/github/linreal/cascade/editor/markdown/SoftBreak {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/SoftBreak$LineBreak;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/SoftBreak$Space : io/github/linreal/cascade/editor/markdown/SoftBreak {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/SoftBreak$Space;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/github/linreal/cascade/editor/markdown/UnsupportedSyntax {
+}
+
+public final class io/github/linreal/cascade/editor/markdown/UnsupportedSyntax$Preserve : io/github/linreal/cascade/editor/markdown/UnsupportedSyntax {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/UnsupportedSyntax$Preserve;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/markdown/UnsupportedSyntax$WarnAndDegrade : io/github/linreal/cascade/editor/markdown/UnsupportedSyntax {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/linreal/cascade/editor/markdown/UnsupportedSyntax$WarnAndDegrade;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public abstract interface class io/github/linreal/cascade/editor/registry/BlockCallbacks {
 	public abstract fun dispatch (Lio/github/linreal/cascade/editor/action/EditorAction;)V
 	public abstract fun onBackspaceAtStart-SDe6QqM (Ljava/lang/String;)V
@@ -1820,6 +2688,7 @@ public final class io/github/linreal/cascade/editor/richtext/LinkUrlPolicy {
 	public static final field $stable I
 	public static final field INSTANCE Lio/github/linreal/cascade/editor/richtext/LinkUrlPolicy;
 	public final fun validate (Ljava/lang/String;)Lio/github/linreal/cascade/editor/richtext/LinkValidationResult;
+	public final fun validateStoredTarget (Ljava/lang/String;)Lio/github/linreal/cascade/editor/richtext/LinkValidationResult;
 }
 
 public final class io/github/linreal/cascade/editor/richtext/LinkValidationError : java/lang/Enum {

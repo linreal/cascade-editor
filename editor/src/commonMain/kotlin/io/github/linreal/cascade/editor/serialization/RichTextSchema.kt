@@ -35,7 +35,10 @@ import kotlinx.serialization.json.longOrNull
  * - Empty spans (after clamping) are dropped.
  * - Unknown style types are dropped gracefully.
  * - Missing required fields cause the individual span to be dropped, not the whole decode.
- * - Invalid link URLs cause the individual span to be dropped, not the whole decode.
+ * - Blank link URLs cause the individual span to be dropped, not the whole decode.
+ *   Link targets go through [LinkUrlPolicy.validateStoredTarget]: they are trimmed but
+ *   otherwise preserved exactly, so relative/fragment/`mailto:`/`tel:`/custom-scheme
+ *   targets round-trip byte-identically through persistence.
  *
  * Custom payload canonicalization:
  * - On encode, `SpanStyle.Custom.payload` (`String?`) is parsed and embedded as structured JSON.
@@ -130,7 +133,7 @@ public object RichTextSchema {
         }
 
     private fun encodeLinkStyle(style: SpanStyle.Link): JsonObject? {
-        val normalizedUrl = LinkUrlPolicy.validate(style.url).normalizedUrl ?: return null
+        val normalizedUrl = LinkUrlPolicy.validateStoredTarget(style.url).normalizedUrl ?: return null
         return buildJsonObject {
             put("type", JsonPrimitive("link"))
             put("url", JsonPrimitive(normalizedUrl))
@@ -182,7 +185,7 @@ public object RichTextSchema {
                 val urlPrimitive = json["url"] as? JsonPrimitive ?: return null
                 if (!urlPrimitive.isString) return null
                 val rawUrl = urlPrimitive.contentOrNull ?: return null
-                val normalizedUrl = LinkUrlPolicy.validate(rawUrl).normalizedUrl ?: return null
+                val normalizedUrl = LinkUrlPolicy.validateStoredTarget(rawUrl).normalizedUrl ?: return null
                 SpanStyle.Link(normalizedUrl)
             }
             "custom" -> {

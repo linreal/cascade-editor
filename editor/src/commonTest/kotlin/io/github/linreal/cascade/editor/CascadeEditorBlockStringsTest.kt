@@ -94,7 +94,7 @@ class CascadeEditorBlockStringsTest {
         assertEquals("Heading 1", entry.displayName)
     }
 
-    // -- Code entry (Task 6) --
+    // -- Code entry --
 
     @Test
     fun `code entry has expected v1 metadata`() {

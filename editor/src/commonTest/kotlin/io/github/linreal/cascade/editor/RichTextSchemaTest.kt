@@ -136,12 +136,46 @@ class RichTextSchemaTest {
     }
 
     @Test
-    fun `decode valid link span normalizes bare domain url`() {
+    fun `decode link span preserves bare domain target exactly`() {
         val json = """{"version":1,"text":"Open example","spans":[{"start":5,"end":12,"style":{"type":"link","url":"example.com/path"}}]}"""
 
         val decoded = RichTextSchema.decodeFromString(json)
 
-        assertEquals(listOf(TextSpan(5, 12, SpanStyle.Link("https://example.com/path"))), decoded.spans)
+        assertEquals(listOf(TextSpan(5, 12, SpanStyle.Link("example.com/path"))), decoded.spans)
+    }
+
+    @Test
+    fun `relative link target survives a save load cycle byte-identically`() {
+        val original = BlockContent.Text(
+            text = "Read the guide",
+            spans = listOf(TextSpan(9, 14, SpanStyle.Link("../guide.md")))
+        )
+
+        val decoded = RichTextSchema.decodeFromString(RichTextSchema.encodeToString(original))
+
+        assertEquals("../guide.md", (decoded.spans.single().style as SpanStyle.Link).url)
+        assertEquals(original, decoded)
+    }
+
+    @Test
+    fun `mailto tel and custom-scheme link targets round-trip unchanged`() {
+        val targets = listOf(
+            "mailto:user@example.com",
+            "tel:+123",
+            "note://custom",
+            "/docs",
+            "#heading",
+        )
+        for (target in targets) {
+            val original = BlockContent.Text(
+                text = "Open target",
+                spans = listOf(TextSpan(0, 4, SpanStyle.Link(target)))
+            )
+
+            val decoded = RichTextSchema.decodeFromString(RichTextSchema.encodeToString(original))
+
+            assertEquals(original, decoded, "target $target must survive persistence unchanged")
+        }
     }
 
     @Test

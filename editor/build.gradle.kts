@@ -53,12 +53,14 @@ kotlin {
     sourceSets {
         all {
             languageSettings.optIn("io.github.linreal.cascade.editor.htmlserialization.ExperimentalCascadeHtmlApi")
+            languageSettings.optIn("io.github.linreal.cascade.editor.markdown.ExperimentalCascadeMarkdownApi")
         }
 
         commonMain.dependencies {
             implementation(libs.compose.foundation)
             implementation(libs.compose.components.resources)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.jetbrains.markdown)
         }
 
         commonTest.dependencies {
