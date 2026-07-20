@@ -286,7 +286,9 @@ internal object HtmlTokenizer {
 }
 
 internal object HtmlEntityDecoder {
-    private val namedEntities: Map<String, String> = mapOf(
+    // Shared with the Markdown codec's entity table (markdown/MarkdownEntities.kt),
+    // which extends this base set with additional documented names.
+    internal val namedEntities: Map<String, String> = mapOf(
         "amp" to "&",
         "lt" to "<",
         "gt" to ">",

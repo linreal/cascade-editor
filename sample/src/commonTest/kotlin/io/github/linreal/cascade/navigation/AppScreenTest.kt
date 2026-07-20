@@ -14,6 +14,8 @@ class AppScreenTest {
             AppScreen.CustomToolbar,
             AppScreen.ExternalToolbar,
             AppScreen.CustomHtmlProfile,
+            AppScreen.Comments,
+            AppScreen.MarkdownField,
         )
 
         for (screen in screens) {

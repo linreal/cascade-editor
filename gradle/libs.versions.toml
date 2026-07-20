@@ -11,6 +11,7 @@ kotlin = "2.3.21"
 kotlinxCoroutinesTest = "1.11.0"
 kotlinxDatetime = "0.8.0"
 kotlinxSerializationJson = "1.11.0"
+jetbrainsMarkdown = "0.7.7"
 material3 = "1.10.0-alpha05"
 vanniktechPublish = "0.35.0"
 
@@ -31,6 +32,7 @@ compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-previ
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+jetbrains-markdown = { module = "org.jetbrains:markdown", version.ref = "jetbrainsMarkdown" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

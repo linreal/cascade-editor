@@ -29,14 +29,16 @@ public sealed interface SpanStyle {
      * Link to an external web URL.
      *
      * The visible link title remains the text covered by the [TextSpan] range.
-     * Callers should construct this style with a URL normalized by
-     * [io.github.linreal.cascade.editor.richtext.LinkUrlPolicy].
+     * Callers should construct this style with a target validated by
+     * [io.github.linreal.cascade.editor.richtext.LinkUrlPolicy]: `validate` for
+     * user-entered URLs (normalizing), `validateStoredTarget` for decoded/persisted
+     * targets (preserving).
      */
     @Immutable
     public data class Link(val url: String) : SpanStyle {
         init {
             require(url.isNotBlank()) {
-                "url must not be blank; use LinkUrlPolicy.validate before constructing Link"
+                "url must not be blank; use LinkUrlPolicy before constructing Link"
             }
         }
     }

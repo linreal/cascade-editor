@@ -87,6 +87,43 @@ class LinkUrlPolicyTest {
         assertInvalid("   ", LinkValidationError.Blank)
     }
 
+    @Test
+    fun `stored-target validation preserves relative and fragment targets exactly`() {
+        val targets = listOf(
+            "../guide.md",
+            "/docs",
+            "#heading",
+            "mailto:user@example.com",
+            "tel:+123",
+            "note://custom",
+            "example.com/path",
+        )
+        for (target in targets) {
+            val result = LinkUrlPolicy.validateStoredTarget(target)
+            assertEquals(LinkValidationResult.Valid(target), result, "target $target must be preserved")
+        }
+    }
+
+    @Test
+    fun `stored-target validation trims surrounding whitespace only`() {
+        assertEquals(
+            LinkValidationResult.Valid("../guide.md"),
+            LinkUrlPolicy.validateStoredTarget("  ../guide.md  "),
+        )
+    }
+
+    @Test
+    fun `stored-target validation rejects blank input`() {
+        assertEquals(
+            LinkValidationResult.Invalid(LinkValidationError.Blank),
+            LinkUrlPolicy.validateStoredTarget(""),
+        )
+        assertEquals(
+            LinkValidationResult.Invalid(LinkValidationError.Blank),
+            LinkUrlPolicy.validateStoredTarget("   "),
+        )
+    }
+
     private fun assertValid(input: String, expected: String) {
         val result = LinkUrlPolicy.validate(input)
         assertEquals(expected, result.normalizedUrl)

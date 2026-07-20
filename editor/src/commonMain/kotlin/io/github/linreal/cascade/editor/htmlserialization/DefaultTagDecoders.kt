@@ -219,7 +219,9 @@ internal object DefaultTagDecoders {
     ): TagDecodeResult {
         val inline = ctx.decodeInline(children)
         val href = attrs["href"]
-        val validation = href?.let(LinkUrlPolicy::validate)
+        // Stored-target validation: imported hrefs are persisted targets, not user entry.
+        // Relative/fragment/mailto:/tel:/custom-scheme targets must be preserved exactly.
+        val validation = href?.let(LinkUrlPolicy::validateStoredTarget)
         val normalizedUrl = (validation as? LinkValidationResult.Valid)?.normalizedUrl
         if (normalizedUrl == null) {
             ctx.warn(

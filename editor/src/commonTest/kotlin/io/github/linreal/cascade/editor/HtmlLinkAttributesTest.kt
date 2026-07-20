@@ -14,15 +14,41 @@ import kotlin.test.assertTrue
 class HtmlLinkAttributesTest {
 
     @Test
-    fun `a href normalizes bare domain through link policy`() {
+    fun `a href preserves bare domain target exactly`() {
+        // Stored-target validation: imported hrefs are never rewritten. Previously,
+        // bare domains gained an https:// prefix.
         val block = HtmlSchema.decode("""<p><a href="example.com/path">Example</a></p>""", HtmlProfile.Default).single()
         val content = assertTextContent(block)
 
         assertEquals("Example", content.text)
         assertEquals(
-            listOf(TextSpan(0, 7, SpanStyle.Link("https://example.com/path"))),
+            listOf(TextSpan(0, 7, SpanStyle.Link("example.com/path"))),
             content.spans,
         )
+    }
+
+    @Test
+    fun `a href preserves fragment target without scheme prefix`() {
+        val block = HtmlSchema.decode("""<p><a href="#section">x</a></p>""", HtmlProfile.Default).single()
+        val content = assertTextContent(block)
+
+        assertEquals("x", content.text)
+        assertEquals(listOf(TextSpan(0, 1, SpanStyle.Link("#section"))), content.spans)
+    }
+
+    @Test
+    fun `a href preserves relative mailto tel and custom-scheme targets exactly`() {
+        val targets = listOf("../guide.md", "/docs", "mailto:user@example.com", "tel:+123", "note://custom")
+        for (target in targets) {
+            val block = HtmlSchema.decode("""<p><a href="$target">x</a></p>""", HtmlProfile.Default).single()
+            val content = assertTextContent(block)
+
+            assertEquals(
+                listOf(TextSpan(0, 1, SpanStyle.Link(target))),
+                content.spans,
+                "href $target must be preserved exactly",
+            )
+        }
     }
 
     @Test

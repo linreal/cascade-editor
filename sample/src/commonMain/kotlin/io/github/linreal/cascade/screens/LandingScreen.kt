@@ -164,6 +164,14 @@ fun LandingScreen(
                     description = "Embed the editor as a chat composer",
                     onClick = { onNavigate(AppScreen.Comments) },
                 )
+                ModuleCard(
+                    colors = colors,
+                    icon = Res.drawable.ic_brackets_angle,
+                    tile = colors.tileHtml,
+                    title = "Markdown Round Trip",
+                    description = "Test source → editor → export across Markdown codec modes",
+                    onClick = { onNavigate(AppScreen.MarkdownField) },
+                )
             }
 
             Spacer(modifier = Modifier.height(40.dp))
