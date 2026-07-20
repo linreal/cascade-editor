@@ -27,7 +27,7 @@ This is a facade pattern: Swift sees curated value objects and controller method
 
 ### Compose-to-UIKit host
 
-`CascadeEditorController.makeViewController()` creates a `ComposeUIViewController` and mounts `CascadeEditor` with the controller-owned state, runtime holders, and registries. It maps `CascadeEditorConfiguration` to `CascadeEditorConfig`, theme, toolbar, link popup, and slash-command slots.
+`CascadeEditorController.makeViewController()` creates a `ComposeUIViewController` and mounts `CascadeEditor` with the controller-owned state, runtime holders, and registries. It maps `CascadeEditorConfiguration` to `CascadeEditorConfig`, theme, toolbar, link popup, and slash-command slots. The host is created non-opaque (`opaque = false`): `CascadeEditor` paints no canvas background, so the native screen background behind the view controller shows through the editor.
 
 The host uses Compose snapshot state and `snapshotFlow` for two bridge streams:
 

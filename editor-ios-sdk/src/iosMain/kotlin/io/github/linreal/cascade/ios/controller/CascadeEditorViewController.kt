@@ -7,6 +7,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ComposeUIViewController
 import io.github.linreal.cascade.editor.core.SpanStyle
@@ -36,10 +37,13 @@ internal fun CascadeToolbarMode.toEditorLinkPopupSlot(): LinkPopupSlot = when (t
     CascadeToolbarMode.none -> LinkPopupSlot.None
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 public fun CascadeEditorController.makeViewController(): UIViewController = onMainThread(
     fallback = { UIViewController() },
 ) {
-    ComposeUIViewController {
+    // CascadeEditor paints no canvas background, so the Compose host must be
+    // non-opaque for the native screen background to show through it.
+    ComposeUIViewController(configure = { opaque = false }) {
         val configurationState by configurationSnapshot
         val editorConfig = remember(configurationState) {
             CascadeEditorConfig(
