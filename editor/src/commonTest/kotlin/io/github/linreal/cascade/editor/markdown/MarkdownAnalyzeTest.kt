@@ -1,5 +1,6 @@
 package io.github.linreal.cascade.editor.markdown
 
+import io.github.linreal.cascade.editor.core.BlockType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -78,6 +79,24 @@ class MarkdownAnalyzeTest {
         val profile = MarkdownProfile.Default.withSupportSet(claimAll)
         val report = MarkdownSchema.analyze("# a\n", profile)
         assertEquals(MarkdownEditModeRecommendation.Native, report.recommendedMode)
+    }
+
+    @Test
+    fun `custom support set cannot widen a failed canonical round trip`() {
+        val claimAll = MarkdownProfileSupportSet(
+            supportsBlockPredicate = { true },
+            supportsSpanPredicate = { true },
+            supportsDocumentPredicate = { true },
+        )
+        val profile = MarkdownProfile.Default
+            .withMarkdownBlockEncoder<BlockType.Paragraph> { _, _, _ ->
+                MarkdownEmit.Raw("different")
+            }
+            .withSupportSet(claimAll)
+
+        val report = MarkdownSchema.analyze("original\n", profile)
+
+        assertEquals(MarkdownEditModeRecommendation.RawFallback, report.recommendedMode)
     }
 
     @Test

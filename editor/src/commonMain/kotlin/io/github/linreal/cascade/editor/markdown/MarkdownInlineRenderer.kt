@@ -28,11 +28,6 @@ import kotlin.coroutines.cancellation.CancellationException
  *   normalization, and the verification pass proves it.
  * - code content containing a line ending cannot round-trip (CommonMark
  *   normalizes it to a space) → the code span drops with `DroppedSpanOverlap`.
- *
- * The HTML-bridge fallback branch (`<em>`/`<strong>`/`<code>` islands) is
- * structured behind the [HtmlInMarkdown] policy check in [bridgeFallback] but
- * unavailable until the bridge lands: today every bridge-eligible
- * residue takes the drop-with-warning path.
  */
 internal class MarkdownInlineRenderer(
     private val profile: MarkdownProfile,
@@ -99,9 +94,6 @@ internal class MarkdownInlineRenderer(
             // Span mismatch, or a text mismatch induced by the emitted
             // markers themselves (e.g. an unpairable leftover delimiter):
             // both are resolved by dropping the weakest span and re-emitting.
-
-            val bridged = bridgeFallback()
-            if (bridged != null) return bridged
 
             val victim = chooseVictim(working)
             if (victim == null) {
@@ -173,21 +165,15 @@ internal class MarkdownInlineRenderer(
                 val covered = text.substring(span.start, span.end)
                 if (covered.indexOf('\n') >= 0) {
                     // CommonMark normalizes line endings inside code spans to a
-                    // space; without the bridge the code marks drop (text kept).
-                    // TODO: this classification-time drop never enters
-                    //  `working`, so bridgeFallback() cannot see it. Reroute
-                    //  newline-bearing code spans through the HTML
-                    //  island path (`<code>`) instead of dropping here.
-                    if (!bridgeAvailable) {
-                        warningSink(
-                            MarkdownEncodeWarning.DroppedSpanOverlap(
-                                blockId = blockId,
-                                textRange = MarkdownTextRange(span.start, span.end),
-                                reason = "inline-code content contains a line ending, " +
-                                    "which cannot round-trip as a Markdown code span",
-                            ),
-                        )
-                    }
+                    // space, so the code marks drop while the text is kept.
+                    warningSink(
+                        MarkdownEncodeWarning.DroppedSpanOverlap(
+                            blockId = blockId,
+                            textRange = MarkdownTextRange(span.start, span.end),
+                            reason = "inline-code content contains a line ending, " +
+                                "which cannot round-trip as a Markdown code span",
+                        ),
+                    )
                     continue
                 }
                 codeRanges.add(span)
@@ -207,21 +193,14 @@ internal class MarkdownInlineRenderer(
                     !(span.start <= code.start && span.end >= code.end)
             }
             if (insideCode) {
-                // TODO: this classification-time drop never enters
-                //  `working`, so bridgeFallback() cannot see it. Reroute
-                //  wholly-inside-code styles through the HTML island
-                //  path (verified `<code>`/`<em>`/… emission) instead of
-                //  dropping here.
-                if (!bridgeAvailable) {
-                    warningSink(
-                        MarkdownEncodeWarning.DroppedSpanOverlap(
-                            blockId = blockId,
-                            textRange = MarkdownTextRange(span.start, span.end),
-                            reason = "span lies inside inline-code content, where no " +
-                                "Markdown markup can apply",
-                        ),
-                    )
-                }
+                warningSink(
+                    MarkdownEncodeWarning.DroppedSpanOverlap(
+                        blockId = blockId,
+                        textRange = MarkdownTextRange(span.start, span.end),
+                        reason = "span lies inside inline-code content, where no " +
+                            "Markdown markup can apply",
+                    ),
+                )
                 continue
             }
 
@@ -549,30 +528,5 @@ internal class MarkdownInlineRenderer(
         val link = working.lastOrNull { it.strategy == Strategy.LinkNative }
         if (link != null) return link
         return working.lastOrNull { it.strategy == Strategy.MarkPair }
-    }
-
-    /**
-     * True when the [HtmlInMarkdown.Bridge] policy is active *and*
-     * the HTML island renderer exists. The bridge does not exist yet, so this
-     * is constantly false and every bridge-eligible residue takes the
-     * drop-with-warning path; the fragment encoder will be wired in here.
-     */
-    private val bridgeAvailable: Boolean
-        get() = profile.htmlInMarkdown is HtmlInMarkdown.Bridge && HTML_ISLAND_RENDERER_EXISTS
-
-    /**
-     * When [bridgeAvailable], ambiguous or unrepresentable residue
-     * re-emits as a verified HTML island (`<em>`, `<strong>`, `<code>`)
-     * instead of dropping. The body can be replaced without touching the
-     * callers when the bridge lands.
-     */
-    private fun bridgeFallback(): List<String>? {
-        if (!bridgeAvailable) return null
-        return null
-    }
-
-    private companion object {
-        /** Flipped when the HTML island renderer is wired in. */
-        const val HTML_ISLAND_RENDERER_EXISTS: Boolean = false
     }
 }

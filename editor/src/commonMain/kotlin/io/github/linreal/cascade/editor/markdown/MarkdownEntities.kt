@@ -1,6 +1,6 @@
 package io.github.linreal.cascade.editor.markdown
 
-import io.github.linreal.cascade.editor.htmlserialization.HtmlEntityDecoder
+import org.intellij.markdown.html.entities.Entities
 
 /**
  * One matched entity reference, produced by [MarkdownEntities.matchAt].
@@ -23,16 +23,16 @@ internal class MarkdownEntityMatch(
 /**
  * Entity-reference decoding for the Markdown codec.
  *
- * This is deliberately **not** CommonMark-conformant entity decoding: CommonMark
- * requires the full HTML5 named-entity table (~2200 names), which is out of
- * scope for a bounded-field codec. What this
- * table implements instead:
+ * Numeric references retain Cascade's strict CommonMark-compatible handling.
+ * Named reference values come from JetBrains Markdown's generated entity table,
+ * constrained to Cascade's documented v1 subset so existing decode behavior and
+ * diagnostics stay stable.
  *
  * - **Numeric references decode fully**: `&#35;` (1–7 decimal digits) and
  *   `&#x1F600;` (1–6 hex digits), with the CommonMark invalid-codepoint rule —
  *   U+0000, values above U+10FFFF, and surrogate code points decode to U+FFFD.
  * - **Named references decode from the documented subset** in
- *   [supportedNames]: the base `htmlserialization` set plus common
+ *   [supportedNames]: common
  *   punctuation/symbol/arrow/fraction/currency names. Unknown names stay
  *   literal text and are reported through the [decode] callback (the call site
  *   wraps that into an Informational [MarkdownDecodeWarning.UnsupportedEntity]
@@ -50,62 +50,15 @@ internal class MarkdownEntityMatch(
  */
 internal object MarkdownEntities {
 
-    /**
-     * The documented named-entity subset. Base names shared with the HTML
-     * codec ([HtmlEntityDecoder.namedEntities]: amp, lt, gt, quot, apos, nbsp,
-     * copy, reg, trade, ndash, mdash, hellip, lsquo, rsquo, ldquo, rdquo,
-     * bull) plus the Markdown-side extensions below. This list is the
-     * reviewable data referenced by the feature/deviation matrix.
-     */
-    val supportedNames: Map<String, String> = HtmlEntityDecoder.namedEntities + mapOf(
-        // Arrows
-        "rarr" to "→",
-        "larr" to "←",
-        "uarr" to "↑",
-        "darr" to "↓",
-        "harr" to "↔",
-        // Math and signs
-        "times" to "×",
-        "divide" to "÷",
-        "minus" to "−",
-        "plusmn" to "±",
-        "infin" to "∞",
-        "ne" to "≠",
-        "le" to "≤",
-        "ge" to "≥",
-        "asymp" to "≈",
-        "deg" to "°",
-        "micro" to "µ",
-        "middot" to "·",
-        "sect" to "§",
-        "para" to "¶",
-        // Quotes and daggers
-        "laquo" to "«",
-        "raquo" to "»",
-        "sbquo" to "‚",
-        "bdquo" to "„",
-        "prime" to "′",
-        "Prime" to "″",
-        "dagger" to "†",
-        "Dagger" to "‡",
-        "permil" to "‰",
-        // Currency
-        "euro" to "€",
-        "pound" to "£",
-        "yen" to "¥",
-        "cent" to "¢",
-        // Fractions and superscripts
-        "frac12" to "½",
-        "frac14" to "¼",
-        "frac34" to "¾",
-        "sup1" to "¹",
-        "sup2" to "²",
-        "sup3" to "³",
-        // Invisible-but-common whitespace
-        "shy" to "\u00AD",
-        "ensp" to "\u2002",
-        "emsp" to "\u2003",
-        "thinsp" to "\u2009",
+    /** Reviewable v1 subset; replacement code points are owned by JetBrains. */
+    private val supportedNames: Set<String> = setOf(
+        "amp", "lt", "gt", "quot", "apos", "nbsp", "copy", "reg", "trade",
+        "ndash", "mdash", "hellip", "lsquo", "rsquo", "ldquo", "rdquo", "bull",
+        "rarr", "larr", "uarr", "darr", "harr", "times", "divide", "minus",
+        "plusmn", "infin", "ne", "le", "ge", "asymp", "deg", "micro", "middot",
+        "sect", "para", "laquo", "raquo", "sbquo", "bdquo", "prime", "Prime",
+        "dagger", "Dagger", "permil", "euro", "pound", "yen", "cent", "frac12",
+        "frac14", "frac34", "sup1", "sup2", "sup3", "shy", "ensp", "emsp", "thinsp",
     )
 
     /**
@@ -154,7 +107,9 @@ internal object MarkdownEntities {
                 val name = text.substring(nameStart, cursor)
                 return MarkdownEntityMatch(
                     length = cursor + 1 - index,
-                    replacement = supportedNames[name],
+                    replacement = if (name in supportedNames) {
+                        Entities.map["&$name;"]?.let(::codePointToStringOrReplacement)
+                    } else null,
                     name = name,
                 )
             }
