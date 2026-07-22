@@ -21,10 +21,9 @@ public enum class MarkdownEditModeRecommendation {
 /**
  * Fidelity assessment of a Markdown document under a profile.
  *
- * Produced by [MarkdownSchema.analyze]: a decode followed — on success — by one
- * canonical encode, reusing that single encode result for both
- * [wouldRewriteSource] and the verification half of [nativeEditingSafe]
- * (no double encode).
+ * Produced by [MarkdownSchema.analyze]: a source decode followed — on success —
+ * by one canonical encode and one verification decode. The encode result is
+ * reused for [wouldRewriteSource] and [nativeEditingSafe]; no second encode runs.
  *
  * The report classifies by fidelity **impact**, never by concrete warning
  * subclass, so new warning members never require an analyze change.
@@ -43,8 +42,9 @@ public enum class MarkdownEditModeRecommendation {
  *   its own.
  * @property nativeEditingSafe successful decode ∧ completed encode ∧ no
  *   [MarkdownFidelityImpact.OpaquePreservation] / [MarkdownFidelityImpact.DataLoss]
- *   / [MarkdownFidelityImpact.Fatal] from either direction ∧
- *   `profile.supportSet.supportsDocument(blocks)`.
+ *   / [MarkdownFidelityImpact.Fatal] from either direction ∧ the profile's
+ *   support predicate accepts the blocks ∧ canonical output decodes to the same
+ *   editor model (generated block IDs ignored).
  * @property recommendedMode [MarkdownEditModeRecommendation.Native] iff
  *   [nativeEditingSafe].
  */
@@ -65,9 +65,9 @@ public class MarkdownFidelityReport internal constructor(
 }
 
 /**
- * Internal analyzer backing [MarkdownSchema.analyze]. Runs one decode and, on
- * success, one encode; the single encode result serves the source-rewrite
- * comparison and the verification half of the support check.
+ * Internal analyzer backing [MarkdownSchema.analyze]. Runs one source decode
+ * and, on success, one encode plus one verification decode. The single encode
+ * result serves both source-rewrite comparison and round-trip verification.
  */
 internal object MarkdownFidelityAnalyzer {
 
@@ -107,7 +107,7 @@ internal object MarkdownFidelityAnalyzer {
                 it.impact == MarkdownFidelityImpact.DataLoss ||
                 it.impact == MarkdownFidelityImpact.Fatal
         }
-        val supportOk = documentSupported(profile, blocks, encodeResult)
+        val supportOk = documentSupported(profile, blocks, encodeResult, limits)
         val nativeEditingSafe =
             decodeResult.isSuccess && encodeResult.isSuccess && impactClean && supportOk
         val mode = if (nativeEditingSafe) {
@@ -128,31 +128,28 @@ internal object MarkdownFidelityAnalyzer {
     }
 
     /**
-     * Support component of [MarkdownFidelityReport.nativeEditingSafe]. For a
-     * default-built support set, the cheap structural claim is combined with
-     * the already-computed [encodeResult] so no second encode runs. For a
-     * custom support set (opaque predicate) the public `supportsDocument` is
-     * consulted directly.
+     * Support component of [MarkdownFidelityReport.nativeEditingSafe]. The
+     * public support predicate remains a narrowing hook; the canonical output
+     * is then decoded and compared with the editor model so no predicate can
+     * falsely widen the round-trip claim. A default-built support set exposes
+     * its cheap value/shape claim so the already-computed encode is reused.
      */
     private fun documentSupported(
         profile: MarkdownProfile,
         blocks: List<Block>,
         encodeResult: MarkdownEncodeResult,
+        limits: MarkdownCodecLimits,
     ): Boolean {
         // A custom support-set predicate may throw; `analyze` must stay no-throw,
         // so a throwing predicate is treated as "not supported" → RawFallback.
         return try {
-            val structural = profile.supportSet.structuralDocumentClaim
-            if (structural != null) {
-                structural(blocks) &&
-                    !encodeResult.isAborted &&
-                    encodeResult.warnings.none {
-                        it.impact == MarkdownFidelityImpact.DataLoss ||
-                            it.impact == MarkdownFidelityImpact.Fatal
-                    }
+            val analyzerClaim = profile.supportSet.analyzerDocumentClaim
+            val claimed = if (analyzerClaim != null) {
+                analyzerClaim(blocks)
             } else {
                 profile.supportSet.supportsDocument(blocks)
             }
+            claimed && markdownRoundTripMatches(blocks, encodeResult, profile, limits)
         } catch (e: kotlin.coroutines.cancellation.CancellationException) {
             throw e
         } catch (e: Exception) {

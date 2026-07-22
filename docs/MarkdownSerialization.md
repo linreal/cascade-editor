@@ -56,9 +56,9 @@ public decode-syntax extension contracts.
 
 1. Reject an input over `MarkdownCodecLimits.maxInputChars`.
 2. Preflight the bounded emphasis-delimiter-run limit.
-3. `MarkdownParseInput` removes a leading BOM from the parser projection and
-   normalizes CRLF/lone CR to LF. A boundary map translates every AST offset
-   back to the original UTF-16 string.
+3. `MarkdownParseInput` performs one source scan: it retains the original text,
+   removes a leading BOM from the parser projection, normalizes CRLF/lone CR to
+   LF, builds the original-offset boundary map, and indexes source locations.
 4. `parseMarkdownTree` invokes an assertion-free `MarkdownParser` with
    `CascadeMarkdownFlavour`.
 5. An iterative definition/depth prepass collects link-reference definitions,
@@ -90,15 +90,16 @@ These are local AST-shape adapters, not a competing Markdown parser.
 
 ### Source preservation
 
-`MarkdownSource` and `MarkdownParseInput` have different jobs:
+`MarkdownParseInput` owns both views required by decode: the unchanged original
+string used for exact slices and locations, and the normalized parser
+projection with its normalized-boundary-to-original-boundary map. CRLF, lone
+CR, Unicode, and original spelling therefore survive opaque preservation
+character-exactly without a second source scan.
 
-- `MarkdownSource` owns the unchanged original string, line/column lookup, and
-  exact slicing;
-- `MarkdownParseInput` owns only the normalized parser projection and its
-  normalized-boundary-to-original-boundary map.
-
-Preserved payloads always slice `MarkdownSource.text`. CRLF, lone CR, Unicode,
-and original spelling therefore survive opaque preservation character-exactly.
+Named entity replacement code points come from JetBrains Markdown's generated
+table. Cascade retains the documented v1 name subset, exact unknown-name
+diagnostics, and its own numeric-code-point handling because JetBrains 0.7.7's
+converter narrows numeric values through a single UTF-16 `Char`.
 
 ## 4. Encode architecture
 
@@ -131,6 +132,12 @@ install an explicit executable support claim.
 
 `MarkdownProfile` is immutable and safe to reuse. It configures encoding,
 policies, and support claims—not decode grammar.
+
+The default document claim is executable: it encodes and decodes the candidate
+and compares block type, content, attributes, and spans while ignoring generated
+block IDs. During `analyze`, the existing canonical encode is reused and only
+the verification decode is added. Custom support predicates remain public
+narrowing hooks, but cannot widen native-edit safety past a failed round trip.
 
 Public composition includes:
 
@@ -277,7 +284,7 @@ checks and telemetry.
 The retained test strategy validates Cascade-owned behavior rather than
 retesting the dependency's complete grammar implementation:
 
-- focused AST-adapter tests for BOM/CRLF/CR mapping and exact preservation;
+- focused projection tests for BOM/CRLF/CR mapping, source locations, and exact preservation;
 - decode/lowering tests for product block/span semantics and warnings;
 - 1,000 generated in-support CommonMark round trips;
 - 300 generated HardBreak round trips;
@@ -287,8 +294,8 @@ retesting the dependency's complete grammar implementation:
 - encode escaping and reparse verification;
 - desktop 64 KiB performance guards.
 
-The post-integration local desktop guard reports 16 ms decode, 14 ms encode,
-and 28 ms analyze for the generated 64 KiB fixture. Values are
+The post-simplification local desktop guard reports 21 ms decode, 19 ms encode,
+and 47 ms analyze for the generated 64 KiB fixture. Values are
 machine-dependent; enforced thresholds remain 250/250/750 ms. Decode is still
 synchronous, so hosts should run large decode/analyze operations off the UI
 thread.

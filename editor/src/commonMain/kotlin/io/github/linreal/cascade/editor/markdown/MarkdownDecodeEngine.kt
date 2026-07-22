@@ -23,21 +23,20 @@ internal object MarkdownDecodeEngine {
         profile: MarkdownProfile,
         limits: MarkdownCodecLimits = MarkdownCodecLimits.Default,
     ): MarkdownDecodeResult {
-        val source = MarkdownSource.of(input)
-        val locator = source.locator
         if (input.length > limits.maxInputChars) {
             return MarkdownDecodeResult.aborted(
                 listOf(MarkdownDecodeWarning.InputLimitExceeded(limits.maxInputChars, input.length)),
-                locator,
+                MarkdownSourceLocator(IntArray(0), 0),
             )
         }
+        val parseInput = MarkdownParseInput.of(input)
+        val locator = parseInput.locator
         val state = MarkdownParseState(limits)
         enforceDelimiterLimit(input, limits, state)
         if (state.isAborted) return MarkdownDecodeResult.aborted(state.warnings.toList(), locator)
 
-        val parseInput = MarkdownParseInput.of(input)
         val tree = parseMarkdownTree(parseInput.text)
-        val blocks = MarkdownAstDecoder(source, parseInput, tree, profile, limits, state).decode()
+        val blocks = MarkdownAstDecoder(parseInput, tree, profile, limits, state).decode()
         if (state.isAborted) return MarkdownDecodeResult.aborted(state.warnings.toList(), locator)
 
         val normalized = renumberNumberedLists(normalizeIndentationOutline(blocks))

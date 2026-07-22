@@ -126,14 +126,14 @@ public class MarkdownProfile internal constructor(
         copyWith(htmlInMarkdown = policy).rebindDefaultDocumentClaim()
 
     /**
-     * When a default-built support set is installed (its structural claim is
+     * When a default-built support set is installed (its analyzer claim is
      * present), rebind it to *this* profile so a policy change
      * (newline/HTML) produces an honest claim resolved from the new policies,
      * rather than a stale claim frozen against the profile that first built it.
-     * A custom [withSupportSet] set has no structural claim and is left as-is.
+     * A custom [withSupportSet] set has no analyzer claim and is left as-is.
      */
     private fun rebindDefaultDocumentClaim(): MarkdownProfile {
-        if (supportSet.structuralDocumentClaim == null) return this
+        if (supportSet.analyzerDocumentClaim == null) return this
         return copyWith(supportSet = markdownDefaultSupportSet { this })
     }
 

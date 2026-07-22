@@ -117,7 +117,7 @@ class MarkdownSupportSetTest {
     }
 
     @Test
-    fun `hardbreak claim rejects merge-prone and front-matter shapes`() {
+    fun `hardbreak claim follows executable round trip`() {
         val hb = MarkdownProfile.Default.withNewlineSemantics(NewlineSemantics.HardBreak).supportSet
         // Adjacent non-empty paragraphs merge on decode.
         assertFalse(hb.supportsDocument(listOf(Block.paragraph("a"), Block.paragraph("b"))))
@@ -125,8 +125,8 @@ class MarkdownSupportSetTest {
         assertTrue(hb.supportsDocument(listOf(Block.paragraph("a"), Block.paragraph(""), Block.paragraph("b"))))
         // Leading divider + a later divider is captured by front matter.
         assertFalse(hb.supportsDocument(listOf(Block.divider(), Block.paragraph("x"), Block.divider())))
-        // Containers are not claimed in HardBreak.
-        assertFalse(hb.supportsDocument(listOf(Block.bulletList("item"))))
+        // A concrete container that survives the canonical round trip is claimed.
+        assertTrue(hb.supportsDocument(listOf(Block.bulletList("item"))))
     }
 
     @Test

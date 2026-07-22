@@ -65,11 +65,13 @@ internal fun parseMarkdownTree(text: CharSequence): ASTNode =
  * JetBrains Markdown splits physical lines only on `\n` and treats a BOM as
  * ordinary text. Cascade accepts BOM, CRLF, and lone CR, so the parser sees a
  * normalized projection while every AST boundary maps back to the original
- * UTF-16 source. Preserved payloads always slice [MarkdownSource.text].
+ * UTF-16 source. Preserved payloads always slice [originalText].
  */
 internal class MarkdownParseInput private constructor(
+    private val originalText: String,
     val text: String,
     private val originalBoundary: IntArray,
+    val locator: MarkdownSourceLocator,
 ) {
     fun originalOffset(parseOffset: Int): Int =
         originalBoundary[parseOffset.coerceIn(0, originalBoundary.lastIndex)]
@@ -88,17 +90,36 @@ internal class MarkdownParseInput private constructor(
         return sourceRange(node.startOffset, end)
     }
 
+    fun slice(range: MarkdownSourceRange): String {
+        val start = range.start.coerceIn(0, originalText.length)
+        val end = range.endExclusive.coerceIn(start, originalText.length)
+        return originalText.substring(start, end)
+    }
+
     companion object {
         fun of(source: String): MarkdownParseInput {
             val normalized = StringBuilder(source.length)
             val boundaries = ArrayList<Int>(source.length + 1)
             var index = if (source.startsWith('\uFEFF')) 1 else 0
+            val lineStarts = ArrayList<Int>(16)
+            var lineStart = index
+            var lastContentEnd = 0
             boundaries += index
             while (index < source.length) {
                 when (source[index]) {
                     '\r' -> {
+                        lineStarts += lineStart
+                        lastContentEnd = index
                         normalized.append('\n')
                         index += if (index + 1 < source.length && source[index + 1] == '\n') 2 else 1
+                        lineStart = index
+                    }
+                    '\n' -> {
+                        lineStarts += lineStart
+                        lastContentEnd = index
+                        normalized.append('\n')
+                        index++
+                        lineStart = index
                     }
                     else -> {
                         normalized.append(source[index])
@@ -107,14 +128,22 @@ internal class MarkdownParseInput private constructor(
                 }
                 boundaries += index
             }
-            return MarkdownParseInput(normalized.toString(), boundaries.toIntArray())
+            if (lineStart < source.length) {
+                lineStarts += lineStart
+                lastContentEnd = source.length
+            }
+            return MarkdownParseInput(
+                originalText = source,
+                text = normalized.toString(),
+                originalBoundary = boundaries.toIntArray(),
+                locator = MarkdownSourceLocator(lineStarts.toIntArray(), lastContentEnd),
+            )
         }
     }
 }
 
 /** JetBrains AST -> Cascade editor model. JetBrains types never cross the public API. */
 internal class MarkdownAstDecoder(
-    private val source: MarkdownSource,
     private val input: MarkdownParseInput,
     private val root: ASTNode,
     private val profile: MarkdownProfile,
@@ -573,7 +602,7 @@ internal class MarkdownAstDecoder(
 
     private fun lowerHtmlBlock(node: ASTNode, out: MutableList<Block>) {
         val range = input.sourceRange(node, true)
-        val raw = source.slice(range)
+        val raw = input.slice(range)
         val firstLine = raw.substringBefore('\n').substringBefore('\r')
         if (!MarkdownHtmlBridge.looksLikeHtmlBlockStart(firstLine)) {
             addBlock(out, Block.paragraph(raw), range)
@@ -672,7 +701,7 @@ internal class MarkdownAstDecoder(
                 UnknownBlockType(MARKDOWN_PRESERVED_TYPE_ID, rawTypeJsonForAst(MARKDOWN_PRESERVED_TYPE_ID)),
                 BlockContent.Custom(
                     MARKDOWN_PRESERVED_TYPE_ID,
-                    mapOf("kind" to kind, "rawMarkdown" to source.slice(range)),
+                    mapOf("kind" to kind, "rawMarkdown" to input.slice(range)),
                 ),
             ),
             range,
