@@ -13,11 +13,13 @@ class CascadeEditorConfigTest {
         assertFalse(CascadeEditorConfig.Default.readOnly)
         assertTrue(CascadeEditorConfig.Default.blockSelectionEnabled)
         assertTrue(CascadeEditorConfig.Default.blockDraggingEnabled)
+        assertTrue(CascadeEditorConfig.Default.blockIndentationEnabled)
         assertEquals(
             CascadeEditorConfig(
                 readOnly = false,
                 blockSelectionEnabled = true,
                 blockDraggingEnabled = true,
+                blockIndentationEnabled = true,
             ),
             CascadeEditorConfig.Default,
         )

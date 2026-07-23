@@ -54,7 +54,7 @@ internal object IndentationStateCalculator {
         if (rootIndices.isEmpty()) return IndentationState.Empty
 
         val targetBlockIds = rootIndices.map { index -> blocks[index].id }
-        if (!policy.canEditBlockStructure) {
+        if (!policy.canChangeBlockIndentation) {
             return IndentationState(
                 canIndentForward = false,
                 canIndentBackward = false,

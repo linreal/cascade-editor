@@ -26,6 +26,7 @@ class EditorInteractionPolicyTest {
         assertAllCapabilities(policy, expected = false)
         assertFalse(policy.canSelectBlocks)
         assertFalse(policy.canDragBlocks)
+        assertFalse(policy.canChangeBlockIndentation)
     }
 
     @Test
@@ -79,6 +80,19 @@ class EditorInteractionPolicyTest {
         assertFalse(policy.canDragBlocks)
     }
 
+    @Test
+    fun `editable config can disable block indentation without disabling dragging`() {
+        val policy = CascadeEditorConfig(
+            readOnly = false,
+            blockDraggingEnabled = true,
+            blockIndentationEnabled = false,
+        ).toInteractionPolicy()
+
+        assertTrue(policy.canEditBlockStructure)
+        assertTrue(policy.canDragBlocks)
+        assertFalse(policy.canChangeBlockIndentation)
+    }
+
     private fun assertAllCapabilities(policy: EditorInteractionPolicy, expected: Boolean) {
         val assertions = listOf(
             policy.canEditText,
@@ -90,6 +104,7 @@ class EditorInteractionPolicyTest {
             policy.canUseSlashCommands,
             policy.canSelectBlocks,
             policy.canDragBlocks,
+            policy.canChangeBlockIndentation,
         )
 
         assertions.forEach { actual ->

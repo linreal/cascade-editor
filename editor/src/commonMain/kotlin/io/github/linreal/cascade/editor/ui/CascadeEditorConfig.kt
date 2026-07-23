@@ -20,6 +20,10 @@ import io.github.linreal.cascade.editor.CrashPolicy
  * @param blockDraggingEnabled When `false`, built-in block dragging and drag
  *        affordances are disabled. Ignored when [readOnly] is `true`, because
  *        read-only mode disables block dragging regardless of this value.
+ * @param blockIndentationEnabled When `false`, built-in indentation commands
+ *        are disabled and block dragging preserves the payload's original
+ *        indentation. Ignored when [readOnly] is `true`, because read-only mode
+ *        disables indentation changes regardless of this value.
  */
 @Immutable
 public data class CascadeEditorConfig(
@@ -37,7 +41,27 @@ public data class CascadeEditorConfig(
      * host's own crash reporting). Never invoked under [CrashPolicy.Rethrow].
      */
     val onInternalError: CascadeErrorReporter? = null,
+    val blockIndentationEnabled: Boolean = true,
 ) {
+    /**
+     * Compatibility constructor preserving the pre-indentation-configuration
+     * parameter order for binary callers.
+     */
+    public constructor(
+        readOnly: Boolean,
+        blockSelectionEnabled: Boolean,
+        blockDraggingEnabled: Boolean,
+        crashPolicy: CrashPolicy,
+        onInternalError: CascadeErrorReporter?,
+    ) : this(
+        readOnly = readOnly,
+        blockSelectionEnabled = blockSelectionEnabled,
+        blockDraggingEnabled = blockDraggingEnabled,
+        crashPolicy = crashPolicy,
+        onInternalError = onInternalError,
+        blockIndentationEnabled = true,
+    )
+
     public companion object {
         /** Editable default used when callers do not provide a config. */
         public val Default: CascadeEditorConfig = CascadeEditorConfig()

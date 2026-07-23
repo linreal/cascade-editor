@@ -157,6 +157,10 @@ public fun calculateDropTargetIndex(
  * the persisted depth range or make following non-dragged blocks become accidental
  * descendants of the moved payload.
  *
+ * When [allowIndentationChange] is `false`, horizontal movement is ignored and the
+ * primary root must keep its original depth. A gap that cannot accept the payload at
+ * that depth is rejected instead of silently rewriting indentation.
+ *
  * Returns `null` when the visual gap is inside the dragged payload or when no depth can
  * satisfy the surrounding outline constraints.
  */
@@ -166,6 +170,7 @@ internal fun resolveDepthAwareDragHoverTarget(
     visualGap: Int?,
     horizontalDragDeltaPx: Float,
     indentUnitPx: Float,
+    allowIndentationChange: Boolean = true,
 ): DragHoverTarget? {
     return resolveDepthAwareDragHoverTarget(
         outlineIndex = DragHoverOutlineIndex(blocks),
@@ -173,6 +178,7 @@ internal fun resolveDepthAwareDragHoverTarget(
         visualGap = visualGap,
         horizontalDragDeltaPx = horizontalDragDeltaPx,
         indentUnitPx = indentUnitPx,
+        allowIndentationChange = allowIndentationChange,
     )
 }
 
@@ -182,6 +188,7 @@ internal fun resolveDepthAwareDragHoverTarget(
     visualGap: Int?,
     horizontalDragDeltaPx: Float,
     indentUnitPx: Float,
+    allowIndentationChange: Boolean = true,
 ): DragHoverTarget? {
     val currentDragState = dragState ?: return null
     val blocks = outlineIndex.blocks
@@ -216,10 +223,10 @@ internal fun resolveDepthAwareDragHoverTarget(
         ?: primaryRoot.attributes.indentationLevel
     val primarySupportsIndentation =
         currentDragState.primaryRootSupportsIndentation ?: primaryRoot.type.supportsIndentation
-    val requestedDepth = if (primarySupportsIndentation) {
+    val requestedDepth = if (primarySupportsIndentation && allowIndentationChange) {
         originalPrimaryDepth + horizontalIndentSteps(horizontalDragDeltaPx, indentUnitPx)
     } else {
-        BlockAttributes.MIN_INDENTATION_LEVEL
+        originalPrimaryDepth
     }
 
     val payloadDepthOffsetRange =
@@ -252,6 +259,7 @@ internal fun resolveDepthAwareDragHoverTarget(
     }
 
     if (minDepth > maxDepth) return null
+    if (!allowIndentationChange && requestedDepth !in minDepth..maxDepth) return null
 
     return DragHoverTarget(
         visualGap = gap,
@@ -272,6 +280,7 @@ internal fun recomputeDepthAwareDragHoverTarget(
     dragState: DragState?,
     horizontalDragDeltaPx: Float,
     indentUnitPx: Float,
+    allowIndentationChange: Boolean = true,
 ): DragHoverTarget? {
     return recomputeDepthAwareDragHoverTarget(
         layoutInfo = layoutInfo,
@@ -280,6 +289,7 @@ internal fun recomputeDepthAwareDragHoverTarget(
         dragState = dragState,
         horizontalDragDeltaPx = horizontalDragDeltaPx,
         indentUnitPx = indentUnitPx,
+        allowIndentationChange = allowIndentationChange,
     )
 }
 
@@ -290,6 +300,7 @@ internal fun recomputeDepthAwareDragHoverTarget(
     dragState: DragState?,
     horizontalDragDeltaPx: Float,
     indentUnitPx: Float,
+    allowIndentationChange: Boolean = true,
 ): DragHoverTarget? {
     val visualGap = calculateDropTargetIndex(
         layoutInfo = layoutInfo,
@@ -302,6 +313,7 @@ internal fun recomputeDepthAwareDragHoverTarget(
         visualGap = visualGap,
         horizontalDragDeltaPx = horizontalDragDeltaPx,
         indentUnitPx = indentUnitPx,
+        allowIndentationChange = allowIndentationChange,
     )
 }
 

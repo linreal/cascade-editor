@@ -534,6 +534,7 @@ public fun CascadeEditor(
                         dragOffsetY = dragOffsetY,
                         dragDeltaX = dragDeltaX,
                         indentUnitPx = indentUnitPx,
+                        allowIndentationChange = interactionPolicy.canChangeBlockIndentation,
                         stateProvider = { stateHolder.state },
                         outlineIndexProvider = { currentDragHoverOutlineIndex },
                         callbacks = callbacks,
@@ -643,6 +644,7 @@ public fun CascadeEditor(
                     stateProvider = { stateHolder.state },
                     outlineIndexProvider = { currentDragHoverOutlineIndex },
                     indentUnitPx = indentUnitPx,
+                    allowIndentationChange = interactionPolicy.canChangeBlockIndentation,
                     onDropTargetChanged = { hoverTarget ->
                         dispatchDragTargetUpdateIfAllowed(
                             policy = interactionPolicy,
@@ -843,7 +845,10 @@ internal fun applyReadOnlyTransitionCleanup(
     if (!policy.canUseSlashCommands && stateHolder.state.slashCommandState != null) {
         stateHolder.dispatch(CloseSlashCommand)
     }
-    if (!policy.canDragBlocks && stateHolder.state.dragState != null) {
+    if (
+        (!policy.canDragBlocks || !policy.canChangeBlockIndentation) &&
+        stateHolder.state.dragState != null
+    ) {
         stateHolder.dispatch(CancelDrag)
     }
     if (!policy.canSelectBlocks && stateHolder.state.selectedBlockIds.isNotEmpty()) {

@@ -32,14 +32,14 @@ internal class DefaultIndentationActions(
 
     override fun indentForward() {
         val policy = policyProvider()
-        if (!policy.canEditBlockStructure) return
+        if (!policy.canChangeBlockIndentation) return
         if (!stateProvider().canIndentForward) return
         dispatchAction(IndentForward)
     }
 
     override fun indentBackward() {
         val policy = policyProvider()
-        if (!policy.canEditBlockStructure) return
+        if (!policy.canChangeBlockIndentation) return
         if (!stateProvider().canIndentBackward) return
         dispatchAction(IndentBackward)
     }

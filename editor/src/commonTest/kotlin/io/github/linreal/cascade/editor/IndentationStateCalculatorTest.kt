@@ -154,4 +154,24 @@ class IndentationStateCalculatorTest {
         assertFalse(result.canIndentBackward)
         assertEquals(listOf(second.id), result.targetBlockIds)
     }
+
+    @Test
+    fun `disabled indentation capability preserves targets but disables commands`() {
+        val first = block("first")
+        val second = block("second")
+
+        val result = IndentationStateCalculator.compute(
+            state = state(
+                blocks = listOf(first, second),
+                focusedBlockId = second.id,
+            ),
+            policy = EditorInteractionPolicy.Editable.copy(
+                canChangeBlockIndentation = false,
+            ),
+        )
+
+        assertFalse(result.canIndentForward)
+        assertFalse(result.canIndentBackward)
+        assertEquals(listOf(second.id), result.targetBlockIds)
+    }
 }

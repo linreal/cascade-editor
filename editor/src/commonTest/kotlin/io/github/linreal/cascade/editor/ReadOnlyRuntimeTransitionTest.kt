@@ -163,6 +163,25 @@ class ReadOnlyRuntimeTransitionTest {
     }
 
     @Test
+    fun `disabling indentation cancels an active drag without disabling future dragging`() {
+        val dragging = StartDrag(blockId, touchOffsetY = 0f)
+            .reduce(EditorState.withBlocks(listOf(block, otherBlock)))
+        val holder = EditorStateHolder(dragging)
+        val policy = EditorInteractionPolicy.Editable.copy(
+            canChangeBlockIndentation = false,
+        )
+
+        applyReadOnlyTransitionCleanup(
+            policy = policy,
+            stateHolder = holder,
+            linkPopupController = popupController(),
+        )
+
+        assertTrue(policy.canDragBlocks)
+        assertNull(holder.state.dragState)
+    }
+
+    @Test
     fun `captured formatting action reads latest read-only policy before mutating`() {
         var policy = EditorInteractionPolicy.Editable
         val textStates = BlockTextStates()

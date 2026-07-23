@@ -194,6 +194,56 @@ class DragUtilsTest {
     }
 
     @Test
+    fun `disabled indentation ignores horizontal drag and preserves original depth`() {
+        val state = draggingState(
+            blocks = listOf(
+                block("A", depth = 0),
+                block("B", depth = 1),
+                block("C", depth = 0),
+            ),
+            draggedBlockId = "B",
+        )
+
+        val target = resolveDepthAwareDragHoverTarget(
+            blocks = state.blocks,
+            dragState = state.dragState,
+            visualGap = 1,
+            horizontalDragDeltaPx = 96f,
+            indentUnitPx = 24f,
+            allowIndentationChange = false,
+        )
+
+        assertEquals(1, target?.visualGap)
+        assertEquals(1, target?.futureRootIndentationLevel)
+    }
+
+    @Test
+    fun `disabled indentation rejects destination requiring an implicit depth change`() {
+        val state = draggingState(
+            blocks = listOf(
+                block("A", depth = 0),
+                block("B", depth = 1),
+                block("C", depth = 2),
+                block("D", depth = 0),
+                block("E", depth = 1),
+                block("F", depth = 2),
+            ),
+            draggedBlockId = "D",
+        )
+
+        val target = resolveDepthAwareDragHoverTarget(
+            blocks = state.blocks,
+            dragState = state.dragState,
+            visualGap = 2,
+            horizontalDragDeltaPx = 0f,
+            indentUnitPx = 24f,
+            allowIndentationChange = false,
+        )
+
+        assertNull(target)
+    }
+
+    @Test
     fun `hover target keeps unsupported primary root at depth zero during horizontal drag`() {
         val state = draggingState(
             blocks = listOf(

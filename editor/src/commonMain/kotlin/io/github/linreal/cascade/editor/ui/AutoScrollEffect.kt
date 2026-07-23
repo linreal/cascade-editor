@@ -94,6 +94,8 @@ internal fun calculateAutoScrollAmount(
  * @param outlineIndexProvider Provides cached block lookup data keyed by the
  *        current block list.
  * @param indentUnitPx Width of one outline indentation step in pixels
+ * @param allowIndentationChange Whether horizontal drag movement may change the
+ *        payload's indentation level
  * @param onDropTargetChanged Callback to dispatch the resolved hover target
  */
 @Composable
@@ -105,6 +107,7 @@ internal fun AutoScrollDuringDrag(
     stateProvider: () -> EditorState,
     outlineIndexProvider: () -> DragHoverOutlineIndex,
     indentUnitPx: Float,
+    allowIndentationChange: Boolean,
     onDropTargetChanged: (DragHoverTarget?) -> Unit
 ) {
     val density = LocalDensity.current
@@ -150,6 +153,7 @@ internal fun AutoScrollDuringDrag(
                     dragState = currentState.dragState,
                     horizontalDragDeltaPx = dragDeltaX(),
                     indentUnitPx = indentUnitPx,
+                    allowIndentationChange = allowIndentationChange,
                 )
                 onDropTargetChanged(hoverTarget)
             }
