@@ -20,6 +20,7 @@ internal data class EditorInteractionPolicy(
     val canUseSlashCommands: Boolean,
     val canSelectBlocks: Boolean,
     val canDragBlocks: Boolean,
+    val canChangeBlockIndentation: Boolean,
 ) {
     internal companion object {
         internal val Editable: EditorInteractionPolicy = EditorInteractionPolicy(
@@ -32,6 +33,7 @@ internal data class EditorInteractionPolicy(
             canUseSlashCommands = true,
             canSelectBlocks = true,
             canDragBlocks = true,
+            canChangeBlockIndentation = true,
         )
 
         internal val ReadOnly: EditorInteractionPolicy = EditorInteractionPolicy(
@@ -44,6 +46,7 @@ internal data class EditorInteractionPolicy(
             canUseSlashCommands = false,
             canSelectBlocks = false,
             canDragBlocks = false,
+            canChangeBlockIndentation = false,
         )
     }
 }
@@ -57,12 +60,17 @@ internal data class EditorInteractionPolicy(
 internal fun CascadeEditorConfig.toInteractionPolicy(): EditorInteractionPolicy {
     return if (readOnly) {
         EditorInteractionPolicy.ReadOnly
-    } else if (blockSelectionEnabled && blockDraggingEnabled) {
+    } else if (
+        blockSelectionEnabled &&
+        blockDraggingEnabled &&
+        blockIndentationEnabled
+    ) {
         EditorInteractionPolicy.Editable
     } else {
         EditorInteractionPolicy.Editable.copy(
             canSelectBlocks = blockSelectionEnabled,
             canDragBlocks = blockDraggingEnabled,
+            canChangeBlockIndentation = blockIndentationEnabled,
         )
     }
 }

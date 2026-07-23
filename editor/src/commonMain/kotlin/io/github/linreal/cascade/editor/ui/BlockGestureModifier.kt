@@ -46,6 +46,8 @@ import kotlinx.coroutines.CancellationException
  *        Updated during drag; read by [AutoScrollDuringDrag] for depth-aware hover
  *        recalculation after scroll shifts the visible items.
  * @param indentUnitPx Width of one outline indentation step in pixels.
+ * @param allowIndentationChange Whether horizontal drag movement may change the
+ *        payload's indentation level.
  * @param stateProvider Provides the current [EditorState] for drag status
  *        and block count.
  * @param outlineIndexProvider Provides cached block lookup data keyed by the
@@ -60,6 +62,7 @@ internal fun Modifier.blockGestures(
     dragOffsetY: MutableFloatState,
     dragDeltaX: MutableFloatState,
     indentUnitPx: Float,
+    allowIndentationChange: Boolean,
     stateProvider: () -> EditorState,
     outlineIndexProvider: () -> DragHoverOutlineIndex,
     callbacks: BlockCallbacks,
@@ -158,6 +161,7 @@ internal fun Modifier.blockGestures(
                         dragState = currentState.dragState,
                         horizontalDragDeltaPx = dragDeltaX.floatValue,
                         indentUnitPx = indentUnitPx,
+                        allowIndentationChange = allowIndentationChange,
                     )
                     dispatchDragTargetUpdateIfAllowed(
                         policy = policy,

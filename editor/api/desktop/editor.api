@@ -3646,16 +3646,19 @@ public final class io/github/linreal/cascade/editor/ui/CascadeEditorConfig {
 	public static final field Companion Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig$Companion;
 	public fun <init> ()V
 	public fun <init> (ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;)V
-	public synthetic fun <init> (ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;Z)V
+	public synthetic fun <init> (ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Z
 	public final fun component2 ()Z
 	public final fun component3 ()Z
 	public final fun component4 ()Lio/github/linreal/cascade/editor/CrashPolicy;
 	public final fun component5 ()Lkotlin/jvm/functions/Function1;
-	public final fun copy (ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;)Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig;
-	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig;ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig;
+	public final fun component6 ()Z
+	public final fun copy (ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;Z)Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig;ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZILjava/lang/Object;)Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getBlockDraggingEnabled ()Z
+	public final fun getBlockIndentationEnabled ()Z
 	public final fun getBlockSelectionEnabled ()Z
 	public final fun getCrashPolicy ()Lio/github/linreal/cascade/editor/CrashPolicy;
 	public final fun getOnInternalError ()Lkotlin/jvm/functions/Function1;

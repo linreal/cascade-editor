@@ -128,7 +128,7 @@ The built-in slash executor also distinguishes text and non-text conversion targ
 ### SDK identity and configuration
 
 - `CascadeEditorSdk.version: String` — currently `"1.0.0"`.
-- `CascadeEditorConfiguration` — immutable configuration containing `readOnly`, `toolbarMode`, `slashCommandsEnabled`, `blockSelectionEnabled`, `blockDraggingEnabled`, `isDark`, and `crashPolicy`.
+- `CascadeEditorConfiguration` — immutable configuration containing `readOnly`, `toolbarMode`, `slashCommandsEnabled`, `blockSelectionEnabled`, `blockDraggingEnabled`, `blockIndentationEnabled`, `isDark`, and `crashPolicy`. Setting `blockIndentationEnabled` to `false` disables indentation commands and keeps block drag/reorder at the payload's original indentation depth.
 - `CascadeToolbarMode` — `builtIn` or `none`; `none` disables both the built-in formatting toolbar and its link popup.
 - `CascadeCrashPolicy` — `containAndReport` or `rethrow`.
 

@@ -45,6 +45,7 @@ class CascadeEditorControllerTest {
 
         assertEquals(CascadeToolbarMode.builtIn, configuration.toolbarMode)
         assertEquals(CascadeCrashPolicy.containAndReport, configuration.crashPolicy)
+        assertTrue(configuration.blockIndentationEnabled)
         assertEquals(configuration, emptyController.configuration)
         assertEquals("Seed", jsonController.exportPlainText())
     }

@@ -50,6 +50,7 @@ public fun CascadeEditorController.makeViewController(): UIViewController = onMa
                 readOnly = configurationState.readOnly,
                 blockSelectionEnabled = configurationState.blockSelectionEnabled,
                 blockDraggingEnabled = configurationState.blockDraggingEnabled,
+                blockIndentationEnabled = configurationState.blockIndentationEnabled,
                 crashPolicy = configurationState.crashPolicy.toCoreCrashPolicy(),
                 onInternalError = { error ->
                     reportInternalError(

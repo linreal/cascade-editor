@@ -30,7 +30,27 @@ public data class CascadeEditorConfiguration(
     public val blockDraggingEnabled: Boolean,
     public val isDark: Boolean,
     public val crashPolicy: CascadeCrashPolicy,
+    public val blockIndentationEnabled: Boolean,
 ) {
+    public constructor(
+        readOnly: Boolean,
+        toolbarMode: CascadeToolbarMode,
+        slashCommandsEnabled: Boolean,
+        blockSelectionEnabled: Boolean,
+        blockDraggingEnabled: Boolean,
+        isDark: Boolean,
+        crashPolicy: CascadeCrashPolicy,
+    ) : this(
+        readOnly = readOnly,
+        toolbarMode = toolbarMode,
+        slashCommandsEnabled = slashCommandsEnabled,
+        blockSelectionEnabled = blockSelectionEnabled,
+        blockDraggingEnabled = blockDraggingEnabled,
+        isDark = isDark,
+        crashPolicy = crashPolicy,
+        blockIndentationEnabled = true,
+    )
+
     public constructor() : this(
         readOnly = false,
         toolbarMode = CascadeToolbarMode.builtIn,
@@ -39,6 +59,7 @@ public data class CascadeEditorConfiguration(
         blockDraggingEnabled = true,
         isDark = false,
         crashPolicy = CascadeCrashPolicy.containAndReport,
+        blockIndentationEnabled = true,
     )
 }
 

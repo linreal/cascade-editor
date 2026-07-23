@@ -9,7 +9,7 @@ Rich text input | HTML/JSON round-trip | Read-only rendering | Custom toolbars |
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
 [![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.11-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Android](https://img.shields.io/badge/Android-minSdk_28-3DDC84?logo=android)](https://developer.android.com/)
+[![Android](https://img.shields.io/badge/Android-minSdk_26-3DDC84?logo=android)](https://developer.android.com/)
 [![iOS](https://img.shields.io/badge/iOS-16+-000000?logo=apple)](https://developer.apple.com/)
 [![Android Weekly](https://androidweekly.net/issues/issue-721/badge)](https://androidweekly.net/issues/issue-721)
 
@@ -573,7 +573,7 @@ Most of this logic lives in `editor/src/commonMain`, with platform-specific code
 |---|---|
 | Kotlin | 2.3.21 |
 | Compose Multiplatform | 1.11.0 |
-| Android minSdk | 28 |
+| Android minSdk | 26 |
 | Android compileSdk | 36 |
 | iOS min version | 16.0 |
 | iOS targets | arm64, simulatorArm64 |

@@ -123,4 +123,26 @@ class DefaultIndentationActionsTest {
 
         assertTrue(dispatchedActions.isEmpty())
     }
+
+    @Test
+    fun `disabled indentation capability blocks dispatch while editing remains enabled`() {
+        val dispatchedActions = mutableListOf<EditorAction>()
+        val enabledState = IndentationState(
+            canIndentForward = true,
+            canIndentBackward = true,
+            targetBlockIds = listOf(targetId),
+        )
+        val actions = DefaultIndentationActions(
+            stateProvider = { enabledState },
+            dispatchAction = dispatchedActions::add,
+            policy = EditorInteractionPolicy.Editable.copy(
+                canChangeBlockIndentation = false,
+            ),
+        )
+
+        actions.indentForward()
+        actions.indentBackward()
+
+        assertTrue(dispatchedActions.isEmpty())
+    }
 }
