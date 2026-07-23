@@ -105,7 +105,7 @@ Some of the harder problems handled by the editor core:
 Start with the smallest useful setup: one paragraph block, a limited toolbar, and slash commands disabled.
 
 ```groovy
-implementation("io.github.linreal:cascade-editor:1.7.0")
+implementation("io.github.linreal:cascade-editor:1.8.0")
 ```
 
 ```kotlin

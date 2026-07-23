@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.8.0] - 2026-07-23
+
+### Added
+
+- Added an experimental, profile-driven Markdown codec with `MarkdownSchema` and `EditorStateHolder` import/export helpers, CommonMark/GFM-oriented block and inline support, policy-driven HTML bridging, structured warnings, bounded resource limits, source preservation for unsupported syntax, and fidelity analysis that recommends native editing or a raw-text fallback
+- Added the Swift-facing `:editor-ios-sdk` static framework with a controller and UIKit host, JSON/HTML document APIs, toolbar state and actions, localization, change callbacks, native custom blocks, and native slash commands; also added an XCFramework build script and a native Swift sample
+- Added `CascadeEditorConfig(blockIndentationEnabled = ...)` to disable built-in indentation commands while keeping drag-and-drop at the payload's original indentation
+- Added public integration seams for external editor chrome and platform bridges: `EditorStateHolder.dispatchStructuralAction(...)`, `EditorStateHolder.resolveDocumentBlocks(...)`, `BlockRenderer.supportsDragPreview`, and stable built-in slash-command ID helpers
+- Added comments-composer and Markdown round-trip examples to the sample app
+
+### Changed
+
+- Lowered the Android minimum SDK from 28 to 26
+- Updated Compose Multiplatform from 1.11.0 to 1.11.1
+
+### Fixed
+
+- Fixed block renderers and slash commands registered after the editor is mounted not becoming available until an unrelated state change
+- Fixed built-in slash conversion to non-text custom blocks so blank anchors are replaced safely and nonblank anchor text is never discarded
+- Fixed JSON, HTML, and Markdown link persistence rewriting relative, fragment, `mailto:`, `tel:`, and custom-scheme targets as HTTPS URLs
+- Fixed drag previews for platform-view renderers by allowing them to opt out of duplicate live composition and use a lightweight placeholder
+
 ## [1.7.0] - 2026-06-28
 
 ### Added
