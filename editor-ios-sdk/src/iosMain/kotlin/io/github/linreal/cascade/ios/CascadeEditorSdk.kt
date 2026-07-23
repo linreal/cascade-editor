@@ -6,5 +6,5 @@ import kotlin.native.ObjCName
 @OptIn(ExperimentalObjCName::class)
 @ObjCName("CascadeEditorSdk", exact = true)
 public object CascadeEditorSdk {
-    public const val version: String = "1.7.0"
+    public const val version: String = "1.8.0"
 }
