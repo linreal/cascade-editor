@@ -1,0 +1,65 @@
+{
+  "version": 2,
+  "blocks": [
+    {
+      "id": "research-title",
+      "type": { "typeId": "heading_1" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Research notes",
+        "spans": []
+      }
+    },
+    {
+      "id": "research-quote",
+      "type": { "typeId": "quote" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "A useful preview helps someone decide what to open.",
+        "spans": []
+      }
+    },
+    {
+      "id": "research-source",
+      "type": { "typeId": "paragraph" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Keep source material close to every decision.",
+        "spans": [
+          {
+            "start": 5,
+            "end": 20,
+            "style": {
+              "type": "link",
+              "url": "https://github.com/linreal/cascade-editor"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "research-question",
+      "type": { "typeId": "bullet_list" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "How much context belongs on a card?",
+        "spans": []
+      }
+    },
+    {
+      "id": "research-answer",
+      "type": { "typeId": "paragraph" },
+      "attributes": { "indentationLevel": 1 },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Enough to recognize the document, never enough to replace it.",
+        "spans": []
+      }
+    }
+  ]
+}

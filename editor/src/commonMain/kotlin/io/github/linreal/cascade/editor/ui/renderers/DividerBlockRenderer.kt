@@ -27,13 +27,26 @@ public class DividerBlockRenderer : BlockRenderer<BlockType.Divider> {
         modifier: Modifier,
         callbacks: BlockCallbacks
     ) {
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Dividers.Horizontal(color = LocalCascadeTheme.current.colors.contentDivider)
-        }
+        DividerBlockVisual(modifier)
+    }
+}
+
+/**
+ * Static divider chrome shared by editor and document-preview rendering.
+ *
+ * Keeping the visual in a standalone primitive guarantees identical line and padding
+ * geometry without pulling editor callbacks into preview mode.
+ */
+@Composable
+internal fun DividerBlockVisual(
+    modifier: Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Dividers.Horizontal(color = LocalCascadeTheme.current.colors.contentDivider)
     }
 }

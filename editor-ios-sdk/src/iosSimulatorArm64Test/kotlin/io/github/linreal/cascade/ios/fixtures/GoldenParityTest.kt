@@ -94,6 +94,36 @@ class GoldenParityTest {
     private fun readFixture(fileName: String): String =
         readFile("CASCADE_FIXTURES_DIR", fileName)
 
+    @Test
+    fun nativePreviewGalleryDocumentsRoundTripThroughDocumentSchema() {
+        val previewFiles = listOf(
+            "preview_product_brief.json",
+            "preview_weekly_plan.json",
+            "preview_research_notes.json",
+            "preview_release_checklist.json",
+            "preview_code_review.json",
+            "preview_trip_ideas.json",
+        )
+
+        previewFiles.forEach { fileName ->
+            val fixture = readFile("CASCADE_IOS_NATIVE_SAMPLE_FILES_DIR", fileName)
+            val decoded = DocumentSchema.decodeFromStringWithReport(fixture)
+            assertEquals(
+                emptyList(),
+                decoded.warnings,
+                "$fileName must decode without warnings",
+            )
+            assertEquals(
+                normalizeDocument(fixture, ignoreIds = false),
+                normalizeDocument(
+                    DocumentSchema.encodeToString(decoded.blocks),
+                    ignoreIds = false,
+                ),
+                "$fileName is not canonical DocumentSchema JSON",
+            )
+        }
+    }
+
     // Editor demo document
 
     @Test

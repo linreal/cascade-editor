@@ -120,8 +120,14 @@ kotlin {
 tasks.withType<KotlinNativeSimulatorTest>().configureEach {
     val fixturesDir = projectDir.resolve("src/commonTest/resources")
     val sampleFilesDir = rootDir.resolve("sample/src/commonMain/composeResources/files")
+    val iosNativeSampleFilesDir = rootDir.resolve("iosNativeSample/iosNativeSample/Resources")
     inputs.dir(fixturesDir).withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(sampleFilesDir).withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(iosNativeSampleFilesDir).withPathSensitivity(PathSensitivity.RELATIVE)
     environment("SIMCTL_CHILD_CASCADE_FIXTURES_DIR", fixturesDir.absolutePath)
     environment("SIMCTL_CHILD_CASCADE_SAMPLE_FILES_DIR", sampleFilesDir.absolutePath)
+    environment(
+        "SIMCTL_CHILD_CASCADE_IOS_NATIVE_SAMPLE_FILES_DIR",
+        iosNativeSampleFilesDir.absolutePath,
+    )
 }

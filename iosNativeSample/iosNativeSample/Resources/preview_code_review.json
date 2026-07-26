@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "blocks": [
+    {
+      "id": "review-title",
+      "type": { "typeId": "heading_1" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Code review",
+        "spans": []
+      }
+    },
+    {
+      "id": "review-summary",
+      "type": { "typeId": "paragraph" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Keep the preview stateless and let the host own navigation.",
+        "spans": [
+          { "start": 17, "end": 26, "style": { "type": "inline_code" } }
+        ]
+      }
+    },
+    {
+      "id": "review-code",
+      "type": { "typeId": "code" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "card.onTap {\n    openEditor(document.id)\n}",
+        "spans": []
+      }
+    },
+    {
+      "id": "review-followup",
+      "type": { "typeId": "todo", "checked": false },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Profile scrolling on a release build",
+        "spans": []
+      }
+    }
+  ]
+}

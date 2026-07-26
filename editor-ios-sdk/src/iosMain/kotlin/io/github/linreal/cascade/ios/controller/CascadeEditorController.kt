@@ -215,7 +215,9 @@ public class CascadeEditorController public constructor(
         if (preflight.warnings.any { warning -> warning is DocumentDecodeWarning.DocumentParseFailed }) {
             return@onMainThread CascadeDocumentLoadResult(
                 success = false,
-                warningMessages = preflight.warnings.map { warning -> warning.message() },
+                warningMessages = preflight.warnings.map { warning ->
+                    warning.toCascadeWarningMessage()
+                },
             )
         }
         val result = stateHolder.loadFromJson(json, textStates, spanStates, typeCodec = nativeBlockCodec)
@@ -229,7 +231,9 @@ public class CascadeEditorController public constructor(
         }
         CascadeDocumentLoadResult(
             success = success,
-            warningMessages = result.warnings.map { warning -> warning.message() },
+            warningMessages = result.warnings.map { warning ->
+                warning.toCascadeWarningMessage()
+            },
         )
     }
 
@@ -802,34 +806,6 @@ public class CascadeEditorController public constructor(
 
     private fun failedLoadResult(message: String): CascadeDocumentLoadResult {
         return CascadeDocumentLoadResult(success = false, warningMessages = listOf(message))
-    }
-
-    private fun DocumentDecodeWarning.message(): String = when (this) {
-        is DocumentDecodeWarning.DocumentParseFailed -> "Document parse failed: $reason"
-        is DocumentDecodeWarning.DuplicateIdRegenerated ->
-            "Duplicate block id '$originalId' at block $blockIndex was replaced with '$newId'."
-
-        is DocumentDecodeWarning.MissingIdRegenerated -> {
-            "Missing block id at block $blockIndex was replaced."
-        }
-
-        is DocumentDecodeWarning.InvalidBlockAttributeParam ->
-            "Invalid block attribute at block $blockIndex: $param; using $fallback."
-
-        is DocumentDecodeWarning.InvalidBlockTypeParam ->
-            "Invalid '$param' for block type '$typeId' at block $blockIndex; using $fallback."
-
-        is DocumentDecodeWarning.MalformedBlockSkipped ->
-            "Malformed block at index $blockIndex was skipped: $reason."
-
-        is DocumentDecodeWarning.UnknownBlockTypePreserved ->
-            "Unknown block type '$typeId' at block $blockIndex was preserved."
-
-        is DocumentDecodeWarning.UnknownContentKind ->
-            "Unknown content kind '$kind' at block $blockIndex was preserved as custom content."
-
-        is DocumentDecodeWarning.UnsupportedCustomDataDropped ->
-            "Unsupported custom value '$key' at block $blockIndex was dropped: $valueType."
     }
 
     private fun HtmlDecodeWarning.message(): String = when (this) {

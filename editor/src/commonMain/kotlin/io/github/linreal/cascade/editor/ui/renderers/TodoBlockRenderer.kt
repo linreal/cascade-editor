@@ -62,7 +62,6 @@ public class TodoBlockRenderer : BlockRenderer<BlockType.Todo> {
         val currentCallbacks = rememberUpdatedState(callbacks)
         val currentPolicy = rememberUpdatedState(interactionPolicy)
         val indentationLevel = block.attributes.indentationLevel
-        val useRoundCheckbox = indentationLevel % 2 != 0
         val onCheckedChange = remember(block.id, callbacks, interactionPolicy) {
             createTodoCheckedChangeAction(
                 blockId = block.id,
@@ -71,33 +70,36 @@ public class TodoBlockRenderer : BlockRenderer<BlockType.Todo> {
             )
         }
 
-        Row(
+        TodoBlockRowVisual(
             modifier = modifier.withBlockIndentation(block),
-            verticalAlignment = Alignment.Top,
-        ) {
-            TodoCheckbox(
-                checked = todoType.checked,
-                primaryColor = theme.colors.primary,
-                onPrimaryColor = theme.colors.onPrimary,
-                borderColor = theme.colors.text.copy(alpha = 0.5f),
-                checkboxSize = if (indentationLevel == 0) CheckboxSize else IndentedCheckboxSize,
-                corner = if (useRoundCheckbox) RoundCheckboxCorner else CheckboxCorner,
-                stroke = if (useRoundCheckbox) RoundCheckboxStroke else CheckboxStroke,
-                enabled = interactionPolicy.canEditBlockControls,
-                onCheckedChange = onCheckedChange,
-            )
-            Spacers.Horizontal(12.dp)
-            TextBlockField(
-                block = block,
-                isFocused = isFocused,
-                textStyle = theme.typography.body.copy(
-                    color = theme.colors.text,
-                    textDecoration = if (todoType.checked) TextDecoration.LineThrough else TextDecoration.None
-                ),
-                modifier = Modifier.weight(1f),
-                callbacks = callbacks,
-            )
-        }
+            indicator = {
+                TodoCheckbox(
+                    checked = todoType.checked,
+                    primaryColor = theme.colors.primary,
+                    onPrimaryColor = theme.colors.onPrimary,
+                    borderColor = theme.colors.text.copy(alpha = 0.5f),
+                    indentationLevel = indentationLevel,
+                    enabled = interactionPolicy.canEditBlockControls,
+                    onCheckedChange = onCheckedChange,
+                )
+            },
+            content = { contentModifier ->
+                TextBlockField(
+                    block = block,
+                    isFocused = isFocused,
+                    textStyle = theme.typography.body.copy(
+                        color = theme.colors.text,
+                        textDecoration = if (todoType.checked) {
+                            TextDecoration.LineThrough
+                        } else {
+                            TextDecoration.None
+                        },
+                    ),
+                    modifier = contentModifier,
+                    callbacks = callbacks,
+                )
+            },
+        )
     }
 }
 
@@ -108,6 +110,28 @@ private val CheckboxStroke = 2.dp
 private val IndentedCheckboxSize = 18.dp
 private val RoundCheckboxCorner = 99.dp
 private val RoundCheckboxStroke = 2.dp
+
+internal data class TodoIndicatorGeometry(
+    val size: Dp,
+    val corner: Dp,
+    val stroke: Dp,
+)
+
+/**
+ * Resolves the todo indicator geometry shared by editor and preview paths.
+ *
+ * Odd nested lanes use the compact round marker; even nested lanes keep the compact
+ * square marker. The root lane retains the original larger square checkbox.
+ */
+internal fun resolveTodoIndicatorGeometry(indentationLevel: Int): TodoIndicatorGeometry {
+    val isRoot = indentationLevel == 0
+    val useRoundCheckbox = indentationLevel % 2 != 0
+    return TodoIndicatorGeometry(
+        size = if (isRoot) CheckboxSize else IndentedCheckboxSize,
+        corner = if (useRoundCheckbox) RoundCheckboxCorner else CheckboxCorner,
+        stroke = if (useRoundCheckbox) RoundCheckboxStroke else CheckboxStroke,
+    )
+}
 
 /**
  * Creates a todo checkbox handler that resolves policy and callbacks at invoke
@@ -131,13 +155,10 @@ internal fun createTodoCheckedChangeAction(
 private fun TodoCheckbox(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
     primaryColor: Color,
     onPrimaryColor: Color,
     borderColor: Color,
-    checkboxSize: Dp,
-    corner: Dp,
-    stroke: Dp,
+    indentationLevel: Int,
     enabled: Boolean,
 ) {
     val progress by animateFloatAsState(
@@ -146,21 +167,47 @@ private fun TodoCheckbox(
         label = "CheckboxProgress"
     )
 
-    val shape = RoundedCornerShape(corner)
+    TodoCheckboxIndicator(
+        progress = progress,
+        primaryColor = primaryColor,
+        onPrimaryColor = onPrimaryColor,
+        borderColor = borderColor,
+        indentationLevel = indentationLevel,
+        inputModifier = Modifier.toggleable(
+            value = checked,
+            enabled = enabled,
+            role = Role.Checkbox,
+            onValueChange = onCheckedChange,
+        ),
+    )
+}
+
+/**
+ * Draws the todo indicator without imposing interaction or animation behavior.
+ *
+ * Editor rendering supplies an animated [progress] and a toggle modifier. Preview
+ * rendering supplies a settled 0/1 progress and read-only checked semantics.
+ */
+@Composable
+internal fun TodoCheckboxIndicator(
+    progress: Float,
+    primaryColor: Color,
+    onPrimaryColor: Color,
+    borderColor: Color,
+    indentationLevel: Int,
+    inputModifier: Modifier = Modifier,
+) {
+    val geometry = resolveTodoIndicatorGeometry(indentationLevel)
+    val shape = RoundedCornerShape(geometry.corner)
 
     Box(
-        modifier = modifier
-            .size(checkboxSize)
+        modifier = Modifier
+            .size(geometry.size)
             .clip(shape)
-            .toggleable(
-                value = checked,
-                enabled = enabled,
-                role = Role.Checkbox,
-                onValueChange = onCheckedChange
-            )
+            .then(inputModifier)
             .drawWithCache {
-                val strokeWidthPx = stroke.toPx()
-                val cornerRadiusPx = corner.toPx()
+                val strokeWidthPx = geometry.stroke.toPx()
+                val cornerRadiusPx = geometry.corner.toPx()
                 val canvasSize = size.minDimension
                 val inset = strokeWidthPx / 2f
 
@@ -219,4 +266,26 @@ private fun TodoCheckbox(
             },
         contentAlignment = Alignment.Center
     ) {}
+}
+
+/**
+ * Todo row geometry shared by editable and static renderers.
+ *
+ * The supplied slots decide whether the indicator is interactive and whether the text
+ * is an editor field or [BasicText][androidx.compose.foundation.text.BasicText].
+ */
+@Composable
+internal fun TodoBlockRowVisual(
+    modifier: Modifier,
+    indicator: @Composable () -> Unit,
+    content: @Composable (Modifier) -> Unit,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.Top,
+    ) {
+        indicator()
+        Spacers.Horizontal(12.dp)
+        content(Modifier.weight(1f))
+    }
 }

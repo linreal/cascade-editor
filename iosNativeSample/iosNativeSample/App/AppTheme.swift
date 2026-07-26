@@ -59,6 +59,8 @@ struct AppTheme {
     let tileBlocksIcon: Color
     let tileCommentsBackground: Color
     let tileCommentsIcon: Color
+    let tilePreviewBackground: Color
+    let tilePreviewIcon: Color
 
     static let violetLight = AppTheme(
         name: "Violet Light",
@@ -92,7 +94,9 @@ struct AppTheme {
         tileBlocksBackground: Color(rgb: 0xF0E9FE),
         tileBlocksIcon: Color(rgb: 0x6C3DE8),
         tileCommentsBackground: Color(rgb: 0xFFEDE7),
-        tileCommentsIcon: Color(rgb: 0xFF6B4A)
+        tileCommentsIcon: Color(rgb: 0xFF6B4A),
+        tilePreviewBackground: Color(rgb: 0xE8F5FF),
+        tilePreviewIcon: Color(rgb: 0x2478B5)
     )
 
     static let violetDark = AppTheme(
@@ -127,7 +131,9 @@ struct AppTheme {
         tileBlocksBackground: Color(argb: 0x2E8B5CF6),
         tileBlocksIcon: Color(rgb: 0xC4B5FD),
         tileCommentsBackground: Color(argb: 0x29FF6B4A),
-        tileCommentsIcon: Color(rgb: 0xFF8A6B)
+        tileCommentsIcon: Color(rgb: 0xFF8A6B),
+        tilePreviewBackground: Color(argb: 0x2E38A3DB),
+        tilePreviewIcon: Color(rgb: 0x7CC7F2)
     )
 
     static let forestLight = AppTheme(
@@ -162,7 +168,9 @@ struct AppTheme {
         tileBlocksBackground: Color(rgb: 0xDCEFE7),
         tileBlocksIcon: Color(rgb: 0x147D64),
         tileCommentsBackground: Color(rgb: 0xFFF0D9),
-        tileCommentsIcon: Color(rgb: 0xC66A16)
+        tileCommentsIcon: Color(rgb: 0xC66A16),
+        tilePreviewBackground: Color(rgb: 0xE1F2F4),
+        tilePreviewIcon: Color(rgb: 0x167080)
     )
 
     static let forestDark = AppTheme(
@@ -197,7 +205,9 @@ struct AppTheme {
         tileBlocksBackground: Color(argb: 0x2938A383),
         tileBlocksIcon: Color(rgb: 0x8FE0C4),
         tileCommentsBackground: Color(argb: 0x29D99A4E),
-        tileCommentsIcon: Color(rgb: 0xE8B66B)
+        tileCommentsIcon: Color(rgb: 0xE8B66B),
+        tilePreviewBackground: Color(argb: 0x293AA7B5),
+        tilePreviewIcon: Color(rgb: 0x83D8E2)
     )
 }
 

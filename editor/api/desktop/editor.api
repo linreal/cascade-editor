@@ -2481,6 +2481,18 @@ public final class io/github/linreal/cascade/editor/registry/BlockDescriptor {
 	public fun toString ()Ljava/lang/String;
 }
 
+public abstract interface class io/github/linreal/cascade/editor/registry/BlockPreviewRenderer {
+	public abstract fun RenderPreview (Lio/github/linreal/cascade/editor/core/Block;Landroidx/compose/ui/Modifier;Lio/github/linreal/cascade/editor/registry/BlockPreviewScope;Landroidx/compose/runtime/Composer;I)V
+}
+
+public abstract interface class io/github/linreal/cascade/editor/registry/BlockPreviewScope {
+	public abstract fun getBlock-SDe6QqM (Ljava/lang/String;)Lio/github/linreal/cascade/editor/core/Block;
+	public abstract fun getBlocks ()Ljava/util/List;
+	public abstract fun getCanOpenLinks ()Z
+	public abstract fun getConfig ()Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;
+	public abstract fun openLink (Ljava/lang/String;)V
+}
+
 public final class io/github/linreal/cascade/editor/registry/BlockRegistry {
 	public static final field $stable I
 	public static final field Companion Lio/github/linreal/cascade/editor/registry/BlockRegistry$Companion;
@@ -2488,13 +2500,17 @@ public final class io/github/linreal/cascade/editor/registry/BlockRegistry {
 	public final fun createBlock (Ljava/lang/String;)Lio/github/linreal/cascade/editor/core/Block;
 	public final fun getAllDescriptors ()Ljava/util/List;
 	public final fun getDescriptor (Ljava/lang/String;)Lio/github/linreal/cascade/editor/registry/BlockDescriptor;
+	public final fun getPreviewRenderer (Lio/github/linreal/cascade/editor/core/BlockType;)Lio/github/linreal/cascade/editor/registry/BlockPreviewRenderer;
+	public final fun getPreviewRenderer (Ljava/lang/String;)Lio/github/linreal/cascade/editor/registry/BlockPreviewRenderer;
 	public final fun getRenderer (Lio/github/linreal/cascade/editor/core/BlockType;)Lio/github/linreal/cascade/editor/registry/BlockRenderer;
 	public final fun getRenderer (Ljava/lang/String;)Lio/github/linreal/cascade/editor/registry/BlockRenderer;
 	public final fun isRegistered (Ljava/lang/String;)Z
 	public final fun register (Lio/github/linreal/cascade/editor/registry/BlockDescriptor;Lio/github/linreal/cascade/editor/registry/BlockRenderer;)V
 	public final fun registerDescriptor (Lio/github/linreal/cascade/editor/registry/BlockDescriptor;)V
+	public final fun registerPreviewRenderer (Ljava/lang/String;Lio/github/linreal/cascade/editor/registry/BlockPreviewRenderer;)V
 	public final fun registerRenderer (Ljava/lang/String;Lio/github/linreal/cascade/editor/registry/BlockRenderer;)V
 	public final fun search (Ljava/lang/String;)Ljava/util/List;
+	public final fun setUnknownBlockPreviewRenderer (Lio/github/linreal/cascade/editor/registry/BlockPreviewRenderer;)V
 	public final fun setUnknownBlockRenderer (Lio/github/linreal/cascade/editor/registry/BlockRenderer;)V
 }
 
@@ -3641,6 +3657,44 @@ public final class io/github/linreal/cascade/editor/ui/BlockGestureModifierKt {
 	public static synthetic fun draggableAfterLongPress$default (Landroidx/compose/ui/Modifier;Ljava/lang/Object;ZLjava/lang/Long;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;ILjava/lang/Object;)Landroidx/compose/ui/Modifier;
 }
 
+public final class io/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig {
+	public static final field $stable I
+	public static final field Companion Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig$Companion;
+	public synthetic fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;FIZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;FIZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Integer;
+	public final fun component2 ()Ljava/lang/Integer;
+	public final fun component3 ()F
+	public final fun component4-gIe3tQ8 ()I
+	public final fun component5 ()Z
+	public final fun component6 ()Z
+	public final fun component7 ()Lio/github/linreal/cascade/editor/CrashPolicy;
+	public final fun component8 ()Lkotlin/jvm/functions/Function1;
+	public final fun copy-ZNqEYIc (Ljava/lang/Integer;Ljava/lang/Integer;FIZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;)Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;
+	public static synthetic fun copy-ZNqEYIc$default (Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;Ljava/lang/Integer;Ljava/lang/Integer;FIZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCrashPolicy ()Lio/github/linreal/cascade/editor/CrashPolicy;
+	public final fun getLinksEnabled ()Z
+	public final fun getMaxBlocks ()Ljava/lang/Integer;
+	public final fun getMaxLinesPerTextBlock ()Ljava/lang/Integer;
+	public final fun getOnInternalError ()Lkotlin/jvm/functions/Function1;
+	public final fun getTextOverflow-gIe3tQ8 ()I
+	public final fun getTextScale ()F
+	public final fun getTextSelectionEnabled ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig$Companion {
+	public final fun getDefault ()Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;
+	public final fun getGridCard ()Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;
+	public final fun getUnbounded ()Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;
+}
+
+public final class io/github/linreal/cascade/editor/ui/CascadeDocumentPreviewKt {
+	public static final fun CascadeDocumentPreview (Ljava/util/List;Landroidx/compose/ui/Modifier;Lio/github/linreal/cascade/editor/registry/BlockRegistry;Lio/github/linreal/cascade/editor/theme/CascadeEditorTheme;Lio/github/linreal/cascade/editor/theme/CascadeEditorStrings;Lio/github/linreal/cascade/editor/theme/CascadeEditorBlockStrings;Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;II)V
+}
+
 public final class io/github/linreal/cascade/editor/ui/CascadeEditorConfig {
 	public static final field $stable I
 	public static final field Companion Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig$Companion;
@@ -3691,6 +3745,9 @@ public final class io/github/linreal/cascade/editor/ui/CascadeEditorToolbarContr
 public final class io/github/linreal/cascade/editor/ui/EditorRegistryKt {
 	public static final fun createEditorRegistry ()Lio/github/linreal/cascade/editor/registry/BlockRegistry;
 	public static final fun registerBuiltInRenderers (Lio/github/linreal/cascade/editor/registry/BlockRegistry;)V
+}
+
+public abstract interface annotation class io/github/linreal/cascade/editor/ui/ExperimentalCascadePreviewApi : java/lang/annotation/Annotation {
 }
 
 public final class io/github/linreal/cascade/editor/ui/HideKeyboardToolbarButtonKt {

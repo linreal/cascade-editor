@@ -1,0 +1,62 @@
+{
+  "version": 2,
+  "blocks": [
+    {
+      "id": "product-title",
+      "type": { "typeId": "heading_1" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Product launch brief",
+        "spans": [
+          { "start": 0, "end": 20, "style": { "type": "bold" } }
+        ]
+      }
+    },
+    {
+      "id": "product-summary",
+      "type": { "typeId": "paragraph" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "A focused release for teams that need fast, structured notes without losing editing power.",
+        "spans": []
+      }
+    },
+    {
+      "id": "product-divider",
+      "type": { "typeId": "divider" },
+      "content": { "kind": "empty" }
+    },
+    {
+      "id": "product-goals-title",
+      "type": { "typeId": "heading_2" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Launch goals",
+        "spans": []
+      }
+    },
+    {
+      "id": "product-goal-one",
+      "type": { "typeId": "bullet_list" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Make the first edit feel immediate",
+        "spans": []
+      }
+    },
+    {
+      "id": "product-goal-two",
+      "type": { "typeId": "todo", "checked": false },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Collect launch feedback",
+        "spans": []
+      }
+    }
+  ]
+}

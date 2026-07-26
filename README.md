@@ -232,6 +232,64 @@ This is a UI boundary inside `CascadeEditor`, not an application authorization l
 
 To keep editing enabled but suppress block-level affordances, use `CascadeEditorConfig(blockSelectionEnabled = false)` and/or `CascadeEditorConfig(blockDraggingEnabled = false)`. `readOnly = true` still overrides both flags and disables all editor-owned mutations.
 
+## Preview documents in lists and grids (experimental)
+
+Use `CascadeDocumentPreview` for bounded card content. It renders immutable
+blocks with static Compose text and no `EditorStateHolder`, text field, editor
+focus/IME, history, or internal scroll container. This is distinct from
+`CascadeEditor(readOnly = true)`, which retains the full reader/editor runtime.
+
+Hoist one registry outside the lazy-item lambda:
+
+```kotlin
+@OptIn(ExperimentalCascadePreviewApi::class)
+@Composable
+fun NoteGrid(
+    notes: List<NotePreviewModel>,
+    onOpenLink: (String) -> Unit,
+) {
+    val previewRegistry = remember { createEditorRegistry() }
+    val previewTheme = remember { CascadeEditorTheme.light() }
+    val previewStrings = remember { CascadeEditorStrings.default() }
+    val previewBlockStrings = remember { CascadeEditorBlockStrings.default() }
+
+    LazyVerticalGrid(columns = GridCells.Adaptive(240.dp)) {
+        items(notes, key = { it.id }) { note ->
+            CascadeDocumentPreview(
+                blocks = note.blocks,
+                registry = previewRegistry,
+                theme = previewTheme,
+                strings = previewStrings,
+                blockStrings = previewBlockStrings,
+                config = CascadeDocumentPreviewConfig.GridCard.copy(
+                    textScale = 0.8f,
+                ),
+                onOpenLink = onOpenLink,
+            )
+        }
+    }
+}
+```
+
+`GridCard` renders at most four blocks and three lines per text block.
+Its default `textScale` is `1f`; `0.8f` is a useful starting point for
+two-column cards. It does not scale `dp` spacing or explicit host bounds, but
+text remeasures normally, so wrapping and intrinsic height can change.
+`Unbounded` removes both limits but still composes eagerly and does not scroll.
+Decode or project documents before item composition, and register a dedicated
+`BlockPreviewRenderer` for custom blocks; editor renderers are never used as an
+automatic preview fallback.
+
+Built-in link spans keep Cascade's link styling and use Compose link
+annotations when `linksEnabled` is true. Activating a valid stored link invokes
+only the host-supplied `onOpenLink` callback; preview never uses an implicit
+platform URI opener. Setting `linksEnabled = false` keeps the visual styling
+without link click semantics. Omitting `onOpenLink` likewise keeps links
+visual-only so the surrounding card can own the click.
+Optional Compose text selection is disabled by default. See
+[Document Preview](docs/DocumentPreview.md) for configuration, custom renderers,
+fallback, accessibility, and crash-containment boundaries.
+
 ## Toolbar
 
 For simple inputs, the toolbar is usually the main integration surface: choose which formatting actions are allowed, hide block-level controls, or replace the toolbar with your own app UI.
@@ -568,9 +626,9 @@ Cascade Editor uses a shared Kotlin editor core with strict layers for document 
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  UI Layer (CascadeEditor, renderers, drag overlays)     │
+│  UI Layer (CascadeEditor + preview, renderers)          │
 ├─────────────────────────────────────────────────────────┤
-│  Text State Layer (BlockTextStates, TextFieldState)     │
+│  Text State Layer (editor only: BlockTextStates)        │
 ├─────────────────────────────────────────────────────────┤
 │  State Layer (EditorState, EditorStateHolder)           │
 ├─────────────────────────────────────────────────────────┤

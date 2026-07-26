@@ -1,0 +1,55 @@
+{
+  "version": 2,
+  "blocks": [
+    {
+      "id": "release-title",
+      "type": { "typeId": "heading_1" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Release checklist",
+        "spans": []
+      }
+    },
+    {
+      "id": "release-api",
+      "type": { "typeId": "todo", "checked": true },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Review the public API diff",
+        "spans": []
+      }
+    },
+    {
+      "id": "release-tests",
+      "type": { "typeId": "todo", "checked": true },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Run multiplatform tests",
+        "spans": []
+      }
+    },
+    {
+      "id": "release-device",
+      "type": { "typeId": "todo", "checked": false },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Smoke-test a physical device",
+        "spans": []
+      }
+    },
+    {
+      "id": "release-notes",
+      "type": { "typeId": "todo", "checked": false },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Publish concise release notes",
+        "spans": []
+      }
+    }
+  ]
+}

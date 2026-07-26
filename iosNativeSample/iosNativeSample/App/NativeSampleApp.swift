@@ -13,6 +13,8 @@ struct NativeSampleApp: App {
 
 enum SampleDestination: Hashable {
     case editorDemo
+    case previewGallery
+    case previewDocument(id: String)
     case comments
     case customBlocks
 }
@@ -21,6 +23,7 @@ struct RootView: View {
     @Binding var selectedTheme: SampleThemeFamily
     @Environment(\.colorScheme) private var colorScheme
     @State private var path: [SampleDestination] = []
+    @StateObject private var previewDocuments = PreviewDocumentLibrary()
 
     private var isDark: Bool { colorScheme == .dark }
     private var theme: AppTheme { selectedTheme.appTheme(isDark: isDark) }
@@ -43,6 +46,21 @@ struct RootView: View {
         switch destination {
         case .editorDemo:
             EditorDemoScreen(selectedTheme: $selectedTheme, initialIsDark: isDark)
+        case .previewGallery:
+            PreviewGalleryScreen(
+                selectedTheme: $selectedTheme,
+                library: previewDocuments,
+                onOpenDocument: { documentID in
+                    path.append(.previewDocument(id: documentID))
+                }
+            )
+        case .previewDocument(let documentID):
+            PreviewDocumentEditorScreen(
+                documentID: documentID,
+                library: previewDocuments,
+                selectedTheme: $selectedTheme,
+                initialIsDark: isDark
+            )
         case .comments:
             CommentsScreen(selectedTheme: $selectedTheme, initialIsDark: isDark)
         case .customBlocks:
