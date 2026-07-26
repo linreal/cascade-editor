@@ -63,6 +63,14 @@ Use a new patch version. Existing tags and assets are immutable; do not move
    script removes this convenience copy from its temporary workspace before
    injecting the supplied archive.
 
+   The packaging script intentionally separates test/API verification from
+   Release XCFramework assembly and limits Gradle to one worker. Kotlin/Native
+   Release LTO is memory-intensive, while standard arm64 GitHub macOS runners
+   have constrained memory; allowing the device, simulator, and test linkers to
+   overlap can exhaust the Gradle heap. The release workflow applies the same
+   serialized prebuild before calling the tag's packaging script, allowing an
+   existing immutable tag to be retried after workflow-only fixes on `main`.
+
 4. Review the committed public API dumps. If an intentional Swift-facing
    declaration changed, run `./gradlew :editor-ios-sdk:apiDump`, inspect the
    generated `CascadeEditor.h`, and commit the API change.

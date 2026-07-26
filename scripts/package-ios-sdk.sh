@@ -36,9 +36,15 @@ fail() {
 [[ "$VERSION" == "$CONFIGURED_VERSION" ]] ||
     fail "requested version $VERSION does not match VERSION_NAME=$CONFIGURED_VERSION"
 
-"$REPO_ROOT/gradlew" -p "$REPO_ROOT" \
+# Kotlin/Native release LTO is memory-intensive. Configuration cache permits
+# independent link tasks to overlap, which can exhaust the 7 GB standard macOS
+# CI runner. Keep test linking and release linking in separate invocations and
+# serialize native workers; do not remove this constraint without a cold CI run.
+"$REPO_ROOT/gradlew" -p "$REPO_ROOT" --max-workers=1 \
     :editor-ios-sdk:allTests \
-    :editor-ios-sdk:apiCheck \
+    :editor-ios-sdk:apiCheck
+
+"$REPO_ROOT/gradlew" -p "$REPO_ROOT" --max-workers=1 \
     :editor-ios-sdk:assembleCascadeEditorReleaseXCFramework
 
 rm -rf "$BUILD_ROOT"

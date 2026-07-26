@@ -21,7 +21,7 @@ concurrency:
 jobs:
   publish:
     runs-on: macos-26
-    timeout-minutes: 75
+    timeout-minutes: 120
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
       PACKAGE_REPOSITORY: linreal/cascade-editor-ios
@@ -95,6 +95,19 @@ jobs:
           [[ -n "$simulator_udid" && "$simulator_udid" != "null" ]]
           xcrun simctl bootstatus "$simulator_udid" -b
           echo "CASCADE_SIMULATOR_UDID=$simulator_udid" >> "$GITHUB_ENV"
+
+      # workflow_dispatch evaluates this workflow from main, then checks out the
+      # immutable source tag. Keep the memory guard here as well as in the
+      # packaging script so an existing tag can be retried safely.
+      - name: Prebuild native binaries within runner memory
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --max-workers=1 \
+            :editor-ios-sdk:allTests \
+            :editor-ios-sdk:apiCheck
+          ./gradlew --max-workers=1 \
+            :editor-ios-sdk:assembleCascadeEditorReleaseXCFramework
 
       - name: Build the publication artifact
         run: scripts/package-ios-sdk.sh "$RELEASE_VERSION"
