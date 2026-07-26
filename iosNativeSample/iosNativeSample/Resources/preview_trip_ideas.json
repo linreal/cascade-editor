@@ -1,0 +1,57 @@
+{
+  "version": 2,
+  "blocks": [
+    {
+      "id": "trip-title",
+      "type": { "typeId": "heading_1" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Trip ideas",
+        "spans": []
+      }
+    },
+    {
+      "id": "trip-summary",
+      "type": { "typeId": "paragraph" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Start with the coast, then leave room for detours.",
+        "spans": [
+          { "start": 27, "end": 49, "style": { "type": "italic" } }
+        ]
+      }
+    },
+    {
+      "id": "trip-place",
+      "type": { "typeId": "bullet_list" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Old harbor at sunrise",
+        "spans": []
+      }
+    },
+    {
+      "id": "trip-food",
+      "type": { "typeId": "bullet_list" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Find the smallest local bakery",
+        "spans": []
+      }
+    },
+    {
+      "id": "trip-order",
+      "type": { "typeId": "numbered_list", "number": 1 },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Book the first night",
+        "spans": []
+      }
+    }
+  ]
+}

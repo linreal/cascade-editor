@@ -1,0 +1,57 @@
+{
+  "version": 2,
+  "blocks": [
+    {
+      "id": "week-title",
+      "type": { "typeId": "heading_1" },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "This week",
+        "spans": [
+          { "start": 0, "end": 9, "style": { "type": "bold" } }
+        ]
+      }
+    },
+    {
+      "id": "week-done",
+      "type": { "typeId": "todo", "checked": true },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Confirm the preview contract",
+        "spans": []
+      }
+    },
+    {
+      "id": "week-design",
+      "type": { "typeId": "todo", "checked": false },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Review the grid on compact screens",
+        "spans": []
+      }
+    },
+    {
+      "id": "week-qa",
+      "type": { "typeId": "todo", "checked": false },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Run accessibility checks",
+        "spans": []
+      }
+    },
+    {
+      "id": "week-report",
+      "type": { "typeId": "numbered_list", "number": 1 },
+      "content": {
+        "kind": "text",
+        "version": 1,
+        "text": "Write the field report",
+        "spans": []
+      }
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.core.Block
@@ -35,24 +36,45 @@ internal object UnknownBlockRenderer : BlockRenderer<UnknownBlockType> {
         modifier: Modifier,
         callbacks: BlockCallbacks,
     ) {
-        val colors = LocalCascadeTheme.current.colors
         val strings = LocalCascadeStrings.current
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .background(
-                    color = colors.unknownBlockBackground,
-                    shape = RoundedCornerShape(4.dp),
-                )
-                .padding(12.dp),
-        ) {
-            BasicText(
-                text = strings.unsupportedBlock(block.type.typeId),
-                style = TextStyle(
-                    color = colors.unknownBlockText,
-                    fontSize = 14.sp,
-                ),
+        UnknownBlockVisual(
+            text = strings.unsupportedBlock(block.type.typeId),
+            modifier = modifier,
+        )
+    }
+}
+
+/**
+ * Lightweight unsupported-block surface shared by editor and preview fallbacks.
+ *
+ * Preview mode may supply a safe text excerpt and a bounded line count; editor mode
+ * retains the localized unsupported-type label and unbounded default.
+ */
+@Composable
+internal fun UnknownBlockVisual(
+    text: String,
+    modifier: Modifier,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+) {
+    val colors = LocalCascadeTheme.current.colors
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                color = colors.unknownBlockBackground,
+                shape = RoundedCornerShape(4.dp),
             )
-        }
+            .padding(12.dp),
+    ) {
+        BasicText(
+            text = text,
+            style = TextStyle(
+                color = colors.unknownBlockText,
+                fontSize = 14.sp,
+            ),
+            maxLines = maxLines,
+            overflow = overflow,
+        )
     }
 }

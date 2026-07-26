@@ -2,8 +2,12 @@ package io.github.linreal.cascade.editor.ui
 
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.ui.renderers.DividerBlockRenderer
+import io.github.linreal.cascade.editor.ui.renderers.PreviewDividerBlockRenderer
+import io.github.linreal.cascade.editor.ui.renderers.PreviewTextBlockRenderer
+import io.github.linreal.cascade.editor.ui.renderers.PreviewTodoBlockRenderer
 import io.github.linreal.cascade.editor.ui.renderers.TextBlockRenderer
 import io.github.linreal.cascade.editor.ui.renderers.TodoBlockRenderer
+import io.github.linreal.cascade.editor.ui.renderers.UnknownBlockPreviewRenderer
 import io.github.linreal.cascade.editor.ui.renderers.UnknownBlockRenderer
 
 /**
@@ -20,8 +24,10 @@ public fun createEditorRegistry(): BlockRegistry {
 /**
  * Registers built-in renderers for all standard block types.
  */
+@OptIn(ExperimentalCascadePreviewApi::class)
 public fun BlockRegistry.registerBuiltInRenderers() {
     val textRenderer = TextBlockRenderer()
+    val previewTextRenderer = PreviewTextBlockRenderer()
 
     // Register TextBlockRenderer for all text-supporting types (except todo)
     val textTypeIds = listOf(
@@ -35,16 +41,20 @@ public fun BlockRegistry.registerBuiltInRenderers() {
 
     textTypeIds.forEach { typeId ->
         registerRenderer(typeId, textRenderer)
+        registerPreviewRenderer(typeId, previewTextRenderer)
     }
 
     // Register TodoBlockRenderer for todo blocks (checkbox + text)
     registerRenderer("todo", TodoBlockRenderer())
+    registerPreviewRenderer("todo", PreviewTodoBlockRenderer())
 
     // Register DividerBlockRenderer for divider blocks (horizontal line)
     registerRenderer("divider", DividerBlockRenderer())
+    registerPreviewRenderer("divider", PreviewDividerBlockRenderer)
 
     // TODO: Register ImageRenderer for "image"
 
     // Fallback for UnknownBlockType (deserialized blocks with unrecognized typeId)
     setUnknownBlockRenderer(UnknownBlockRenderer)
+    setUnknownBlockPreviewRenderer(UnknownBlockPreviewRenderer)
 }

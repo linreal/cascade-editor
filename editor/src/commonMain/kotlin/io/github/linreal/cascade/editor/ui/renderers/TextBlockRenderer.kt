@@ -28,7 +28,7 @@ import io.github.linreal.cascade.editor.theme.CascadeEditorTypography
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 import io.github.linreal.cascade.editor.ui.utils.Spacers
 
-/** Padding between the list prefix gutter and the text field. */
+/** Padding between the list prefix gutter and the text content. */
 private val ListPrefixGap = 8.dp
 
 /** Minimum width for the prefix gutter — accommodates at least 2-digit numbers like `12.` */
@@ -71,7 +71,7 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
     ) {
         val theme = LocalCascadeTheme.current
         val targetStyle = remember(block.type.typeId, theme.typography) {
-            getTextStyleForType(block.type, theme.typography)
+            resolveTextBlockStyle(block.type, theme.typography)
         }
 
         // Code uses a static monospace style — short-circuit before constructing the
@@ -125,23 +125,33 @@ public class TextBlockRenderer : BlockRenderer<BlockType> {
         }
     }
 
-    private fun getTextStyleForType(type: BlockType, typography: CascadeEditorTypography): TextStyle {
-        return when (type) {
-            is BlockType.Heading -> when (type.level) {
-                1 -> typography.heading1
-                2 -> typography.heading2
-                3 -> typography.heading3
-                4 -> typography.heading4
-                5 -> typography.heading5
-                else -> typography.heading6
-            }
+}
 
-            is BlockType.Quote -> typography.body.copy(fontStyle = FontStyle.Italic)
-
-            is BlockType.Code -> typography.code
-
-            else -> typography.body
+/**
+ * Resolves the static target typography shared by editor and preview renderers.
+ *
+ * The editor may animate toward this style during block conversion; preview rendering
+ * deliberately consumes the target directly so card grids do not create animation state.
+ */
+internal fun resolveTextBlockStyle(
+    type: BlockType,
+    typography: CascadeEditorTypography,
+): TextStyle {
+    return when (type) {
+        is BlockType.Heading -> when (type.level) {
+            1 -> typography.heading1
+            2 -> typography.heading2
+            3 -> typography.heading3
+            4 -> typography.heading4
+            5 -> typography.heading5
+            else -> typography.heading6
         }
+
+        is BlockType.Quote -> typography.body.copy(fontStyle = FontStyle.Italic)
+
+        is BlockType.Code -> typography.code
+
+        else -> typography.body
     }
 }
 
@@ -152,6 +162,30 @@ private fun QuoteBlock(
     textStyle: TextStyle,
     modifier: Modifier,
     callbacks: BlockCallbacks,
+) {
+    QuoteBlockVisual(
+        modifier = modifier,
+    ) {
+        TextBlockField(
+            block = block,
+            isFocused = isFocused,
+            textStyle = textStyle,
+            modifier = Modifier.fillMaxWidth(),
+            callbacks = callbacks,
+        )
+    }
+}
+
+/**
+ * Quote chrome shared by the editable renderer and the static preview renderer.
+ *
+ * [content] owns only the text primitive; this wrapper contains no focus, input, pointer,
+ * or animation behavior.
+ */
+@Composable
+internal fun QuoteBlockVisual(
+    modifier: Modifier,
+    content: @Composable () -> Unit,
 ) {
     val colors = LocalCascadeTheme.current.colors
     val borderColor = colors.quoteBorder
@@ -173,13 +207,7 @@ private fun QuoteBlock(
                 bottom = QuoteContentPaddingVertical,
             ),
     ) {
-        TextBlockField(
-            block = block,
-            isFocused = isFocused,
-            textStyle = textStyle,
-            modifier = Modifier.fillMaxWidth(),
-            callbacks = callbacks,
-        )
+        content()
     }
 }
 
@@ -205,6 +233,30 @@ private fun CodeBlock(
     modifier: Modifier,
     callbacks: BlockCallbacks,
 ) {
+    CodeBlockVisual(
+        modifier = modifier,
+    ) {
+        TextBlockField(
+            block = block,
+            isFocused = isFocused,
+            textStyle = textStyle,
+            modifier = Modifier.fillMaxWidth(),
+            callbacks = callbacks,
+        )
+    }
+}
+
+/**
+ * Code-block surface shared by editor and preview paths.
+ *
+ * The caller supplies either [TextBlockField] or a static text primitive. Keeping that
+ * boundary explicit prevents preview mode from inheriting editor runtime state.
+ */
+@Composable
+internal fun CodeBlockVisual(
+    modifier: Modifier,
+    content: @Composable () -> Unit,
+) {
     val backgroundColor = LocalCascadeTheme.current.colors.codeBlockBackground
 
     Box(
@@ -221,13 +273,7 @@ private fun CodeBlock(
                 vertical = CodeBlockPaddingVertical,
             ),
     ) {
-        TextBlockField(
-            block = block,
-            isFocused = isFocused,
-            textStyle = textStyle,
-            modifier = Modifier.fillMaxWidth(),
-            callbacks = callbacks,
-        )
+        content()
     }
 }
 
@@ -239,6 +285,34 @@ private fun ListPrefixRow(
     modifier: Modifier,
     callbacks: BlockCallbacks,
 ) {
+    ListPrefixRowVisual(
+        block = block,
+        textStyle = textStyle,
+        modifier = modifier,
+    ) { contentModifier ->
+        TextBlockField(
+            block = block,
+            isFocused = isFocused,
+            textStyle = textStyle,
+            modifier = contentModifier,
+            callbacks = callbacks,
+        )
+    }
+}
+
+/**
+ * List marker gutter shared by editable and static text content.
+ *
+ * Marker formatting and baseline geometry live here so numbered-list ancestry styles
+ * cannot drift between editor and preview rendering.
+ */
+@Composable
+internal fun ListPrefixRowVisual(
+    block: Block,
+    textStyle: TextStyle,
+    modifier: Modifier,
+    content: @Composable (Modifier) -> Unit,
+) {
     val orderedListPrefixStyles = LocalOrderedListPrefixStyles.current
     val prefixText = when (val type = block.type) {
         is BlockType.BulletList -> "\u2022"
@@ -246,7 +320,7 @@ private fun ListPrefixRow(
             number = type.number,
             style = orderedListPrefixStyles.styleFor(block.id),
         )
-        else -> return // should not happen
+        else -> return
     }
 
     Row(
@@ -260,12 +334,6 @@ private fun ListPrefixRow(
                 .alignByBaseline(),
         )
         Spacers.Horizontal(ListPrefixGap)
-        TextBlockField(
-            block = block,
-            isFocused = isFocused,
-            textStyle = textStyle,
-            modifier = Modifier.weight(1f).alignByBaseline(),
-            callbacks = callbacks,
-        )
+        content(Modifier.weight(1f).alignByBaseline())
     }
 }

@@ -8,6 +8,7 @@ import io.github.linreal.cascade.editor.core.UnknownBlockType
 import io.github.linreal.cascade.editor.slash.BuiltInBlockSlashBehavior
 import io.github.linreal.cascade.editor.slash.BuiltInSlashCommandSpec
 import io.github.linreal.cascade.editor.slash.SlashCommandIconKey
+import io.github.linreal.cascade.editor.ui.ExperimentalCascadePreviewApi
 
 /**
  * Central registry for block types, descriptors, and renderers.
@@ -15,13 +16,17 @@ import io.github.linreal.cascade.editor.slash.SlashCommandIconKey
  * The registry serves as a single point of registration for:
  * - Block descriptors (metadata for slash commands)
  * - Block renderers (composable UI for each type)
+ * - Preview renderers (stateless composable UI for document previews)
  *
  * Use [createDefault] to get a registry pre-populated with built-in types.
  */
+@OptIn(ExperimentalCascadePreviewApi::class)
 public class BlockRegistry {
     private val descriptors = mutableMapOf<String, BlockDescriptor>()
     private val renderers = mutableMapOf<String, BlockRenderer<*>>()
+    private val previewRenderers = mutableMapOf<String, BlockPreviewRenderer<*>>()
     private var unknownBlockFallback: BlockRenderer<*>? = null
+    private var unknownBlockPreviewFallback: BlockPreviewRenderer<*>? = null
 
     // Snapshot-backed change counter. Bumped on every mutation so composables that
     // derive from the registry (e.g. the slash-command menu) can observe registrations
@@ -47,6 +52,22 @@ public class BlockRegistry {
     }
 
     /**
+     * Registers a stateless preview renderer independently of the editor
+     * renderer channel.
+     *
+     * Configure registries before sharing them across threads. Mutation remains
+     * a UI-thread-oriented operation.
+     */
+    @ExperimentalCascadePreviewApi
+    public fun <T : BlockType> registerPreviewRenderer(
+        typeId: String,
+        renderer: BlockPreviewRenderer<T>,
+    ) {
+        previewRenderers[typeId] = renderer
+        revisionState.intValue++
+    }
+
+    /**
      * Registers both a descriptor and renderer for a block type.
      */
     public fun <T : BlockType> register(descriptor: BlockDescriptor, renderer: BlockRenderer<T>) {
@@ -65,6 +86,14 @@ public class BlockRegistry {
     public fun getRenderer(typeId: String): BlockRenderer<*>? = renderers[typeId]
 
     /**
+     * Gets the preview renderer registered for [typeId], without consulting the
+     * unknown/custom fallback.
+     */
+    @ExperimentalCascadePreviewApi
+    public fun getPreviewRenderer(typeId: String): BlockPreviewRenderer<*>? =
+        previewRenderers[typeId]
+
+    /**
      * Gets a renderer for a [BlockType].
      *
      * Looks up the renderer by [BlockType.typeId]. If no renderer is registered
@@ -79,10 +108,37 @@ public class BlockRegistry {
     }
 
     /**
+     * Gets a preview renderer for [blockType].
+     *
+     * Preview renderers are resolved only from the dedicated preview channel.
+     * When no exact renderer is registered, the fallback set through
+     * [setUnknownBlockPreviewRenderer] is returned for both unknown decoded
+     * types and custom types without a lightweight preview implementation.
+     * Existing [BlockRenderer] instances are never used as a fallback.
+     */
+    @ExperimentalCascadePreviewApi
+    public fun getPreviewRenderer(blockType: BlockType): BlockPreviewRenderer<*>? {
+        return previewRenderers[blockType.typeId] ?: unknownBlockPreviewFallback
+    }
+
+    /**
      * Sets the fallback renderer used for [UnknownBlockType] blocks.
      */
     public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>) {
         unknownBlockFallback = renderer
+        revisionState.intValue++
+    }
+
+    /**
+     * Sets the safe fallback used when a block has no registered preview
+     * renderer.
+     *
+     * This channel is separate from [setUnknownBlockRenderer]; editor renderers
+     * are never invoked automatically by document previews.
+     */
+    @ExperimentalCascadePreviewApi
+    public fun setUnknownBlockPreviewRenderer(renderer: BlockPreviewRenderer<*>) {
+        unknownBlockPreviewFallback = renderer
         revisionState.intValue++
     }
 

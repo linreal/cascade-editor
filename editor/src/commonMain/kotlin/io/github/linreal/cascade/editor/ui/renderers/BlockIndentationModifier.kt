@@ -42,6 +42,24 @@ internal fun Modifier.withBlockIndentation(block: Block): Modifier {
 }
 
 /**
+ * Adds the same target leading inset as [withBlockIndentation] without animation state.
+ *
+ * Static document previews use this path so their geometry matches a settled editor block
+ * while remaining cheap to compose in dense grids.
+ */
+@Composable
+internal fun Modifier.withStaticBlockIndentation(block: Block): Modifier {
+    if (!block.type.supportsIndentation) return this
+
+    return padding(
+        start = blockIndentationInset(
+            block = block,
+            dimensions = LocalCascadeTheme.current.dimensions,
+        ),
+    )
+}
+
+/**
  * Pure target inset calculation behind [withBlockIndentation].
  *
  * Keeping this separate lets renderer tests verify the outline geometry contract

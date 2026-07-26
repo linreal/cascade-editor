@@ -34,6 +34,7 @@ import io.github.linreal.cascade.screens.EditorDemoScreen
 import io.github.linreal.cascade.screens.comments.CommentsScreen
 import io.github.linreal.cascade.screens.external_toolbar.ExternalToolbarScreen
 import io.github.linreal.cascade.screens.LandingScreen
+import io.github.linreal.cascade.screens.PreviewGalleryScreen
 import io.github.linreal.cascade.screens.markdownfield.MarkdownFieldScreen
 import io.github.linreal.cascade.theme.CascadeSampleColors
 import io.github.linreal.cascade.theme.LocalCascadeSampleColors
@@ -123,6 +124,11 @@ fun App() {
                         onBack = { currentScreen = AppScreen.Landing },
                     )
                     AppScreen.MarkdownField -> MarkdownFieldScreen(
+                        isDark = isDark,
+                        onToggleTheme = { themeOverride = !isDark },
+                        onBack = { currentScreen = AppScreen.Landing },
+                    )
+                    AppScreen.PreviewGallery -> PreviewGalleryScreen(
                         isDark = isDark,
                         onToggleTheme = { themeOverride = !isDark },
                         onBack = { currentScreen = AppScreen.Landing },

@@ -110,7 +110,7 @@ fun LandingScreen(
                     ),
                 )
                 Text(
-                    text = "5 modules",
+                    text = "7 modules",
                     style = TextStyle(
                         fontFamily = geist,
                         fontSize = 13.sp,
@@ -171,6 +171,14 @@ fun LandingScreen(
                     title = "Markdown Round Trip",
                     description = "Test source → editor → export across Markdown codec modes",
                     onClick = { onNavigate(AppScreen.MarkdownField) },
+                )
+                ModuleCard(
+                    colors = colors,
+                    icon = Res.drawable.ic_editor,
+                    tile = colors.tileBlocks,
+                    title = "Preview Gallery",
+                    description = "Render 50 static documents in a bounded grid",
+                    onClick = { onNavigate(AppScreen.PreviewGallery) },
                 )
             }
 

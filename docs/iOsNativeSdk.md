@@ -2,7 +2,7 @@
 
 ## 1. Feature Overview
 
-The Native iOS SDK exposes CascadeEditor to Swift applications without requiring consumers to use the Kotlin Multiplatform editor API, Compose types, or internal state holders directly. It packages the editor as a dynamic `CascadeEditor.xcframework`, provides a `CascadeEditorController` for document and editing operations, and hosts the Compose editor in a UIKit `UIViewController` that can be embedded in SwiftUI. The bridge also supports native UIKit/SwiftUI custom blocks, native slash commands, localization, complete runtime color palettes, runtime configuration, document import/export, and app-owned formatting chrome. A native Swift sample demonstrates persisted editing, a rich-text comments composer, custom-block integrations, and live family-aware theme switching: the user selects Violet or Forest while iOS appearance automatically selects that family's light/dark variant.
+The Native iOS SDK exposes CascadeEditor to Swift applications without requiring consumers to use the Kotlin Multiplatform editor API, Compose types, or internal state holders directly. It packages the editor as a dynamic `CascadeEditor.xcframework`, provides a `CascadeEditorController` for document and editing operations, and hosts the Compose editor in a UIKit `UIViewController` that can be embedded in SwiftUI. For collection surfaces, `CascadeDocumentPreviewController` hosts the bounded static document preview without creating an editor runtime. The bridge also supports native UIKit/SwiftUI custom editor blocks, native slash commands, localization, complete runtime color palettes, runtime configuration, document import/export, and app-owned formatting chrome. A native Swift sample demonstrates persisted editing, a preview grid whose cards open editable documents, a rich-text comments composer, custom-block integrations, and live family-aware theme switching while sharing the same serialized document format as the existing KMP sample.
 
 ## 2. Architecture & Design Decisions
 
@@ -43,6 +43,41 @@ The host uses Compose snapshot state and `snapshotFlow` for two bridge streams:
 2. editor state plus authoritative document blocks are observed for `onStateChanged` and `onDocumentChanged` callbacks.
 
 Document observation uses `EditorStateHolder.resolveDocumentBlocks(...)`, which folds live text and spans into snapshot blocks without serializing JSON on every edit. A per-composition mount token prevents an old view controller from clearing or publishing bridge state when UIKit/SwiftUI transitions temporarily overlap two hosts created from the same controller.
+
+### Document preview facade
+
+`CascadeDocumentPreviewController` is the Swift/UIKit entry point for bounded
+document summaries. The facade is experimental and its source and binary API
+may change before preview mode is stabilized. It owns decoded immutable blocks, a
+`CascadeDocumentPreviewConfiguration` snapshot, core localization defaults, and
+a dedicated registry seeded with built-in preview renderers. It does not create
+`CascadeEditorController`, `EditorStateHolder`, text/span runtime holders,
+history, focus, slash-command, drag, or editor mutation infrastructure.
+
+`makeViewController()` creates a transparent, non-scrolling
+`ComposeUIViewController` containing `CascadeDocumentPreview`. The native owner
+must give that controller bounded width and height. A reusable list or grid cell
+should retain one preview controller and its returned view controller for the
+cell lifetime, update it through `loadJson(...)` and
+`updateConfiguration(...)`, then release both when the cell is dismantled.
+Calling `makeViewController()` on every SwiftUI update would remount the Compose
+tree and is outside the intended lifecycle.
+
+The configuration's `textScale: Double` defaults to `1.0` and multiplies the
+host font scale for every `sp` inside the preview, including custom Compose
+preview renderers. It does not scale `dp` geometry or explicit host bounds;
+text layout remeasures normally. Invalid native values (non-finite,
+non-positive, or non-positive/non-finite after conversion to the core `Float`)
+normalize to `1.0`.
+
+The preview facade uses the generic document decoder. A successful JSON load
+publishes one new immutable block snapshot; a parse failure returns
+`success = false`, reports warning messages, and preserves the currently
+displayed snapshot. Unknown block types and opaque custom content remain in the
+decoded document and render through the bounded native preview fallback.
+Registrations made on `CascadeEditorController` are not shared: native custom
+editor renderers never mount in preview cells, and the SDK does not yet expose a
+Swift custom preview-provider registration API.
 
 ### Native custom-block adapter
 
@@ -104,6 +139,15 @@ The built-in slash executor also distinguishes text and non-text conversion targ
 5. If mounted, the Compose observer publishes changes; if unmounted, the controller invokes the state/document callbacks directly.
 
 `loadHtml(...)` follows the core default HTML profile, hard-replaces the document, and classifies input-limit or decoder-exception warnings as an unsuccessful load.
+
+### Native preview grid to editor
+
+1. Swift owns a collection of persisted document JSON snapshots and creates one `CascadeDocumentPreviewController` for each visible grid cell.
+2. A `UIViewControllerRepresentable` caches the controller returned by `makeViewController()` inside a bounded card; the outer SwiftUI `LazyVGrid` owns scrolling and item identity.
+3. Card-level navigation can disable preview links and hit testing so the whole card remains one deliberate tap target.
+4. Selecting a card creates a separate `CascadeEditorController`, loads the same JSON, and mounts the full editor screen.
+5. The editor exports JSON after edits; the application persists it and republishes the saved snapshot to the grid.
+6. The retained preview controller receives the changed JSON through `loadJson(...)`, replacing its immutable snapshot without mounting editor runtime in the grid.
 
 ### App-owned toolbar action
 
@@ -231,6 +275,68 @@ let viewController = controller.makeViewController()
 controller.onDocumentChanged = { save(controller.exportJson()) }
 ```
 
+### `CascadeDocumentPreviewController`
+
+Construction and hosting:
+
+```kotlin
+CascadeDocumentPreviewController()
+CascadeDocumentPreviewController(
+    configuration: CascadeDocumentPreviewConfiguration,
+)
+controller.makeViewController(): UIViewController
+```
+
+Presentation and loading:
+
+- `loadJson(json): CascadeDocumentLoadResult` decodes a new immutable preview
+  snapshot. Parse failure preserves the previously displayed blocks.
+- `configuration` exposes the current presentation snapshot.
+- `updateConfiguration(value)` updates all presentation policy at once.
+- `setDarkMode(value)` updates only `isDark`.
+- `CascadeDocumentPreviewConfiguration` exposes positive bounded
+  `maxBlocks`/`maxLinesPerTextBlock`, `textScale`, `textSelectionEnabled`,
+  `linksEnabled`, `isDark`, and `crashPolicy`. Defaults are four blocks, three
+  lines, `1.0` text scale, selection off, links enabled, light mode, and
+  `containAndReport`. Non-positive limits normalize to `1`; invalid text scales
+  (non-finite, non-positive, or non-positive/non-finite after conversion to the
+  core `Float`) normalize to `1.0`.
+
+Callbacks:
+
+- `onOpenLink: ((String) -> Unit)?` is the only native preview link-opening
+  path. Without it, links remain visual-only.
+- `onInternalError: ((String) -> Unit)?` receives main-thread misuse, contained
+  renderer failures, and host callback failures. Exceptions thrown by this
+  reporter are swallowed at the Swift/Objective-C boundary.
+
+Swift grid integration keeps one controller per live cell:
+
+```swift
+let preview = CascadeDocumentPreviewController(
+    configuration: CascadeDocumentPreviewConfiguration(
+        maxBlocks: 4, maxLinesPerTextBlock: 3,
+        textScale: 0.8,
+        textSelectionEnabled: false, linksEnabled: false,
+        isDark: isDark, crashPolicy: .containAndReport
+    )
+)
+let loadResult = preview.loadJson(json: document.json)
+guard loadResult.success else {
+    // Surface or recover the malformed stored document.
+    return
+}
+let viewController = preview.makeViewController()
+```
+
+The sample's `CascadeDocumentPreviewHost` wraps the view controller with
+`UIViewControllerRepresentable`. `PreviewGalleryScreen` uses a bounded
+`LazyVGrid`; `PreviewDocumentLibrary` seeds and persists document JSON; and
+`PreviewDocumentEditorScreen` opens a regular editor, autosaves exported JSON,
+flushes pending edits before backgrounding or leaving the screen, and
+republishes successful saves so the corresponding preview updates. A failed
+Back-button flush keeps the editor open and surfaces the save failure.
+
 ### Custom blocks
 
 - `CascadeCustomBlockRegistration(...)` — registers identity, slash metadata/behavior, default JSON-object payload, estimated height, and `(CascadeCustomBlockContext) -> UIViewController` factory.
@@ -258,9 +364,9 @@ controller.onDocumentChanged = { save(controller.exportJson()) }
 
 - **Core editor state and history:** the controller owns `EditorStateHolder`, `BlockTextStates`, and `BlockSpanStates`; toolbar and custom-block operations reuse core history-aware actions.
 - **Compose UI:** `ComposeUIViewController` hosts the existing `CascadeEditor`, and Compose snapshot state drives all bridge callbacks.
-- **UIKit and SwiftUI:** the SDK returns `UIViewController`; the sample embeds it with `UIViewControllerRepresentable`. Custom blocks also return `UIViewController`, allowing `UIHostingController`-backed SwiftUI content.
+- **UIKit and SwiftUI:** both editor and preview facades return `UIViewController`; the sample embeds them with separate `UIViewControllerRepresentable` adapters. Custom editor blocks also return `UIViewController`, allowing `UIHostingController`-backed SwiftUI content.
 - **Registry system:** native blocks extend `BlockRegistry`; native commands extend `SlashCommandRegistry`. Observable revisions make runtime registration visible to an already-mounted editor.
-- **Serialization:** JSON uses `DocumentSchema` plus `NativeCustomBlockCodec`; HTML uses `HtmlProfile.Default`. Both share the same live text/span holders as rendering.
+- **Serialization:** editable JSON uses `DocumentSchema` plus `NativeCustomBlockCodec`; HTML uses `HtmlProfile.Default`. Both share the editor's live text/span holders. The preview facade uses `DocumentSchema` directly to preserve generic unknown/custom data without creating runtime holders or resolving native editor types.
 - **Rich text and toolbar:** the bridge maps `FormattingState`, `IndentationState`, and `LinkState` from `CascadeEditorToolbarController` into Swift-friendly state and actions.
 - **Localization and theme:** Swift string overrides resolve into core `CascadeEditorStrings` and `CascadeEditorBlockStrings`. `CascadeEditorColors` snapshots map all 24 ARGB slots into the core palette and recompose live. Without a custom palette, `isDark` selects the built-in colors; it remains exposed to native custom blocks in either mode.
 - **Local build:** `scripts/build-xcframework.sh` assembles the dynamic debug XCFramework at `editor-ios-sdk/build/XCFrameworks/debug/CascadeEditor.xcframework`. The Xcode sample links and embeds this local artifact.
@@ -292,6 +398,21 @@ controller.onDocumentChanged = { save(controller.exportJson()) }
   through SwiftPM; consumers must not add a second manual Embed Frameworks
   entry.
 - Binary API dumps validate Kotlin declarations but do not validate `@ObjCName` spelling or every Objective-C header-lowering detail. Swift-visible naming changes require inspection of the generated `CascadeEditor.h`.
+- `CascadeDocumentPreviewController` operations and configuration access are
+  main-thread-only. Guarded off-main calls report `onInternalError` and return a
+  stable fallback/no-op.
+- A preview view controller is transparent and non-scrolling. Its UIKit/SwiftUI
+  owner must supply bounded dimensions, retain it for the owning cell lifetime,
+  and let the outer collection own scrolling, reuse, and navigation.
+- Preview link activation requires both `linksEnabled` and an explicit
+  `onOpenLink` callback. The callback is exception-contained; the SDK does not
+  invoke an implicit platform URL opener.
+- Native custom editor registrations do not participate in preview rendering.
+  Unknown/custom JSON is preserved and shown through the generic bounded
+  fallback. There is no Swift custom preview-provider API yet, and native
+  UIKit/SwiftUI editor renderers are never mounted by the preview facade.
+- The sample demonstrates the lifecycle and persistence flow, but no manual iOS
+  memory, scrolling, accessibility, or frame-time evidence is claimed.
 - ⚠️ Unclear: iOS native Compose text input is explicitly requested by the common text-field call but currently forced off in the iOS platform implementation due to CMP-10404. The TODO does not define the Compose version or acceptance criteria for enabling it.
 
 ## 8. Glossary
@@ -302,6 +423,9 @@ controller.onDocumentChanged = { save(controller.exportJson()) }
 - **Hard replacement:** a document load/reset that replaces the editor state, clears runtime holders, and clears undo/redo history.
 - **Mount token:** identity object used to ensure only the current Compose host publishes or clears controller bridge state.
 - **Native custom block:** a custom document block whose content is rendered by a UIKit/SwiftUI-owned `UIViewController` hosted inside Compose.
+- **Native document preview:** a bounded static Compose preview hosted by
+  `CascadeDocumentPreviewController`, with decoded immutable blocks and no
+  editor runtime.
 - **Native type codec:** `NativeCustomBlockCodec`, which maps registered custom type IDs between persisted JSON and renderable native block types.
 - **Runtime holders:** `BlockTextStates` and `BlockSpanStates`, which contain live editing values that may be newer than `EditorState` snapshot content.
 - **Structural action:** a semantic document mutation captured as one full-checkpoint history entry.

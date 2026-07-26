@@ -29,12 +29,20 @@ struct LandingView: View {
                         .kerning(2.2)
                         .foregroundStyle(theme.onBackground)
                     Spacer()
-                    Text("3 modules")
+                    Text("4 modules")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(theme.cardDescription)
                 }
                 Spacer().frame(height: 16)
                 VStack(spacing: 12) {
+                    moduleCard(
+                        title: "Preview Grid",
+                        description: "Persisted documents that open into the full editor",
+                        systemImage: "square.grid.2x2",
+                        tileBackground: theme.tilePreviewBackground,
+                        tileIcon: theme.tilePreviewIcon,
+                        destination: .previewGallery
+                    )
                     moduleCard(
                         title: "Comments",
                         description: "Editor as a chat composer with rich-text bubbles",

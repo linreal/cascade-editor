@@ -79,15 +79,33 @@ internal object SpanMapper {
     private fun TextFieldBuffer.applyMappedStyles(mapped: List<RenderSpan>) {
         val visibleLength = (length - sentinelOffset).coerceAtLeast(0)
         for (span in mapped) {
-            val clampedStart = span.start.coerceIn(0, visibleLength)
-            val clampedEnd = span.end.coerceIn(clampedStart, visibleLength)
-            if (clampedStart >= clampedEnd) continue
-
+            val clamped = clampRenderableSpan(span, visibleLength) ?: continue
             addStyle(
-                spanStyle = span.style,
-                start = clampedStart + sentinelOffset,
-                end = clampedEnd + sentinelOffset,
+                spanStyle = clamped.style,
+                start = clamped.start + sentinelOffset,
+                end = clamped.end + sentinelOffset,
             )
+        }
+    }
+
+    /**
+     * Clamps a mapped run to a visible-text boundary and drops empty ranges.
+     *
+     * Keeping this operation separate from [mapRenderableSpans] lets the editor
+     * cache mapped styles before a [TextFieldBuffer] is available while static
+     * renderers apply the exact same range semantics to static annotated text.
+     */
+    internal fun clampRenderableSpan(
+        span: RenderSpan,
+        visibleTextLength: Int,
+    ): RenderSpan? {
+        val length = visibleTextLength.coerceAtLeast(0)
+        val clampedStart = span.start.coerceIn(0, length)
+        val clampedEnd = span.end.coerceIn(clampedStart, length)
+        return when {
+            clampedStart >= clampedEnd -> null
+            clampedStart == span.start && clampedEnd == span.end -> span
+            else -> span.copy(start = clampedStart, end = clampedEnd)
         }
     }
 

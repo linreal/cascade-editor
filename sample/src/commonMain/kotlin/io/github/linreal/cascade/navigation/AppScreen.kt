@@ -9,6 +9,7 @@ sealed class AppScreen {
     data object CustomHtmlProfile : AppScreen()
     data object Comments : AppScreen()
     data object MarkdownField : AppScreen()
+    data object PreviewGallery : AppScreen()
 
     internal val saveKey: String
         get() = when (this) {
@@ -20,6 +21,7 @@ sealed class AppScreen {
             CustomHtmlProfile -> "custom_html_profile"
             Comments -> "comments"
             MarkdownField -> "markdown_field"
+            PreviewGallery -> "preview_gallery"
         }
 
     companion object {
@@ -32,6 +34,7 @@ sealed class AppScreen {
             CustomHtmlProfile.saveKey -> CustomHtmlProfile
             Comments.saveKey -> Comments
             MarkdownField.saveKey -> MarkdownField
+            PreviewGallery.saveKey -> PreviewGallery
             else -> Landing
         }
     }
