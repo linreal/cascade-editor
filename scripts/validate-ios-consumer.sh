@@ -103,7 +103,6 @@ if [[ -z "$simulator_udid" ]]; then
     )"
 fi
 [[ -n "$simulator_udid" ]] || fail "no available iPhone simulator found"
-xcrun simctl boot "$simulator_udid" 2>/dev/null || true
 xcrun simctl bootstatus "$simulator_udid" -b
 
 xcodebuild \

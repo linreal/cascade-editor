@@ -25,8 +25,8 @@ iOS devices and arm64 Apple Silicon simulators; minimum deployment is iOS 16.0.
 
 ## One-time GitHub setup
 
-1. Create the public repository `linreal/cascade-editor-ios` with a `main`
-   branch. Do not put the binary in Git.
+1. Create the public repository `linreal/cascade-editor-ios` with an initial
+   README commit so a `main` branch exists. Do not put the binary in Git.
 2. Create a GitHub App installation token or fine-grained personal access token
    scoped only to `linreal/cascade-editor-ios`, with **Contents: Read and
    write**. A GitHub App is preferred for team-operated releases.

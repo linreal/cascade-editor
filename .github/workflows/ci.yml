@@ -31,19 +31,15 @@ jobs:
       - name: Boot iOS simulator
         shell: bash
         run: |
-          simulator="$(
+          simulator_udid="$(
             xcrun simctl list devices available --json |
-              jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0] | [.udid, .state] | @tsv'
+              jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid'
           )"
-          IFS=$'\t' read -r simulator_udid simulator_state <<< "$simulator"
           if [[ -z "$simulator_udid" || "$simulator_udid" == "null" ]]; then
             echo "No available iPhone simulator was found."
             exit 1
           fi
-          if [[ "$simulator_state" != "Booted" ]]; then
-            xcrun simctl boot "$simulator_udid"
-          fi
-          xcrun simctl bootstatus "$simulator_udid" --block
+          xcrun simctl bootstatus "$simulator_udid" -b
           echo "CASCADE_SIMULATOR_UDID=$simulator_udid" >> "$GITHUB_ENV"
 
       - name: Check editor

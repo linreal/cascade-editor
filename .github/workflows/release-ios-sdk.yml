@@ -61,12 +61,26 @@ jobs:
           [[ "$(git describe --tags --exact-match HEAD)" == "$RELEASE_TAG" ]]
           echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
 
-      - name: Verify package repository credentials
+      - name: Verify package repository credentials and readiness
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.CASCADE_EDITOR_IOS_RELEASE_TOKEN }}
         run: |
           set -euo pipefail
           [[ -n "$PACKAGE_REPO_TOKEN" ]] || {
             echo "Configure the CASCADE_EDITOR_IOS_RELEASE_TOKEN repository secret."
+            exit 1
+          }
+          can_push="$(
+            gh api "repos/$PACKAGE_REPOSITORY" --jq '.permissions.push // false'
+          )"
+          [[ "$can_push" == "true" ]] || {
+            echo "CASCADE_EDITOR_IOS_RELEASE_TOKEN cannot push to $PACKAGE_REPOSITORY."
+            exit 1
+          }
+          gh api "repos/$PACKAGE_REPOSITORY/branches/main" >/dev/null 2>&1 || {
+            echo "$PACKAGE_REPOSITORY must be initialized with a main branch before release."
+            echo "Create the repository with an initial README, then dispatch this workflow again."
             exit 1
           }
 
@@ -74,16 +88,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          simulator="$(
+          simulator_udid="$(
             xcrun simctl list devices available --json |
-              jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0] | [.udid, .state] | @tsv'
+              jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid'
           )"
-          IFS=$'\t' read -r simulator_udid simulator_state <<< "$simulator"
           [[ -n "$simulator_udid" && "$simulator_udid" != "null" ]]
-          if [[ "$simulator_state" != "Booted" ]]; then
-            xcrun simctl boot "$simulator_udid"
-          fi
-          xcrun simctl bootstatus "$simulator_udid" --block
+          xcrun simctl bootstatus "$simulator_udid" -b
           echo "CASCADE_SIMULATOR_UDID=$simulator_udid" >> "$GITHUB_ENV"
 
       - name: Build the publication artifact
@@ -94,8 +104,21 @@ jobs:
           scripts/validate-ios-consumer.sh \
             "build/ios-release/$RELEASE_VERSION/CascadeEditor.xcframework.zip"
 
-      - name: Upload workflow evidence
+      - name: Detect workflow evidence
+        id: evidence
         if: always()
+        shell: bash
+        run: |
+          artifact="build/ios-release/${RELEASE_VERSION:-}/CascadeEditor.xcframework.zip"
+          if [[ -f "$artifact" ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "No publication artifact exists because an earlier release gate failed."
+          fi
+
+      - name: Upload workflow evidence
+        if: ${{ always() && steps.evidence.outputs.available == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: CascadeEditor-iOS-${{ env.RELEASE_VERSION }}
