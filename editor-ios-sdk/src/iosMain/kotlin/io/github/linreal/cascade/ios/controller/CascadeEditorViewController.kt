@@ -49,6 +49,7 @@ public fun CascadeEditorController.makeViewController(): UIViewController = onMa
     // non-opaque for the native screen background to show through it.
     ComposeUIViewController(configure = { opaque = false }) {
         val configurationState by configurationSnapshot
+        val customColors by customColorsSnapshot
         val editorConfig = remember(configurationState) {
             CascadeEditorConfig(
                 readOnly = configurationState.readOnly,
@@ -64,8 +65,8 @@ public fun CascadeEditorController.makeViewController(): UIViewController = onMa
                 },
             )
         }
-        val theme = remember(configurationState.isDark) {
-            configurationState.resolveEditorTheme()
+        val theme = remember(configurationState.isDark, customColors) {
+            configurationState.resolveEditorTheme(customColors)
         }
         val strings by resolvedStrings
         val blockStrings by resolvedBlockStrings

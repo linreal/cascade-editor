@@ -49,8 +49,8 @@ struct EditorTopBar: View {
                 )
                 GroupButton(
                     theme: theme,
-                    systemImage: theme.isDark ? "sun.max" : "moon",
-                    label: theme.isDark ? "Switch to light" : "Switch to dark",
+                    systemImage: "paintpalette",
+                    label: "Switch theme from \(theme.name)",
                     action: onToggleTheme
                 )
             }
@@ -82,8 +82,8 @@ struct TitledEditorTopBar: View {
             ChromeActionGroup(theme: theme) {
                 GroupButton(
                     theme: theme,
-                    systemImage: theme.isDark ? "sun.max" : "moon",
-                    label: theme.isDark ? "Switch to light" : "Switch to dark",
+                    systemImage: "paintpalette",
+                    label: "Switch theme from \(theme.name)",
                     action: onToggleTheme
                 )
             }

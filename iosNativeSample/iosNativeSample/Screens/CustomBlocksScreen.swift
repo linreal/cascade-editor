@@ -4,19 +4,25 @@ import CascadeEditor
 /// Native custom blocks and slash commands demo: SwiftUI-rendered table,
 /// metric, and palette blocks living inside the editor document.
 struct CustomBlocksScreen: View {
-    @Binding var isDark: Bool
+    @Binding var selectedTheme: SampleThemeFamily
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
     @StateObject private var editor: EditorScreenModel
     @StateObject private var model: CustomBlocksModel
 
-    init(isDark: Binding<Bool>) {
-        _isDark = isDark
-        let editorModel = EditorScreenModel(configuration: .standard(isDark: isDark.wrappedValue))
+    init(selectedTheme: Binding<SampleThemeFamily>, initialIsDark: Bool) {
+        _selectedTheme = selectedTheme
+        let initialTheme = selectedTheme.wrappedValue.appTheme(isDark: initialIsDark)
+        let editorModel = EditorScreenModel(
+            configuration: .standard(isDark: initialTheme.isDark),
+            colors: initialTheme.editorColors
+        )
         _editor = StateObject(wrappedValue: editorModel)
         _model = StateObject(wrappedValue: CustomBlocksModel(editor: editorModel))
     }
 
-    private var theme: AppTheme { AppTheme.theme(isDark: isDark) }
+    private var isDark: Bool { colorScheme == .dark }
+    private var theme: AppTheme { selectedTheme.appTheme(isDark: isDark) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,8 +30,11 @@ struct CustomBlocksScreen: View {
             CascadeEditorHost(model: editor)
         }
         .background(theme.background)
-        .onChange(of: isDark) { _, newValue in
-            editor.setDarkMode(newValue)
+        .onChange(of: selectedTheme) { _, newValue in
+            editor.applyTheme(newValue.appTheme(isDark: isDark))
+        }
+        .onChange(of: colorScheme) { _, newValue in
+            editor.applyTheme(selectedTheme.appTheme(isDark: newValue == .dark))
         }
     }
 
@@ -49,7 +58,7 @@ struct CustomBlocksScreen: View {
                 onUndo: { editor.undo() },
                 onRedo: { editor.redo() },
                 onToggleReadOnly: { editor.setReadOnly(!editor.isReadOnly) },
-                onToggleTheme: { isDark.toggle() },
+                onToggleTheme: { selectedTheme = selectedTheme.next },
                 onReset: { model.reset() }
             )
         }

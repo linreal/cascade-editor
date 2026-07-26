@@ -2,12 +2,11 @@ import SwiftUI
 
 @main
 struct NativeSampleApp: App {
-    @State private var isDark = false
+    @State private var selectedTheme = SampleThemeFamily.violet
 
     var body: some Scene {
         WindowGroup {
-            RootView(isDark: $isDark)
-                .preferredColorScheme(isDark ? .dark : .light)
+            RootView(selectedTheme: $selectedTheme)
         }
     }
 }
@@ -19,10 +18,12 @@ enum SampleDestination: Hashable {
 }
 
 struct RootView: View {
-    @Binding var isDark: Bool
+    @Binding var selectedTheme: SampleThemeFamily
+    @Environment(\.colorScheme) private var colorScheme
     @State private var path: [SampleDestination] = []
 
-    private var theme: AppTheme { AppTheme.theme(isDark: isDark) }
+    private var isDark: Bool { colorScheme == .dark }
+    private var theme: AppTheme { selectedTheme.appTheme(isDark: isDark) }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -41,11 +42,11 @@ struct RootView: View {
     private func destinationView(for destination: SampleDestination) -> some View {
         switch destination {
         case .editorDemo:
-            EditorDemoScreen(isDark: $isDark)
+            EditorDemoScreen(selectedTheme: $selectedTheme, initialIsDark: isDark)
         case .comments:
-            CommentsScreen(isDark: $isDark)
+            CommentsScreen(selectedTheme: $selectedTheme, initialIsDark: isDark)
         case .customBlocks:
-            CustomBlocksScreen(isDark: $isDark)
+            CustomBlocksScreen(selectedTheme: $selectedTheme, initialIsDark: isDark)
         }
     }
 }

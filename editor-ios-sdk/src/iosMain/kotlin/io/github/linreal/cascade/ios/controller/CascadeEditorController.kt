@@ -36,6 +36,7 @@ import io.github.linreal.cascade.editor.state.BlockSpanStates
 import io.github.linreal.cascade.editor.state.BlockTextStates
 import io.github.linreal.cascade.editor.state.EditorStateHolder
 import io.github.linreal.cascade.editor.theme.CascadeEditorBlockStrings
+import io.github.linreal.cascade.editor.theme.CascadeEditorColors as CoreCascadeEditorColors
 import io.github.linreal.cascade.editor.theme.CascadeEditorStrings
 import io.github.linreal.cascade.editor.ui.createEditorRegistry
 import io.github.linreal.cascade.ios.block.CascadeCustomBlockRegistration
@@ -56,6 +57,7 @@ import io.github.linreal.cascade.ios.model.CascadeRichTextSpan
 import io.github.linreal.cascade.ios.model.CascadeSpanKind
 import io.github.linreal.cascade.ios.model.parseJsonObjectPayloadSafely
 import io.github.linreal.cascade.ios.toolbar.CascadeToolbarState
+import io.github.linreal.cascade.ios.theme.CascadeEditorColors
 import kotlin.experimental.ExperimentalObjCName
 import kotlin.native.ObjCName
 import platform.Foundation.NSThread
@@ -128,6 +130,10 @@ public class CascadeEditorController public constructor(
         mutableStateOf(CascadeEditorStrings.default())
     internal val resolvedBlockStrings: MutableState<CascadeEditorBlockStrings> =
         mutableStateOf(CascadeEditorBlockStrings.default())
+    // A complete snapshot of the optional Swift-supplied palette. Null keeps
+    // light/dark preset selection driven by configuration.isDark.
+    internal val customColorsSnapshot: MutableState<CoreCascadeEditorColors?> =
+        mutableStateOf(null)
     // Identity of the Compose host that currently owns this controller's bridge
     // state. makeViewController() can be called more than once, and UIKit/SwiftUI
     // transitions overlap the old and new hosts; only the owning host may publish
@@ -392,6 +398,30 @@ public class CascadeEditorController public constructor(
 
     public fun setDarkMode(value: Boolean): Unit = updateConfiguration {
         copy(isDark = value)
+    }
+
+    /**
+     * Applies a complete custom color palette to the mounted editor.
+     *
+     * Values are snapshotted immediately, so mutating [colors] afterwards has no
+     * effect until this method is called again. The custom palette remains active
+     * across [setDarkMode] calls; apps with multiple themes should apply the
+     * matching palette when their theme changes.
+     */
+    public fun setColors(colors: CascadeEditorColors): Unit = onMainThread(
+        fallback = {},
+    ) {
+        customColorsSnapshot.value = colors.snapshot()
+    }
+
+    /**
+     * Removes the custom palette and resumes the built-in light/dark presets
+     * selected by [setDarkMode].
+     */
+    public fun clearCustomColors(): Unit = onMainThread(
+        fallback = {},
+    ) {
+        customColorsSnapshot.value = null
     }
 
     public fun setToolbarMode(value: CascadeToolbarMode): Unit = updateConfiguration {
