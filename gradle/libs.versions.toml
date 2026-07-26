@@ -6,6 +6,7 @@ android-targetSdk = "36"
 androidx-activity = "1.13.0"
 androidx-lifecycle = "2.10.0"
 binaryCompatibilityValidator = "0.18.1"
+applePrivacyManifests = "1.0.0"
 composeMultiplatform = "1.11.1"
 kotlin = "2.3.21"
 kotlinxCoroutinesTest = "1.11.0"
@@ -38,6 +39,7 @@ jetbrains-markdown = { module = "org.jetbrains:markdown", version.ref = "jetbrai
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "binaryCompatibilityValidator" }
+applePrivacyManifests = { id = "org.jetbrains.kotlin.apple-privacy-manifests", version.ref = "applePrivacyManifests" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

@@ -1,6 +1,7 @@
 package io.github.linreal.cascade.ios.controller
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -19,6 +20,9 @@ import io.github.linreal.cascade.editor.ui.ToolbarSlot
 import io.github.linreal.cascade.editor.ui.rememberCascadeEditorToolbarController
 import io.github.linreal.cascade.ios.toolbar.CascadeToolbarState
 import io.github.linreal.cascade.ios.toolbar.toCascadeStyleState
+import io.github.linreal.cascade.ios.resources.CascadeEditorResourceReader
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.LocalResourceReader
 import platform.UIKit.UIViewController
 
 private val IosToolbarHighlightStyle: SpanStyle = SpanStyle.Highlight(0xFFFFEB3BL)
@@ -37,7 +41,7 @@ internal fun CascadeToolbarMode.toEditorLinkPopupSlot(): LinkPopupSlot = when (t
     CascadeToolbarMode.none -> LinkPopupSlot.None
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalResourceApi::class)
 public fun CascadeEditorController.makeViewController(): UIViewController = onMainThread(
     fallback = { UIViewController() },
 ) {
@@ -173,31 +177,33 @@ public fun CascadeEditorController.makeViewController(): UIViewController = onMa
             }
         }
 
-        CascadeEditor(
-            stateHolder = stateHolder,
-            textStates = textStates,
-            spanStates = spanStates,
-            registry = registry,
-            slashRegistry = slashRegistry,
-            slashCommand = if (configurationState.slashCommandsEnabled) {
-                SlashCommandSlot.Default
-            } else {
-                SlashCommandSlot.None
-            },
-            theme = theme,
-            strings = strings,
-            blockStrings = blockStrings,
-            modifier = Modifier.fillMaxSize(),
-            toolbar = if (configurationState.toolbarMode == CascadeToolbarMode.builtIn) {
-                ToolbarSlot.Default()
-            } else {
-                ToolbarSlot.None
-            },
-            linkPopup = configurationState.toolbarMode.toEditorLinkPopupSlot(),
-            onOpenLink = { url ->
-                invokeCallback("onOpenLink", onOpenLink, url)
-            },
-            config = editorConfig,
-        )
+        CompositionLocalProvider(LocalResourceReader provides CascadeEditorResourceReader) {
+            CascadeEditor(
+                stateHolder = stateHolder,
+                textStates = textStates,
+                spanStates = spanStates,
+                registry = registry,
+                slashRegistry = slashRegistry,
+                slashCommand = if (configurationState.slashCommandsEnabled) {
+                    SlashCommandSlot.Default
+                } else {
+                    SlashCommandSlot.None
+                },
+                theme = theme,
+                strings = strings,
+                blockStrings = blockStrings,
+                modifier = Modifier.fillMaxSize(),
+                toolbar = if (configurationState.toolbarMode == CascadeToolbarMode.builtIn) {
+                    ToolbarSlot.Default()
+                } else {
+                    ToolbarSlot.None
+                },
+                linkPopup = configurationState.toolbarMode.toEditorLinkPopupSlot(),
+                onOpenLink = { url ->
+                    invokeCallback("onOpenLink", onOpenLink, url)
+                },
+                config = editorConfig,
+            )
+        }
     }
 }

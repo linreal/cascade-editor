@@ -11,6 +11,10 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Sample comments screen | `sample/src/commonMain/kotlin/io/github/linreal/cascade/screens/comments/CommentsScreen.kt`, `CommentComposer.kt`, `CommentsScreenModel.kt`, `CommentModel.kt` | `CommentsScreen()`, `CommentComposer()` (editor-as-chat-composer: focus-driven fade-in formatting bar via `rememberCascadeEditorToolbarController` + Send), `CommentsScreenModel` (`buildOwnComment()`/`resetComposer()`), `Comment` + `rememberCommentAnnotatedString()` (consumer-side `SpanStyle`→`AnnotatedString`) |
 | Main composable | `ui/CascadeEditor.kt` | `CascadeEditor(stateHolder, textStates, spanStates, registry, slashRegistry, slashCommand, ...)` |
 | Native iOS SDK technical context | `docs/iOsNativeSdk.md` | Swift controller facade, UIKit host, native custom blocks/slash commands, public API, integration constraints |
+| Native iOS publication runbook | `docs/iOsPublication.md` | Version/tag contract, GitHub/SwiftPM setup, immutable release sequence, recovery |
+| Native iOS release packaging | `scripts/package-ios-sdk.sh`, `distribution/swift-package/` | Tests and verifies the dynamic Release XCFramework; emits one-root ZIP, SHA-256, and external Swift package files |
+| Native iOS clean consumer validation | `scripts/validate-ios-consumer.sh`, `iosConsumerSmokeTest/` | Packaging installs an ignored ZIP-derived framework for direct Xcode use; validation removes it in a temporary copy, then performs generic-device Release and simulator UI/resource tests using only the supplied packaged binary |
+| Native iOS framework resources/privacy | `editor-ios-sdk/PrivacyInfo.xcprivacy`, `editor-ios-sdk/src/iosMain/kotlin/io/github/linreal/cascade/ios/resources/CascadeEditorResourceReader.kt` | Required-reason manifest and exact framework-bundle Compose resource lookup |
 | Editor behavior config | `ui/CascadeEditorConfig.kt`, `ui/LocalCascadeEditorConfig.kt` | `CascadeEditorConfig` (incl. `crashPolicy`/`onInternalError`), `LocalCascadeEditorConfig` |
 | Crash handling | `CrashHandling.kt` | `CrashPolicy`, `CascadeError`, `CascadeErrorReporter`, `guarded()`/`reportContainedFailure()` (internal) |
 | Editor interaction policy | `ui/EditorInteractionPolicy.kt`, `ui/LocalEditorInteractionPolicy.kt` | `EditorInteractionPolicy` (internal) |
@@ -309,6 +313,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 - **Crash containment has two regimes** — UI-runtime guards (per-block measure/draw via `guardedBlockRender`, span `OutputTransformation`) are policy-gated by `CascadeEditorConfig.crashPolicy` (`Rethrow` in tests/debug, `ContainAndReport` in release) and route through `guarded()`; the serialization layer (`loadFromJson`/`loadFromHtml` string entry points, HTML decode) is always-contain-and-warn (returns `DocumentParseFailed`/`InputLimitExceeded` warning lists, not policy-gated). Compose forbids `try/catch` around `@Composable` calls, so composition-phase renderer throws are not containable in-tree (host trust boundary for custom renderers)
 - **Tests** go in `editor/src/commonTest/` (Compose UI tests in `editor/src/desktopTest/`). Run: `./gradlew :editor:allTests`
 - **Public-API snapshots** — binary-compatibility-validator guards `:editor` (and `:editor-ios-sdk`): JVM/Android dumps in `editor/api/{desktop,android}/`, klib (iOS/wasm) dumps in `editor/api/editor.klib.api`. `apiCheck` runs with `check` and fails on unbaselined public-surface changes; after an intentional API change run `./gradlew :editor:apiDump :editor-ios-sdk:apiDump` and commit the diff
+- **Native iOS binary distribution** — `:editor-ios-sdk` ships as a dynamic iOS 16+ XCFramework for arm64 devices and Apple Silicon simulators; Compose Multiplatform 1.11.1 has no `iosX64` dependency variants for Intel simulator builds. The framework owns Compose resources, privacy metadata, notices, and dSYMs; its bundle/version metadata and `CascadeEditorSdk.version` derive from `VERSION_NAME`. External consumers use the separately tagged `linreal/cascade-editor-ios` Swift package and must not add manual framework/resource copy phases
 
 ## Implementation Status
 
@@ -364,6 +369,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Keyboard shortcuts — formatting | Done | Cmd+B/I/U (macOS) / Ctrl+B/I/U (other) via `onPreviewKeyEvent` in `TextBlockField` + `LocalFormattingActions` |
 | Keyboard shortcuts — other | Partial | Undo/redo history shortcuts are implemented alongside formatting shortcuts; broader non-formatting shortcut coverage is still open |
 | iOS keyboard dismiss | Done | `HideKeyboardToolbarButton` pinned to trailing toolbar edge, iOS-only via `isIos` expect/actual; dispatches `ClearFocus` |
+| Native iOS binary publication | Done | Reproducible Release ZIP/checksum and SwiftPM manifest generation, privacy metadata, exact-bundle resources, tag-driven immutable GitHub Release flow, and clean generic-device/simulator consumer validation |
 
 ## Known Gaps
 

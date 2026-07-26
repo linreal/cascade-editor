@@ -1,0 +1,22 @@
+// swift-tools-version: 5.9
+import PackageDescription
+
+let package = Package(
+    name: "CascadeEditor",
+    platforms: [
+        .iOS(.v16),
+    ],
+    products: [
+        .library(
+            name: "CascadeEditor",
+            targets: ["CascadeEditor"]
+        ),
+    ],
+    targets: [
+        .binaryTarget(
+            name: "CascadeEditor",
+            url: "https://github.com/linreal/cascade-editor/releases/download/v__VERSION__/CascadeEditor.xcframework.zip",
+            checksum: "__CHECKSUM__"
+        ),
+    ]
+)

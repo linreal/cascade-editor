@@ -107,12 +107,6 @@ mavenPublishing {
 
     signAllPublications()
 
-    coordinates(
-        groupId = "io.github.linreal",
-        artifactId = "cascade-editor",
-        version = "1.8.0"
-    )
-
     pom {
         name.set("CascadeEditor")
         description.set("Block-based editor (Craft/Notion-like) for Compose Multiplatform")

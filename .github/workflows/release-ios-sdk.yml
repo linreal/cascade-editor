@@ -1,0 +1,177 @@
+name: Release iOS SDK
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing source tag to publish, for example v1.8.1
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-ios-sdk-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: macos-26
+    timeout-minutes: 75
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      PACKAGE_REPOSITORY: linreal/cascade-editor-ios
+      PACKAGE_REPO_TOKEN: ${{ secrets.CASCADE_EDITOR_IOS_RELEASE_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out the immutable source tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+
+      - name: Verify tag and configured version
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "Release tag must match vMAJOR.MINOR.PATCH."
+            exit 1
+          }
+          version="$(sed -n 's/^VERSION_NAME=//p' gradle.properties)"
+          [[ "$RELEASE_TAG" == "v$version" ]] || {
+            echo "Tag $RELEASE_TAG does not match VERSION_NAME=$version."
+            exit 1
+          }
+          [[ "$(git describe --tags --exact-match HEAD)" == "$RELEASE_TAG" ]]
+          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Verify package repository credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "$PACKAGE_REPO_TOKEN" ]] || {
+            echo "Configure the CASCADE_EDITOR_IOS_RELEASE_TOKEN repository secret."
+            exit 1
+          }
+
+      - name: Boot iOS simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          simulator="$(
+            xcrun simctl list devices available --json |
+              jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0] | [.udid, .state] | @tsv'
+          )"
+          IFS=$'\t' read -r simulator_udid simulator_state <<< "$simulator"
+          [[ -n "$simulator_udid" && "$simulator_udid" != "null" ]]
+          if [[ "$simulator_state" != "Booted" ]]; then
+            xcrun simctl boot "$simulator_udid"
+          fi
+          xcrun simctl bootstatus "$simulator_udid" --block
+          echo "CASCADE_SIMULATOR_UDID=$simulator_udid" >> "$GITHUB_ENV"
+
+      - name: Build the publication artifact
+        run: scripts/package-ios-sdk.sh "$RELEASE_VERSION"
+
+      - name: Validate in a clean SwiftPM consumer
+        run: |
+          scripts/validate-ios-consumer.sh \
+            "build/ios-release/$RELEASE_VERSION/CascadeEditor.xcframework.zip"
+
+      - name: Upload workflow evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: CascadeEditor-iOS-${{ env.RELEASE_VERSION }}
+          path: |
+            build/ios-release/${{ env.RELEASE_VERSION }}/CascadeEditor.xcframework.zip
+            build/ios-release/${{ env.RELEASE_VERSION }}/CascadeEditor.xcframework.zip.sha256
+            build/ios-release/${{ env.RELEASE_VERSION }}/swift-package/
+            build/ios-consumer-smoke/*.xcresult
+            build/ios-consumer-smoke/test-summary.txt
+            build/ios-consumer-smoke/attachments/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
+
+      - name: Publish immutable GitHub Release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; refusing to overwrite immutable assets."
+            exit 1
+          fi
+          release_root="build/ios-release/$RELEASE_VERSION"
+          gh release create "$RELEASE_TAG" \
+            "$release_root/CascadeEditor.xcframework.zip" \
+            "$release_root/CascadeEditor.xcframework.zip.sha256" \
+            --verify-tag \
+            --title "CascadeEditor $RELEASE_VERSION" \
+            --generate-notes
+
+      - name: Verify the public binary target URL and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_root="build/ios-release/$RELEASE_VERSION/swift-package"
+          (
+            cd "$package_root"
+            swift package reset
+            swift package resolve
+          )
+
+      - name: Check out Swift package repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.PACKAGE_REPOSITORY }}
+          ref: main
+          token: ${{ secrets.CASCADE_EDITOR_IOS_RELEASE_TOKEN }}
+          path: package-repository
+          fetch-depth: 0
+
+      - name: Publish Swift package manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git -C package-repository rev-parse "$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "Swift package tag $RELEASE_VERSION already exists."
+            exit 1
+          fi
+
+          generated_package="build/ios-release/$RELEASE_VERSION/swift-package"
+          ditto "$generated_package/Package.swift" package-repository/Package.swift
+          ditto "$generated_package/README.md" package-repository/README.md
+          ditto "$generated_package/LICENSE" package-repository/LICENSE
+          mkdir -p package-repository/THIRD_PARTY_NOTICES
+          rsync -a --delete \
+            "$generated_package/THIRD_PARTY_NOTICES/" \
+            package-repository/THIRD_PARTY_NOTICES/
+
+          git -C package-repository config user.name "github-actions[bot]"
+          git -C package-repository config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C package-repository add --all
+          git -C package-repository diff --cached --quiet && {
+            echo "Swift package repository did not change."
+            exit 1
+          }
+          git -C package-repository commit -m "Release $RELEASE_VERSION"
+          git -C package-repository tag -a "$RELEASE_VERSION" -m "CascadeEditor $RELEASE_VERSION"
+          git -C package-repository push origin HEAD:main
+          git -C package-repository push origin "$RELEASE_VERSION"

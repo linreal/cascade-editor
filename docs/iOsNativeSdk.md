@@ -2,15 +2,23 @@
 
 ## 1. Feature Overview
 
-The Native iOS SDK exposes CascadeEditor to Swift applications without requiring consumers to use the Kotlin Multiplatform editor API, Compose types, or internal state holders directly. It packages the editor as a static `CascadeEditor.xcframework`, provides a `CascadeEditorController` for document and editing operations, and hosts the Compose editor in a UIKit `UIViewController` that can be embedded in SwiftUI. The bridge also supports native UIKit/SwiftUI custom blocks, native slash commands, localization, runtime configuration, document import/export, and app-owned formatting chrome. A native Swift sample demonstrates persisted editing, a rich-text comments composer, and custom-block integrations while sharing the same serialized document format as the existing KMP sample.
+The Native iOS SDK exposes CascadeEditor to Swift applications without requiring consumers to use the Kotlin Multiplatform editor API, Compose types, or internal state holders directly. It packages the editor as a dynamic `CascadeEditor.xcframework`, provides a `CascadeEditorController` for document and editing operations, and hosts the Compose editor in a UIKit `UIViewController` that can be embedded in SwiftUI. The bridge also supports native UIKit/SwiftUI custom blocks, native slash commands, localization, runtime configuration, document import/export, and app-owned formatting chrome. A native Swift sample demonstrates persisted editing, a rich-text comments composer, and custom-block integrations while sharing the same serialized document format as the existing KMP sample.
 
 ## 2. Architecture & Design Decisions
 
 ### Module and framework boundary
 
-The feature introduces the `:editor-ios-sdk` Kotlin Multiplatform module with iOS device (`iosArm64`) and Apple Silicon simulator (`iosSimulatorArm64`) targets. It builds a static framework named `CascadeEditor`; the lower-level `:editor` framework was renamed to `CascadeEditorCore` to avoid a framework-name collision. The SDK depends on `:editor` with `implementation`, rather than exporting it, which keeps Compose, Skiko, `EditorStateHolder`, and other core implementation types out of Swift-facing signatures.
+The feature introduces the `:editor-ios-sdk` Kotlin Multiplatform module with iOS device (`iosArm64`) and Apple Silicon simulator (`iosSimulatorArm64`) targets. It builds a dynamic framework named `CascadeEditor`; the lower-level `:editor` framework was renamed to `CascadeEditorCore` to avoid a framework-name collision. The SDK depends on `:editor` with `implementation`, rather than exporting it, which keeps Compose, Skiko, `EditorStateHolder`, and other core implementation types out of Swift-facing signatures.
 
 Public bridge types use `@ObjCName(..., exact = true)` so generated Objective-C/Swift names remain deliberate. Binary Compatibility Validator snapshots guard the Kotlin public surface of both `:editor` and `:editor-ios-sdk`, and CI now runs the SDK tests, API check, and XCFramework assembly on macOS.
+
+The dynamic framework owns its Compose resources. The editor subtree provides a
+`ResourceReader` bound to bundle ID `io.github.linreal.cascade.editor`, avoiding
+Compose's first-matching-framework lookup when a host embeds multiple Compose
+SDKs. `PrivacyInfo.xcprivacy`, dependency notices, and matching dSYMs are
+included in every release slice. Framework version metadata and
+`CascadeEditorSdk.version` are generated from the shared Gradle
+`VERSION_NAME`.
 
 ### Controller facade
 
@@ -230,8 +238,10 @@ controller.onDocumentChanged = { save(controller.exportJson()) }
 - **Serialization:** JSON uses `DocumentSchema` plus `NativeCustomBlockCodec`; HTML uses `HtmlProfile.Default`. Both share the same live text/span holders as rendering.
 - **Rich text and toolbar:** the bridge maps `FormattingState`, `IndentationState`, and `LinkState` from `CascadeEditorToolbarController` into Swift-friendly state and actions.
 - **Localization and theme:** Swift overrides are resolved into core `CascadeEditorStrings` and `CascadeEditorBlockStrings`; `isDark` selects the core light/dark theme and is exposed to native custom blocks.
-- **Build/distribution:** `scripts/build-xcframework.sh` assembles the debug XCFramework at `editor-ios-sdk/build/XCFrameworks/debug/CascadeEditor.xcframework`. The Xcode sample links this local artifact.
-- **CI/API compatibility:** macOS CI boots an iOS simulator, runs both module test suites and API checks, and assembles the debug XCFramework.
+- **Local build:** `scripts/build-xcframework.sh` assembles the dynamic debug XCFramework at `editor-ios-sdk/build/XCFrameworks/debug/CascadeEditor.xcframework`. The Xcode sample links and embeds this local artifact.
+- **External distribution:** `scripts/package-ios-sdk.sh` tests and assembles the release framework, validates resources/privacy/version/dSYMs, and emits a one-root ZIP plus SwiftPM checksum and manifest. `release-ios-sdk.yml` publishes immutable source-tag assets and updates `linreal/cascade-editor-ios`.
+- **Consumer validation:** `scripts/validate-ios-consumer.sh` stages the publication ZIP in `iosConsumerSmokeTest`, builds a generic-device Release app, executes its UI test on an arm64 simulator, and inspects the embedded framework.
+- **Release operations:** `docs/iOsPublication.md` is the publication and recovery runbook.
 
 ## 7. Edge Cases & Known Constraints
 
@@ -249,11 +259,14 @@ controller.onDocumentChanged = { save(controller.exportJson()) }
 - Native callbacks and custom-block `onChange` handlers are exception-contained. Errors in `onInternalError` itself are swallowed to prevent exceptions crossing the Swift/Objective-C boundary.
 - `exportPlainText()` omits non-text blocks completely. `exportRichText()` includes every block, representing non-text blocks with empty text/spans; unsupported custom span styles are omitted, and exported ranges are clamped to text length.
 - Rich-text offsets are core text offsets and are consumed as UTF-16 offsets by the Swift sample. Consumers combining block runs must shift ranges using UTF-16 length, not Swift grapheme-cluster count.
-- The built XCFramework includes arm64 device and arm64 simulator slices only; there is no x64 simulator target in the module configuration.
+- The built XCFramework includes arm64 device and arm64 simulator slices only;
+  Compose Multiplatform 1.11.1 does not publish the `iosX64` dependencies
+  required for an Intel simulator framework.
+- The framework is dynamic. Xcode embeds and signs it in the consuming app
+  through SwiftPM; consumers must not add a second manual Embed Frameworks
+  entry.
 - Binary API dumps validate Kotlin declarations but do not validate `@ObjCName` spelling or every Objective-C header-lowering detail. Swift-visible naming changes require inspection of the generated `CascadeEditor.h`.
-- ⚠️ Unclear: `CascadeEditorSdk.version` is hard-coded to `1.0.0` and is not derived from Gradle publication/version metadata.
 - ⚠️ Unclear: iOS native Compose text input is explicitly requested by the common text-field call but currently forced off in the iOS platform implementation due to CMP-10404. The TODO does not define the Compose version or acceptance criteria for enabling it.
-- ⚠️ Unclear: only the debug XCFramework has a documented local consumption flow; release publication and external distribution are explicitly deferred.
 
 ## 8. Glossary
 

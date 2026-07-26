@@ -1,11 +1,43 @@
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.TaskAction
+
+abstract class GenerateCascadeEditorVersionTask : DefaultTask() {
+    @get:Input
+    abstract val versionName: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val outputFile = outputDirectory
+            .file("io/github/linreal/cascade/ios/CascadeEditorVersion.generated.kt")
+            .get()
+            .asFile
+        outputFile.parentFile.mkdirs()
+        outputFile.writeText(
+            """
+            |package io.github.linreal.cascade.ios
+            |
+            |internal const val CASCADE_EDITOR_VERSION: String = "${versionName.get()}"
+            |
+            """.trimMargin()
+        )
+    }
+}
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.binaryCompatibilityValidator)
+    alias(libs.plugins.applePrivacyManifests)
 }
 
 // The Swift-facing contract snapshot: api/editor-ios-sdk.klib.api captures every
@@ -23,9 +55,22 @@ apiValidation {
 }
 
 val cascadeEditorXcframework = XCFramework("CascadeEditor")
+val cascadeEditorVersion = providers.gradleProperty("VERSION_NAME").get()
+val generatedVersionDirectory = layout.buildDirectory.dir("generated/cascadeVersion/iosMain/kotlin")
+val generateCascadeEditorVersion = tasks.register<GenerateCascadeEditorVersionTask>(
+    "generateCascadeEditorVersion"
+) {
+    versionName.set(cascadeEditorVersion)
+    outputDirectory.set(generatedVersionDirectory)
+}
 
 kotlin {
     explicitApi()
+    privacyManifest {
+        embed(
+            privacyManifest = layout.projectDirectory.file("PrivacyInfo.xcprivacy").asFile,
+        )
+    }
 
     listOf(
         iosArm64(),
@@ -33,7 +78,11 @@ kotlin {
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "CascadeEditor"
-            isStatic = true
+            isStatic = false
+            binaryOption("bundleId", "io.github.linreal.cascade.editor")
+            binaryOption("bundleShortVersionString", cascadeEditorVersion)
+            binaryOption("bundleVersion", cascadeEditorVersion)
+            freeCompilerArgs += "-Xoverride-konan-properties=minVersion.ios=16.0"
             cascadeEditorXcframework.add(this)
         }
     }
@@ -43,13 +92,16 @@ kotlin {
             languageSettings.optIn("io.github.linreal.cascade.editor.htmlserialization.ExperimentalCascadeHtmlApi")
         }
 
-        iosMain.dependencies {
-            implementation(projects.editor)
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.ui)
-            implementation(libs.compose.components.resources)
-            implementation(libs.kotlinx.serialization.json)
+        iosMain {
+            kotlin.srcDir(files(generatedVersionDirectory).builtBy(generateCascadeEditorVersion))
+            dependencies {
+                implementation(projects.editor)
+                implementation(libs.compose.runtime)
+                implementation(libs.compose.foundation)
+                implementation(libs.compose.ui)
+                implementation(libs.compose.components.resources)
+                implementation(libs.kotlinx.serialization.json)
+            }
         }
 
         val iosSimulatorArm64Test by getting {

@@ -11,4 +11,5 @@ plugins {
     // api/ directory; regenerate with `./gradlew :editor:apiDump :editor-ios-sdk:apiDump`
     // after an intentional public-API change (`apiCheck` runs as part of `check`).
     alias(libs.plugins.binaryCompatibilityValidator) apply false
+    alias(libs.plugins.applePrivacyManifests) apply false
 }

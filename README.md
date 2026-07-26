@@ -105,7 +105,7 @@ Some of the harder problems handled by the editor core:
 Start with the smallest useful setup: one paragraph block, a limited toolbar, and slash commands disabled.
 
 ```groovy
-implementation("io.github.linreal:cascade-editor:1.8.0")
+implementation("io.github.linreal:cascade-editor:1.8.1")
 ```
 
 ```kotlin
@@ -136,6 +136,35 @@ fun CommentInput() {
 ```
 
 From here, you can keep the same editor state and add read-only previews, external toolbars, custom blocks, slash commands, drag-and-drop, and full document editing.
+
+## Native iOS
+
+The native SDK is distributed as a Swift package backed by a dynamic
+`CascadeEditor.xcframework`. In Xcode, choose **File → Add Package
+Dependencies…**, enter the package URL, and add the `CascadeEditor` product to
+your app target:
+
+```text
+https://github.com/linreal/cascade-editor-ios
+```
+
+Create a document and UIKit controller from Swift:
+
+```swift
+import CascadeEditor
+
+let json = CascadeEditorDocumentBuilder()
+    .paragraph(text: "Hello from CascadeEditor")
+    .buildJson()
+let editor = CascadeEditorController(initialJson: json)
+let editorViewController = editor.makeViewController()
+```
+
+The package supports iOS 16+, arm64 devices, and Apple Silicon simulators. It
+embeds its Compose resources and privacy manifest; consumer apps do not need a
+Gradle integration or resource-copy build phase. See the
+[native iOS SDK guide](docs/iOsNativeSdk.md) for SwiftUI/UIKit hosting,
+configuration, persistence, custom blocks, and slash commands.
 
 ## Common integration paths
 
@@ -572,7 +601,7 @@ Most of this logic lives in `editor/src/commonMain`, with platform-specific code
 | | Version |
 |---|---|
 | Kotlin | 2.3.21 |
-| Compose Multiplatform | 1.11.0 |
+| Compose Multiplatform | 1.11.1 |
 | Android minSdk | 26 |
 | Android compileSdk | 36 |
 | iOS min version | 16.0 |

@@ -8,7 +8,22 @@
 
 /* Begin PBXBuildFile section */
 		CA5CADE000000000000000A7 /* CascadeEditor.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA5CADE000000000000000A6 /* CascadeEditor.xcframework */; };
+		CA5CADE000000000000000A9 /* CascadeEditor.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = CA5CADE000000000000000A6 /* CascadeEditor.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		CA5CADE000000000000000B6 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				CA5CADE000000000000000A9 /* CascadeEditor.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		CA5CADE000000000000000A5 /* iosNativeSample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iosNativeSample.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -84,7 +99,7 @@
 				CA5CADE000000000000000B2 /* Sources */,
 				CA5CADE000000000000000B3 /* Frameworks */,
 				CA5CADE000000000000000B4 /* Resources */,
-				CA5CADE000000000000000B5 /* Copy Compose Resources */,
+				CA5CADE000000000000000B6 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -164,25 +179,6 @@
 			shellPath = /bin/sh;
 			shellScript = "\"$SRCROOT/../scripts/build-xcframework.sh\"\n";
 		};
-		CA5CADE000000000000000B5 /* Copy Compose Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Copy Compose Resources";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# CascadeEditor is a static framework, so it is never embedded into the app\n# bundle and the compose resources packed inside it are invisible at runtime.\n# Compose Multiplatform's iOS resource reader falls back to a directory named\n# \"compose-resources\" in the main bundle, so copy the framework's resources\n# there, picking the slice that matches the platform being built.\ncase \"$PLATFORM_NAME\" in\n  *simulator*) SLICE=\"ios-arm64-simulator\" ;;\n  *) SLICE=\"ios-arm64\" ;;\nesac\nFRAMEWORK_RESOURCES=\"$SRCROOT/../editor-ios-sdk/build/XCFrameworks/debug/CascadeEditor.xcframework/$SLICE/CascadeEditor.framework/composeResources\"\nDEST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/compose-resources\"\nrm -rf \"$DEST\"\nmkdir -p \"$DEST\"\nif [ -d \"$FRAMEWORK_RESOURCES\" ]; then\n  cp -R \"$FRAMEWORK_RESOURCES\" \"$DEST/\"\nfi\n";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -249,7 +245,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -307,7 +303,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
