@@ -2,7 +2,7 @@
 
 ## 1. Feature Overview
 
-The Native iOS SDK exposes CascadeEditor to Swift applications without requiring consumers to use the Kotlin Multiplatform editor API, Compose types, or internal state holders directly. It packages the editor as a dynamic `CascadeEditor.xcframework`, provides a `CascadeEditorController` for document and editing operations, and hosts the Compose editor in a UIKit `UIViewController` that can be embedded in SwiftUI. The bridge also supports native UIKit/SwiftUI custom blocks, native slash commands, localization, runtime configuration, document import/export, and app-owned formatting chrome. A native Swift sample demonstrates persisted editing, a rich-text comments composer, and custom-block integrations while sharing the same serialized document format as the existing KMP sample.
+The Native iOS SDK exposes CascadeEditor to Swift applications without requiring consumers to use the Kotlin Multiplatform editor API, Compose types, or internal state holders directly. It packages the editor as a dynamic `CascadeEditor.xcframework`, provides a `CascadeEditorController` for document and editing operations, and hosts the Compose editor in a UIKit `UIViewController` that can be embedded in SwiftUI. The bridge also supports native UIKit/SwiftUI custom blocks, native slash commands, localization, complete runtime color palettes, runtime configuration, document import/export, and app-owned formatting chrome. A native Swift sample demonstrates persisted editing, a rich-text comments composer, custom-block integrations, and live family-aware theme switching: the user selects Violet or Forest while iOS appearance automatically selects that family's light/dark variant.
 
 ## 2. Architecture & Design Decisions
 
@@ -28,14 +28,14 @@ included in every release slice. Framework version metadata and
 - `BlockTextStates` and `BlockSpanStates`
 - `BlockRegistry` seeded with built-in block types
 - `SlashCommandRegistry`
-- configuration and localization snapshots
+- configuration, color-palette, and localization snapshots
 - mounted toolbar actions and derived toolbar state
 
 This is a facade pattern: Swift sees curated value objects and controller methods, while the controller translates them into core editor operations. The owned registries are intentionally stable for the controller lifetime, allowing custom blocks and slash commands to be registered before or after the editor is mounted.
 
 ### Compose-to-UIKit host
 
-`CascadeEditorController.makeViewController()` creates a `ComposeUIViewController` and mounts `CascadeEditor` with the controller-owned state, runtime holders, and registries. It maps `CascadeEditorConfiguration` to `CascadeEditorConfig`, theme, toolbar, link popup, and slash-command slots. The host is created non-opaque (`opaque = false`): `CascadeEditor` paints no canvas background, so the native screen background behind the view controller shows through the editor.
+`CascadeEditorController.makeViewController()` creates a `ComposeUIViewController` and mounts `CascadeEditor` with the controller-owned state, runtime holders, and registries. It maps `CascadeEditorConfiguration` to `CascadeEditorConfig`, theme, toolbar, link popup, and slash-command slots. A Swift-supplied color snapshot replaces all core `CascadeEditorColors` slots while retaining the preset typography and dimensions; without a custom snapshot, `isDark` selects the built-in light/dark theme. The host is created non-opaque (`opaque = false`): `CascadeEditor` paints no canvas background, so the native screen background behind the view controller shows through the editor.
 
 The host uses Compose snapshot state and `snapshotFlow` for two bridge streams:
 
@@ -175,12 +175,37 @@ Editing commands:
 - `indentForward()`, `indentBackward()`
 - `applyLink(url, title)`, `removeLink()`
 
-Runtime configuration and localization:
+Runtime configuration, colors, and localization:
 
 - `updateConfiguration(value)`, `setReadOnly(value)`, `setDarkMode(value)`, `setToolbarMode(value)`, `setSlashCommandsEnabled(value)`
+- `setColors(CascadeEditorColors)`, `clearCustomColors()`
 - `setLocalization(CascadeEditorLocalization)`
+- `CascadeEditorColors` is a mutable, complete 24-slot palette seeded from the built-in light (`init()`) or light/dark (`init(isDark:)`) preset. Every property is a Swift `Int64` containing `0xAARRGGBB`.
 - `CascadeLocalizedStrings` supplies nullable overrides for built-in UI/accessibility strings.
 - `CascadeLocalizedBlockStrings` supplies slash-menu name, description, and additive keywords by block type ID.
+
+`setColors` snapshots the whole bag and can be called before or after
+`makeViewController()`. Later bag mutations do not affect the editor until
+`setColors` is called again. A custom palette remains active when `setDarkMode`
+changes because `isDark` is also semantic state exposed to native custom blocks;
+apps with named themes should update both values together. `clearCustomColors`
+returns color selection to the built-in light/dark presets.
+
+The native sample demonstrates the recommended host integration. It does not
+force `preferredColorScheme`; instead it observes SwiftUI's
+`@Environment(\.colorScheme)`, resolves the selected theme family's matching
+variant, and calls both `setDarkMode` and `setColors` whenever appearance
+changes. The SDK remains explicit and host-driven, so apps retain control over
+their own theme-family model.
+
+Example Swift runtime theme application:
+
+```swift
+let colors = CascadeEditorColors(isDark: theme.isDark)
+colors.primary = 0xFF147D64
+controller.setDarkMode(value: theme.isDark)
+controller.setColors(colors: colors)
+```
 
 Callbacks:
 
@@ -237,7 +262,7 @@ controller.onDocumentChanged = { save(controller.exportJson()) }
 - **Registry system:** native blocks extend `BlockRegistry`; native commands extend `SlashCommandRegistry`. Observable revisions make runtime registration visible to an already-mounted editor.
 - **Serialization:** JSON uses `DocumentSchema` plus `NativeCustomBlockCodec`; HTML uses `HtmlProfile.Default`. Both share the same live text/span holders as rendering.
 - **Rich text and toolbar:** the bridge maps `FormattingState`, `IndentationState`, and `LinkState` from `CascadeEditorToolbarController` into Swift-friendly state and actions.
-- **Localization and theme:** Swift overrides are resolved into core `CascadeEditorStrings` and `CascadeEditorBlockStrings`; `isDark` selects the core light/dark theme and is exposed to native custom blocks.
+- **Localization and theme:** Swift string overrides resolve into core `CascadeEditorStrings` and `CascadeEditorBlockStrings`. `CascadeEditorColors` snapshots map all 24 ARGB slots into the core palette and recompose live. Without a custom palette, `isDark` selects the built-in colors; it remains exposed to native custom blocks in either mode.
 - **Local build:** `scripts/build-xcframework.sh` assembles the dynamic debug XCFramework at `editor-ios-sdk/build/XCFrameworks/debug/CascadeEditor.xcframework`. The Xcode sample links and embeds this local artifact.
 - **External distribution:** `scripts/package-ios-sdk.sh` tests and assembles the release framework, validates resources/privacy/version/dSYMs, and emits a one-root ZIP plus SwiftPM checksum and manifest. `release-ios-sdk.yml` publishes immutable source-tag assets and updates `linreal/cascade-editor-ios`.
 - **Consumer validation:** `scripts/validate-ios-consumer.sh` stages the publication ZIP in `iosConsumerSmokeTest`, builds a generic-device Release app, executes its UI test on an arm64 simulator, and inspects the embedded framework.
@@ -246,6 +271,7 @@ controller.onDocumentChanged = { save(controller.exportJson()) }
 ## 7. Edge Cases & Known Constraints
 
 - All state-mutating controller methods, context operations, and ordinary state getters are main-thread-only. Off-main misuse reports `onInternalError` and returns a stable fallback/no-op. Export methods are the exception: they synchronously hop to the main queue to return authoritative content. Callers must not block the main thread waiting for an off-main export, or they can deadlock.
+- Color values use the low 32 bits of each `Int64` as `0xAARRGGBB`. `setColors` is a complete replacement, not a partial merge; seed the bag with `CascadeEditorColors(isDark:)`, change the desired slots, and reapply it for every named-theme switch.
 - Toolbar actions, `undo()`, and `redo()` are unavailable before the Compose editor is mounted. `canUndo` and `canRedo` return `false` in that state. Document load/export does not require a mounted view.
 - Structural history requires live text/span runtime holders. `dispatchStructuralAction(...)` still applies the action when no holders are bound or passed, but the change is not undoable and is logged.
 - JSON parse failure is preflighted and preserves the current document and history. Successful JSON load/reset is a hard replacement and clears history. HTML load follows the core hard-replacement path; fatal warning categories affect `success` but do not provide the same explicit preflight-preservation guarantee.

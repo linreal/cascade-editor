@@ -64,7 +64,7 @@ struct LandingView: View {
             Circle()
                 .fill(theme.badgeDot)
                 .frame(width: 7, height: 7)
-            Text("Native Swift · XCFramework")
+            Text("Native Swift · \(theme.name)")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(theme.badgeText)
         }
@@ -101,7 +101,7 @@ struct LandingView: View {
                 Spacer().frame(height: 22)
                 Text("Editor Demo")
                     .font(.system(size: 24, weight: .bold))
-                Text("The full editing experience: formatting, links, selection, autosave.")
+                Text("Runtime Violet/Forest themes with automatic light/dark variants from iOS appearance.")
                     .font(.system(size: 14))
                     .opacity(0.9)
             }

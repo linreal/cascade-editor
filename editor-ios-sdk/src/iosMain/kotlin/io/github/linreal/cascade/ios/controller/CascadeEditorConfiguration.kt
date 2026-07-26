@@ -3,6 +3,7 @@
 package io.github.linreal.cascade.ios.controller
 
 import io.github.linreal.cascade.editor.CrashPolicy
+import io.github.linreal.cascade.editor.theme.CascadeEditorColors
 import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
 import kotlin.experimental.ExperimentalObjCName
 import kotlin.native.ObjCName
@@ -72,5 +73,9 @@ internal fun CascadeCrashPolicy.toCoreCrashPolicy(): CrashPolicy = when (this) {
  * The theme the hosted editor mounts for this configuration. Extracted so tests
  * can assert the exact mapping the view host composes from when `isDark` flips.
  */
-internal fun CascadeEditorConfiguration.resolveEditorTheme(): CascadeEditorTheme =
-    if (isDark) CascadeEditorTheme.dark() else CascadeEditorTheme.light()
+internal fun CascadeEditorConfiguration.resolveEditorTheme(
+    customColors: CascadeEditorColors? = null,
+): CascadeEditorTheme {
+    val preset = if (isDark) CascadeEditorTheme.dark() else CascadeEditorTheme.light()
+    return if (customColors == null) preset else preset.copy(colors = customColors)
+}

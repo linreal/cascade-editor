@@ -4,27 +4,31 @@ import CascadeEditor
 /// Editor-as-composer demo: a feed of rich-text bubbles above a pinned
 /// composer whose formatting bar fades in while the editor is focused.
 struct CommentsScreen: View {
-    @Binding var isDark: Bool
+    @Binding var selectedTheme: SampleThemeFamily
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
     @StateObject private var editor: EditorScreenModel
     @StateObject private var model: CommentsModel
 
-    init(isDark: Binding<Bool>) {
-        _isDark = isDark
+    init(selectedTheme: Binding<SampleThemeFamily>, initialIsDark: Bool) {
+        _selectedTheme = selectedTheme
+        let initialTheme = selectedTheme.wrappedValue.appTheme(isDark: initialIsDark)
         let editorModel = EditorScreenModel(
             configuration: .standard(
-                isDark: isDark.wrappedValue,
+                isDark: initialTheme.isDark,
                 toolbarMode: CascadeToolbarMode.none,
                 slashCommandsEnabled: false,
                 blockSelectionEnabled: false,
                 blockDraggingEnabled: false
-            )
+            ),
+            colors: initialTheme.editorColors
         )
         _editor = StateObject(wrappedValue: editorModel)
         _model = StateObject(wrappedValue: CommentsModel(editor: editorModel))
     }
 
-    private var theme: AppTheme { AppTheme.theme(isDark: isDark) }
+    private var isDark: Bool { colorScheme == .dark }
+    private var theme: AppTheme { selectedTheme.appTheme(isDark: isDark) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,15 +36,18 @@ struct CommentsScreen: View {
                 theme: theme,
                 title: "Comments",
                 onBack: { dismiss() },
-                onToggleTheme: { isDark.toggle() }
+                onToggleTheme: { selectedTheme = selectedTheme.next }
             )
             feed
             composer
         }
         .padding(.horizontal, 12)
         .background(theme.background)
-        .onChange(of: isDark) { _, newValue in
-            editor.setDarkMode(newValue)
+        .onChange(of: selectedTheme) { _, newValue in
+            editor.applyTheme(newValue.appTheme(isDark: isDark))
+        }
+        .onChange(of: colorScheme) { _, newValue in
+            editor.applyTheme(selectedTheme.appTheme(isDark: newValue == .dark))
         }
     }
 

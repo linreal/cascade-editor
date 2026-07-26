@@ -31,9 +31,10 @@ final class EditorScreenModel: ObservableObject {
     /// re-parenting never spawns a second Compose tree over the same state.
     private(set) lazy var editorViewController: UIViewController = controller.makeViewController()
 
-    init(configuration: CascadeEditorConfiguration) {
+    init(configuration: CascadeEditorConfiguration, colors: CascadeEditorColors) {
         controller = CascadeEditorController(initialJson: nil, configuration: configuration)
         isReadOnly = configuration.readOnly
+        controller.setColors(colors: colors)
 
         controller.onStateChanged = { [weak self] in self?.refreshEditorState() }
         controller.onDocumentChanged = { [weak self] in self?.onDocumentChanged?() }
@@ -50,8 +51,9 @@ final class EditorScreenModel: ObservableObject {
         controller.setReadOnly(value: value)
     }
 
-    func setDarkMode(_ value: Bool) {
-        controller.setDarkMode(value: value)
+    func applyTheme(_ theme: AppTheme) {
+        controller.setDarkMode(value: theme.isDark)
+        controller.setColors(colors: theme.editorColors)
     }
 
     func undo() { controller.undo() }
@@ -69,8 +71,8 @@ final class EditorScreenModel: ObservableObject {
 }
 
 extension CascadeEditorConfiguration {
-    /// The sample's baseline editor configuration; screens override the pieces
-    /// they need (`isDark`, chrome toggles) from here.
+    /// The sample's baseline editor configuration; colors are applied separately
+    /// through the runtime theme bridge.
     static func standard(
         isDark: Bool,
         readOnly: Bool = false,
