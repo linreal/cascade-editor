@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,52 +20,55 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.linreal.cascade.editor.core.Block
-import io.github.linreal.cascade.editor.core.BlockAttributes
 import io.github.linreal.cascade.editor.core.BlockContent
-import io.github.linreal.cascade.editor.core.BlockId
-import io.github.linreal.cascade.editor.core.BlockType
-import io.github.linreal.cascade.editor.core.CustomBlockType
-import io.github.linreal.cascade.editor.core.SpanStyle
-import io.github.linreal.cascade.editor.core.TextSpan
-import io.github.linreal.cascade.editor.core.UnknownBlockType
 import io.github.linreal.cascade.editor.registry.BlockPreviewRenderer
 import io.github.linreal.cascade.editor.registry.BlockPreviewScope
+import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.theme.CascadeEditorBlockStrings
 import io.github.linreal.cascade.editor.theme.CascadeEditorStrings
+import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
 import io.github.linreal.cascade.editor.ui.CascadeDocumentPreview
 import io.github.linreal.cascade.editor.ui.CascadeDocumentPreviewConfig
 import io.github.linreal.cascade.editor.ui.ExperimentalCascadePreviewApi
 import io.github.linreal.cascade.editor.ui.createEditorRegistry
+import io.github.linreal.cascade.screens.preview.PreviewDocument
+import io.github.linreal.cascade.screens.preview.PreviewDocumentLibrary
+import io.github.linreal.cascade.screens.preview.PreviewMetricBlockType
 import io.github.linreal.cascade.theme.SampleEditorTheme
 import io.github.linreal.cascade.ui.PageScaffold
 
 /**
- * Representative 50-note grid demonstrating the recommended preview
- * integration: documents and registry are hoisted, item keys are stable, and
- * only the outer grid owns vertical scrolling.
+ * Representative note grid demonstrating the recommended preview integration:
+ * documents and registry are hoisted, item keys are stable, only the outer grid
+ * owns vertical scrolling, and a card opens the same document in a full editor.
+ *
+ * The grid never creates editor state. Tapping a card navigates by document ID;
+ * the destination loads that document's JSON and publishes its export back
+ * through [PreviewDocumentLibrary], which refreshes this card in place.
  */
 @OptIn(ExperimentalCascadePreviewApi::class)
 @Composable
 fun PreviewGalleryScreen(
+    library: PreviewDocumentLibrary,
     isDark: Boolean,
     onToggleTheme: () -> Unit,
     onBack: () -> Unit,
+    onOpenDocument: (String) -> Unit,
 ) {
-    val resolvedEditorTheme =
-        if (isDark) SampleEditorTheme.dark() else SampleEditorTheme.light()
-    val editorTheme = remember(isDark, resolvedEditorTheme) { resolvedEditorTheme }
+    // SampleEditorTheme returns a fresh but structurally equal instance per call,
+    // so this is already stable enough for the per-card `remember` keys inside the
+    // preview to survive recomposition.
+    val editorTheme = if (isDark) SampleEditorTheme.dark() else SampleEditorTheme.light()
     val registry = remember {
         createEditorRegistry().apply {
             registerPreviewRenderer(PreviewMetricBlockType.typeId, PreviewMetricRenderer)
@@ -73,10 +77,14 @@ fun PreviewGalleryScreen(
     val strings = remember { CascadeEditorStrings.default() }
     val blockStrings = remember { CascadeEditorBlockStrings.default() }
     val previewConfig = remember {
-        CascadeDocumentPreviewConfig.GridCard.copy(textScale = 0.8f)
+        // The card owns the tap, so link activation is disabled rather than
+        // arbitrated against navigation. Link spans still render styled.
+        CascadeDocumentPreviewConfig.GridCard.copy(
+            textScale = 0.8f,
+            linksEnabled = false,
+        )
     }
-    val notes = remember { buildPreviewNotes(count = 50) }
-    var lastAction by remember { mutableStateOf("Tap a card or its link") }
+    val documents = library.documents
 
     PageScaffold(maxContentWidth = 1080.dp) {
         TitledEditorTopBar(
@@ -93,36 +101,39 @@ fun PreviewGalleryScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "50 immutable documents · outer grid scroll only",
+                text = "${documents.size} documents · tap a card to edit it",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
-            Text(
-                text = lastAction,
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelMedium,
-            )
+            if (library.lastErrorMessage.isNotEmpty()) {
+                Text(
+                    text = library.lastErrorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 260.dp),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp),
+            contentPadding = PaddingValues(8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(
-                items = notes,
-                key = { note -> note.id },
-            ) { note ->
-                PreviewNoteCard(
-                    note = note,
+                items = documents,
+                key = { document -> document.id },
+            ) { document ->
+                PreviewDocumentCard(
+                    document = document,
                     registry = registry,
                     editorTheme = editorTheme,
                     strings = strings,
                     blockStrings = blockStrings,
                     config = previewConfig,
-                    onCardClick = { lastAction = "Card: ${note.id}" },
-                    onOpenLink = { target -> lastAction = "Link: $target" },
+                    onOpen = { onOpenDocument(document.id) },
                 )
             }
         }
@@ -131,47 +142,45 @@ fun PreviewGalleryScreen(
 
 @OptIn(ExperimentalCascadePreviewApi::class)
 @Composable
-private fun PreviewNoteCard(
-    note: PreviewNote,
-    registry: io.github.linreal.cascade.editor.registry.BlockRegistry,
-    editorTheme: io.github.linreal.cascade.editor.theme.CascadeEditorTheme,
+private fun PreviewDocumentCard(
+    document: PreviewDocument,
+    registry: BlockRegistry,
+    editorTheme: CascadeEditorTheme,
     strings: CascadeEditorStrings,
     blockStrings: CascadeEditorBlockStrings,
     config: CascadeDocumentPreviewConfig,
-    onCardClick: () -> Unit,
-    onOpenLink: (String) -> Unit,
+    onOpen: () -> Unit,
 ) {
     val shape = RoundedCornerShape(18.dp)
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .height(250.dp)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surface)
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
-            .clickable(onClick = onCardClick)
+            .clickable(onClick = onOpen)
             .padding(vertical = 10.dp),
     ) {
+        Text(
+            text = document.title,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
         CascadeDocumentPreview(
-            blocks = note.blocks,
+            blocks = document.blocks,
             registry = registry,
             theme = editorTheme,
             strings = strings,
             blockStrings = blockStrings,
             config = config,
-            onOpenLink = onOpenLink,
+            onOpenLink = null,
+            modifier = Modifier.padding(top = 4.dp),
         )
     }
-}
-
-private data class PreviewNote(
-    val id: String,
-    val blocks: List<Block>,
-)
-
-private data object PreviewMetricBlockType : CustomBlockType {
-    override val typeId: String = "sample.preview_metric"
-    override val displayName: String = "Preview metric"
 }
 
 @OptIn(ExperimentalCascadePreviewApi::class)
@@ -212,160 +221,3 @@ private data object PreviewMetricRenderer : BlockPreviewRenderer<PreviewMetricBl
         }
     }
 }
-
-private fun buildPreviewNotes(count: Int): List<PreviewNote> {
-    return List(count) { index ->
-        val noteId = "preview-note-$index"
-        PreviewNote(
-            id = noteId,
-            blocks = when (index % 6) {
-                0 -> simplePreviewBlocks(noteId)
-                1 -> spanHeavyPreviewBlocks(noteId)
-                2 -> structuralPreviewBlocks(noteId)
-                3 -> todoPreviewBlocks(noteId)
-                4 -> quoteCodePreviewBlocks(noteId)
-                else -> customPreviewBlocks(noteId)
-            },
-        )
-    }
-}
-
-private fun simplePreviewBlocks(noteId: String): List<Block> = listOf(
-    previewBlock(noteId, 0, BlockType.Heading(2), BlockContent.Text("Preview mode")),
-    previewBlock(
-        noteId,
-        1,
-        BlockType.Paragraph,
-        BlockContent.Text(
-            "Static document cards avoid editor state, focus, history, and nested scrolling.",
-        ),
-    ),
-    previewBlock(noteId, 2, BlockType.Todo(checked = true), BlockContent.Text("Hoist registry")),
-    previewBlock(noteId, 3, BlockType.Divider, BlockContent.Empty),
-)
-
-private fun spanHeavyPreviewBlocks(noteId: String): List<Block> {
-    val text = "Bold italic underline strike code mark link"
-    fun span(word: String, style: SpanStyle): TextSpan {
-        val start = text.indexOf(word)
-        return TextSpan(start, start + word.length, style)
-    }
-    return listOf(
-        previewBlock(noteId, 0, BlockType.Heading(3), BlockContent.Text("Rich text parity")),
-        previewBlock(
-            noteId,
-            1,
-            BlockType.Paragraph,
-            BlockContent.Text(
-                text = text,
-                spans = listOf(
-                    span("Bold", SpanStyle.Bold),
-                    span("italic", SpanStyle.Italic),
-                    span("underline", SpanStyle.Underline),
-                    span("strike", SpanStyle.StrikeThrough),
-                    span("code", SpanStyle.InlineCode),
-                    span("mark", SpanStyle.Highlight(0xFFFFFF00L)),
-                    span("link", SpanStyle.Link("https://github.com/linreal/cascade-editor")),
-                ),
-            ),
-        ),
-        previewBlock(
-            noteId,
-            2,
-            BlockType.Paragraph,
-            BlockContent.Text("Only the link activates; the rest of the card remains host-owned."),
-        ),
-    )
-}
-
-private fun structuralPreviewBlocks(noteId: String): List<Block> = listOf(
-    previewBlock(noteId, 0, BlockType.Heading(3), BlockContent.Text("Outline")),
-    previewBlock(noteId, 1, BlockType.NumberedList(1), BlockContent.Text("Parent item")),
-    previewBlock(
-        noteId,
-        2,
-        BlockType.NumberedList(1),
-        BlockContent.Text("Nested item"),
-        indentationLevel = 1,
-    ),
-    previewBlock(
-        noteId,
-        3,
-        BlockType.BulletList,
-        BlockContent.Text("Nested bullet"),
-        indentationLevel = 2,
-    ),
-)
-
-private fun todoPreviewBlocks(noteId: String): List<Block> = listOf(
-    previewBlock(noteId, 0, BlockType.Heading(3), BlockContent.Text("Release checklist")),
-    previewBlock(noteId, 1, BlockType.Todo(true), BlockContent.Text("Static checkbox")),
-    previewBlock(noteId, 2, BlockType.Todo(false), BlockContent.Text("Cross-platform QA")),
-    previewBlock(
-        noteId,
-        3,
-        BlockType.Todo(false),
-        BlockContent.Text("Nested follow-up"),
-        indentationLevel = 1,
-    ),
-)
-
-private fun quoteCodePreviewBlocks(noteId: String): List<Block> = listOf(
-    previewBlock(
-        noteId,
-        0,
-        BlockType.Quote,
-        BlockContent.Text("A preview shares visual primitives, not editor runtime."),
-    ),
-    previewBlock(
-        noteId,
-        1,
-        BlockType.Code,
-        BlockContent.Text("val blocks = loadDocument()\nrenderPreview(blocks)"),
-    ),
-    previewBlock(noteId, 2, BlockType.Divider, BlockContent.Empty),
-    previewBlock(noteId, 3, BlockType.Paragraph, BlockContent.Text("No internal scroll state.")),
-)
-
-private fun customPreviewBlocks(noteId: String): List<Block> = listOf(
-    previewBlock(
-        noteId,
-        0,
-        PreviewMetricBlockType,
-        BlockContent.Custom(
-            typeId = PreviewMetricBlockType.typeId,
-            data = mapOf("value" to "Shared", "label" to "Custom preview renderer"),
-        ),
-    ),
-    previewBlock(
-        noteId,
-        1,
-        UnknownBlockType(
-            typeId = "future.weather",
-            rawTypeJson = """{"typeId":"future.weather"}""",
-        ),
-        BlockContent.Text("Unknown text remains readable through the bounded fallback."),
-    ),
-    previewBlock(
-        noteId,
-        2,
-        UnknownBlockType(
-            typeId = "future.media",
-            rawTypeJson = """{"typeId":"future.media"}""",
-        ),
-        BlockContent.Custom("future.media", mapOf("asset" to "opaque")),
-    ),
-)
-
-private fun previewBlock(
-    noteId: String,
-    index: Int,
-    type: BlockType,
-    content: BlockContent,
-    indentationLevel: Int = 0,
-): Block = Block(
-    id = BlockId("$noteId-block-$index"),
-    type = type,
-    content = content,
-    attributes = BlockAttributes(indentationLevel),
-)

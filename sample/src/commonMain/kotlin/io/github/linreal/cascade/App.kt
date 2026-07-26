@@ -36,6 +36,8 @@ import io.github.linreal.cascade.screens.external_toolbar.ExternalToolbarScreen
 import io.github.linreal.cascade.screens.LandingScreen
 import io.github.linreal.cascade.screens.PreviewGalleryScreen
 import io.github.linreal.cascade.screens.markdownfield.MarkdownFieldScreen
+import io.github.linreal.cascade.screens.preview.PreviewDocumentEditorScreen
+import io.github.linreal.cascade.screens.preview.PreviewDocumentLibrary
 import io.github.linreal.cascade.theme.CascadeSampleColors
 import io.github.linreal.cascade.theme.LocalCascadeSampleColors
 import io.github.linreal.cascade.theme.sampleTypography
@@ -79,6 +81,9 @@ fun App() {
             var currentScreen by rememberSaveable(stateSaver = AppScreenSaver) {
                 mutableStateOf<AppScreen>(AppScreen.Landing)
             }
+            // Hoisted above the destination switch so an edit made on the editor
+            // screen is still published when the gallery recomposes behind it.
+            val previewLibrary = remember { PreviewDocumentLibrary() }
 
             Box(
                 modifier = Modifier
@@ -89,7 +94,7 @@ fun App() {
                     .padding(horizontal = 18.dp)
                     .fillMaxSize(),
             ) {
-                when (currentScreen) {
+                when (val screen = currentScreen) {
                     AppScreen.Landing -> LandingScreen(
                         onNavigate = { currentScreen = it },
                     )
@@ -129,9 +134,20 @@ fun App() {
                         onBack = { currentScreen = AppScreen.Landing },
                     )
                     AppScreen.PreviewGallery -> PreviewGalleryScreen(
+                        library = previewLibrary,
                         isDark = isDark,
                         onToggleTheme = { themeOverride = !isDark },
                         onBack = { currentScreen = AppScreen.Landing },
+                        onOpenDocument = { documentId ->
+                            currentScreen = AppScreen.PreviewDocumentEditor(documentId)
+                        },
+                    )
+                    is AppScreen.PreviewDocumentEditor -> PreviewDocumentEditorScreen(
+                        documentId = screen.documentId,
+                        library = previewLibrary,
+                        isDark = isDark,
+                        onToggleTheme = { themeOverride = !isDark },
+                        onBack = { currentScreen = AppScreen.PreviewGallery },
                     )
                 }
             }

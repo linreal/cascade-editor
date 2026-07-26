@@ -16,11 +16,28 @@ class AppScreenTest {
             AppScreen.CustomHtmlProfile,
             AppScreen.Comments,
             AppScreen.MarkdownField,
+            AppScreen.PreviewGallery,
+            AppScreen.PreviewDocumentEditor("preview-note-7"),
         )
 
         for (screen in screens) {
             assertEquals(screen, AppScreen.fromSaveKey(screen.saveKey))
         }
+    }
+
+    @Test
+    fun `preview document ids survive characters used by the save-key separator`() {
+        val screen = AppScreen.PreviewDocumentEditor("preview_document:odd:id")
+
+        assertEquals(screen, AppScreen.fromSaveKey(screen.saveKey))
+    }
+
+    @Test
+    fun `preview document key without an id restores the gallery`() {
+        assertEquals(
+            AppScreen.PreviewGallery,
+            AppScreen.fromSaveKey("preview_document:"),
+        )
     }
 
     @Test

@@ -31,7 +31,7 @@ internal class PreviewTextBlockRenderer : BlockPreviewRenderer<BlockType> {
         modifier: Modifier,
         scope: BlockPreviewScope,
     ) {
-        val content = block.content as? BlockContent.Text ?: return
+        val content = block.previewTextContent()
         val theme = LocalCascadeTheme.current
         val targetStyle = remember(block.type, theme.typography) {
             resolveTextBlockStyle(block.type, theme.typography)
@@ -90,6 +90,20 @@ internal class PreviewTextBlockRenderer : BlockPreviewRenderer<BlockType> {
         }
     }
 }
+
+/**
+ * Resolves the static text a built-in preview renderer should present.
+ *
+ * `DocumentSchema` decodes any block whose JSON omits `content` as
+ * [BlockContent.Empty] — with no warning, and regardless of block type — so a
+ * text block or todo can legitimately reach preview rendering without
+ * [BlockContent.Text]. Such a block still consumes one `maxBlocks` slot, so it
+ * renders as an empty line instead of vanishing and silently shrinking the card.
+ */
+internal fun Block.previewTextContent(): BlockContent.Text =
+    content as? BlockContent.Text ?: EmptyPreviewTextContent
+
+private val EmptyPreviewTextContent = BlockContent.Text(text = "")
 
 /**
  * Shared static text leaf for built-in preview renderers.

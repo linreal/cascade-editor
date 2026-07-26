@@ -56,7 +56,12 @@ fun PreviewGrid(documents: List<PreviewDocument>, onEdit: (String) -> Unit) {
 3. Navigate by document ID. Create editor state only on the destination screen,
    load that document's JSON, and save the editor export back through the
    repository. When the repository publishes new `blocks`, the keyed card
-   refreshes without replacing the grid.
+   refreshes without replacing the grid. Replace only the edited entry so the
+   other `blocks` lists keep their identity and their cards do not recompose.
+
+   Register a `BlockTypeCodec` for every custom block type the grid renders.
+   Without one, a custom block decodes as `UnknownBlockType` after the first
+   save and silently drops to the generic fallback.
 
 If links must work inside a card, enable `linksEnabled`, provide `onOpenLink`,
 and explicitly arbitrate link taps against card navigation. Register custom
@@ -117,6 +122,7 @@ core `Float`) normalize to `1.0`.
 Reference implementations:
 
 - Multiplatform: `sample/src/commonMain/kotlin/io/github/linreal/cascade/screens/PreviewGalleryScreen.kt`
+  and `sample/src/commonMain/kotlin/io/github/linreal/cascade/screens/preview/`
 - Native iOS: `iosNativeSample/iosNativeSample/Screens/PreviewGalleryScreen.swift`
   and `iosNativeSample/iosNativeSample/Screens/Preview/`
 - Full behavior and extension contract: `docs/DocumentPreview.md`
