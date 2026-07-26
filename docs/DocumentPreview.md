@@ -337,6 +337,18 @@ Registering only an editor renderer therefore does not change preview behavior.
 Use `setUnknownBlockPreviewRenderer(...)` to replace the fallback for a
 product-specific registry.
 
+## Blocks without text content
+
+`DocumentSchema` decodes a block whose JSON omits `content` as
+`BlockContent.Empty`, with no warning and regardless of block type, so a
+text block or todo can reach preview rendering without `BlockContent.Text`.
+
+The built-in text and todo preview renderers present those blocks as an empty
+line — a todo keeps its checkbox — rather than rendering nothing. A block that
+consumes one of the `maxBlocks` slots always occupies that slot, so a bounded
+card cannot silently shrink. Custom preview renderers should apply the same
+rule; returning early on a content type mismatch leaves an invisible gap.
+
 ## Accessibility
 
 Built-in preview text is static and non-editable. Todos expose checkbox role and

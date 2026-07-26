@@ -9,7 +9,6 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextDecoration
 import io.github.linreal.cascade.editor.core.Block
-import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.BlockPreviewRenderer
 import io.github.linreal.cascade.editor.registry.BlockPreviewScope
@@ -29,7 +28,9 @@ internal class PreviewTodoBlockRenderer : BlockPreviewRenderer<BlockType.Todo> {
         scope: BlockPreviewScope,
     ) {
         val todo = block.type as? BlockType.Todo ?: return
-        val content = block.content as? BlockContent.Text ?: return
+        // Gate on type only, matching TodoBlockRenderer: a todo whose content did
+        // not decode as text must still show its checkbox.
+        val content = block.previewTextContent()
         val theme = LocalCascadeTheme.current
         val indentationLevel = block.attributes.indentationLevel
         val baseDecoration = if (todo.checked) TextDecoration.LineThrough else null
