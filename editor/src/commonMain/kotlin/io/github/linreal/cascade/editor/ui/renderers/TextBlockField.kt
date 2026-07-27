@@ -3,11 +3,13 @@ package io.github.linreal.cascade.editor.ui.renderers
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +35,7 @@ import io.github.linreal.cascade.editor.action.CloseSlashCommand
 import io.github.linreal.cascade.editor.action.UpdateSlashCommandSession
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
+import io.github.linreal.cascade.editor.core.BlockId
 import io.github.linreal.cascade.editor.registry.BlockCallbacks
 import io.github.linreal.cascade.editor.action.ConvertBlockType
 import io.github.linreal.cascade.editor.action.UpdateBlockContent
@@ -61,12 +64,14 @@ import io.github.linreal.cascade.editor.ui.LocalSlashPopupItems
 import io.github.linreal.cascade.editor.ui.LocalSlashSessionAnchorBlockId
 import io.github.linreal.cascade.editor.ui.visibleSelection
 import io.github.linreal.cascade.editor.ui.visibleText
+import io.github.linreal.cascade.editor.ui.isVisibleTextEmpty
 import io.github.linreal.cascade.editor.guarded
 import io.github.linreal.cascade.editor.ui.LocalCascadeEditorConfig
 import io.github.linreal.cascade.editor.state.TextEditHistoryTracker
 import io.github.linreal.cascade.editor.state.captureCheckpoint
 import io.github.linreal.cascade.editor.state.captureFocusedEditingUiState
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
+import io.github.linreal.cascade.editor.theme.LocalCascadeStrings
 
 /**
  * Shared text editing composable used by renderers that need formattable text input.
@@ -96,6 +101,7 @@ internal fun TextBlockField(
 ) {
     val textContent = block.content as? BlockContent.Text ?: return
     val colors = LocalCascadeTheme.current.colors
+    val strings = LocalCascadeStrings.current
     val focusRequester = remember { FocusRequester() }
     var hasComposeFocus by remember { mutableStateOf(false) }
     val stateHolder = LocalEditorStateHolder.current
@@ -148,6 +154,12 @@ internal fun TextBlockField(
     val crashConfig = LocalCascadeEditorConfig.current
     val crashPolicy = crashConfig.crashPolicy
     val crashReporter = crashConfig.onInternalError
+    val placeholderEligible = isEmptyDocumentPlaceholderCandidate(
+        enabled = crashConfig.emptyDocumentPlaceholderEnabled,
+        canEditText = interactionPolicy.canEditText,
+        blocks = stateHolder.state.blocks,
+        blockId = block.id,
+    )
     val outputTransformation: OutputTransformation? = remember(
         block.id,
         spanState,
@@ -512,6 +524,13 @@ internal fun TextBlockField(
     }
 
     Box(modifier = modifier) {
+        EmptyDocumentPlaceholder(
+            eligible = placeholderEligible,
+            state = textFieldState,
+            text = strings.emptyDocumentPlaceholder,
+            style = textStyle.copy(color = colors.placeholderText),
+        )
+
         BackspaceAwareTextField(
             state = textFieldState,
             modifier = Modifier.fillMaxWidth()
@@ -601,6 +620,47 @@ internal fun TextBlockField(
             )
         }
     }
+}
+
+@Composable
+private fun EmptyDocumentPlaceholder(
+    eligible: Boolean,
+    state: TextFieldState,
+    text: String,
+    style: TextStyle,
+) {
+    val visible by remember(eligible, state) {
+        derivedStateOf {
+            eligible && state.isVisibleTextEmpty()
+        }
+    }
+    if (visible && text.isNotEmpty()) {
+        BasicText(
+            text = text,
+            style = style,
+        )
+    }
+}
+
+/**
+ * Resolves the structural half of empty-document placeholder visibility.
+ *
+ * Live text emptiness is intentionally checked in a small child composition so
+ * ordinary typing does not invalidate the full text-field integration scope.
+ */
+internal fun isEmptyDocumentPlaceholderCandidate(
+    enabled: Boolean,
+    canEditText: Boolean,
+    blocks: List<Block>,
+    blockId: BlockId,
+): Boolean {
+    if (!enabled || !canEditText || blocks.size != 1) return false
+    val onlyBlock = blocks[0]
+    val supportsPlaceholder =
+        onlyBlock.type == BlockType.Paragraph || onlyBlock.type is BlockType.Heading
+    return onlyBlock.id == blockId &&
+        supportsPlaceholder &&
+        onlyBlock.attributes.indentationLevel == 0
 }
 
 private const val ZWSP_SENTINEL: Char = '\u200B'

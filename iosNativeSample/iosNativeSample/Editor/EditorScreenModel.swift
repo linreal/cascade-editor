@@ -88,7 +88,9 @@ extension CascadeEditorConfiguration {
             blockSelectionEnabled: blockSelectionEnabled,
             blockDraggingEnabled: blockDraggingEnabled,
             isDark: isDark,
-            crashPolicy: .containAndReport
+            crashPolicy: .containAndReport,
+            blockIndentationEnabled: true,
+            emptyDocumentPlaceholderEnabled: true
         )
     }
 }

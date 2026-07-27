@@ -239,6 +239,15 @@ public fun TextFieldState.visibleText(): String {
 }
 
 /**
+ * Returns whether the field has no user-visible text without allocating a
+ * visible-text [String]. The raw field may still contain the ZWSP sentinel.
+ */
+internal fun TextFieldState.isVisibleTextEmpty(): Boolean {
+    val rawText = text
+    return rawText.isEmpty() || (rawText.length == 1 && rawText[0] == ZWSP_CHAR)
+}
+
+/**
  * Returns the cursor position relative to visible text.
  */
 public fun TextFieldState.visibleCursorPosition(): Int {

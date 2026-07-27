@@ -137,7 +137,10 @@ fun EditorDemoScreen(
                         }
                         runCatching { uriHandler.openUri(url) }
                     },
-                    config = CascadeEditorConfig(readOnly = isReadOnly),
+                    config = CascadeEditorConfig(
+                        readOnly = isReadOnly,
+                        emptyDocumentPlaceholderEnabled = true,
+                    ),
                     modifier = Modifier.fillMaxSize().imePadding(),
                 )
             }

@@ -24,45 +24,16 @@ public enum class CascadeCrashPolicy {
 
 @ObjCName("CascadeEditorConfiguration", exact = true)
 public data class CascadeEditorConfiguration(
-    public val readOnly: Boolean,
-    public val toolbarMode: CascadeToolbarMode,
-    public val slashCommandsEnabled: Boolean,
-    public val blockSelectionEnabled: Boolean,
-    public val blockDraggingEnabled: Boolean,
-    public val isDark: Boolean,
-    public val crashPolicy: CascadeCrashPolicy,
-    public val blockIndentationEnabled: Boolean,
-) {
-    public constructor(
-        readOnly: Boolean,
-        toolbarMode: CascadeToolbarMode,
-        slashCommandsEnabled: Boolean,
-        blockSelectionEnabled: Boolean,
-        blockDraggingEnabled: Boolean,
-        isDark: Boolean,
-        crashPolicy: CascadeCrashPolicy,
-    ) : this(
-        readOnly = readOnly,
-        toolbarMode = toolbarMode,
-        slashCommandsEnabled = slashCommandsEnabled,
-        blockSelectionEnabled = blockSelectionEnabled,
-        blockDraggingEnabled = blockDraggingEnabled,
-        isDark = isDark,
-        crashPolicy = crashPolicy,
-        blockIndentationEnabled = true,
-    )
-
-    public constructor() : this(
-        readOnly = false,
-        toolbarMode = CascadeToolbarMode.builtIn,
-        slashCommandsEnabled = true,
-        blockSelectionEnabled = true,
-        blockDraggingEnabled = true,
-        isDark = false,
-        crashPolicy = CascadeCrashPolicy.containAndReport,
-        blockIndentationEnabled = true,
-    )
-}
+    public val readOnly: Boolean = false,
+    public val toolbarMode: CascadeToolbarMode = CascadeToolbarMode.builtIn,
+    public val slashCommandsEnabled: Boolean = true,
+    public val blockSelectionEnabled: Boolean = true,
+    public val blockDraggingEnabled: Boolean = true,
+    public val isDark: Boolean = false,
+    public val crashPolicy: CascadeCrashPolicy = CascadeCrashPolicy.containAndReport,
+    public val blockIndentationEnabled: Boolean = true,
+    public val emptyDocumentPlaceholderEnabled: Boolean = false,
+)
 
 internal fun CascadeCrashPolicy.toCoreCrashPolicy(): CrashPolicy = when (this) {
     CascadeCrashPolicy.containAndReport -> CrashPolicy.ContainAndReport

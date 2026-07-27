@@ -63,6 +63,8 @@ public fun CascadeEditorController.makeViewController(): UIViewController = onMa
                             (error.cause.message ?: error.cause.toString())
                     )
                 },
+                emptyDocumentPlaceholderEnabled =
+                    configurationState.emptyDocumentPlaceholderEnabled,
             )
         }
         val theme = remember(configurationState.isDark, customColors) {

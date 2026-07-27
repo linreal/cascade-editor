@@ -211,7 +211,7 @@ struct AppTheme {
     )
 }
 
-/// Full 24-slot palettes demonstrate the native bridge without relying on the
+/// Full 25-slot palettes demonstrate the native bridge without relying on the
 /// SDK's built-in light/dark colors. Values are standard 0xAARRGGBB Int64s.
 private func violetLightEditorColors() -> CascadeEditorColors {
     let colors = CascadeEditorColors(isDark: false)
@@ -239,6 +239,7 @@ private func violetLightEditorColors() -> CascadeEditorColors {
     colors.error = 0xFFB3261E
     colors.codeBlockBackground = 0x0F6C3DE8
     colors.toolbarBackground = 0xFFFFFFFF
+    colors.placeholderText = 0xFF746D85
     return colors
 }
 
@@ -268,6 +269,7 @@ private func violetDarkEditorColors() -> CascadeEditorColors {
     colors.error = 0xFFF2B8B5
     colors.codeBlockBackground = 0x1F8B5CF6
     colors.toolbarBackground = 0xFF26203A
+    colors.placeholderText = 0xFFAAA2BE
     return colors
 }
 
@@ -297,6 +299,7 @@ private func forestLightEditorColors() -> CascadeEditorColors {
     colors.error = 0xFFB3261E
     colors.codeBlockBackground = 0x14147D64
     colors.toolbarBackground = 0xFFFFFFFF
+    colors.placeholderText = 0xFF657A73
     return colors
 }
 
@@ -326,6 +329,7 @@ private func forestDarkEditorColors() -> CascadeEditorColors {
     colors.error = 0xFFF2B8B5
     colors.codeBlockBackground = 0x1F67D4AF
     colors.toolbarBackground = 0xFF163229
+    colors.placeholderText = 0xFFA4BDB4
     return colors
 }
 

@@ -99,6 +99,9 @@ public class CascadeEditorColors public constructor(
     /** Floating formatting-toolbar surface. */
     public var toolbarBackground: Long = preset.toolbarBackground.toBridgeArgb()
 
+    /** Empty-document input hint text. */
+    public var placeholderText: Long = preset.placeholderText.toBridgeArgb()
+
     internal fun snapshot(): CoreCascadeEditorColors = CoreCascadeEditorColors(
         primary = primary.toComposeColor(),
         onPrimary = onPrimary.toComposeColor(),
@@ -124,6 +127,7 @@ public class CascadeEditorColors public constructor(
         error = error.toComposeColor(),
         codeBlockBackground = codeBlockBackground.toComposeColor(),
         toolbarBackground = toolbarBackground.toComposeColor(),
+        placeholderText = placeholderText.toComposeColor(),
     )
 }
 

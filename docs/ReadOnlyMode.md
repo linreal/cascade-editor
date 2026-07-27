@@ -34,6 +34,8 @@ Read-only mode disables editor-owned mutations:
 
 When `readOnly` changes from `false` to `true`, `CascadeEditor` closes active slash sessions, cancels active drags, clears block selection, and dismisses editor-owned link editing popup sessions. This cleanup does not change document blocks, text focus, caret, or text selection.
 
+The edit-oriented empty-document placeholder is also suppressed in read-only mode, even when `emptyDocumentPlaceholderEnabled` is `true`.
+
 ## Toolbar
 
 Read-only mode does not add a separate toolbar visibility switch.

@@ -92,6 +92,8 @@ public data class CascadeEditorColors(
      * data-class [copy] retains the existing value unless set explicitly.
      */
     val toolbarBackground: Color = popupBackground,
+    /** Empty-document input hint text. */
+    val placeholderText: Color = text,
 ) {
     public companion object {
         /**
@@ -125,6 +127,7 @@ public data class CascadeEditorColors(
             error = Color(0xFFB3261E),
             codeBlockBackground = Color(0x0F000000),
             toolbarBackground = Color.White,
+            placeholderText = Color(0xFF74747B),
         )
 
         /**
@@ -158,6 +161,7 @@ public data class CascadeEditorColors(
             error = Color(0xFFF2B8B5),
             codeBlockBackground = Color(0x1FFFFFFF),
             toolbarBackground = Color(0xFF26262E),
+            placeholderText = Color(0xFFABABB2),
         )
     }
 }

@@ -50,6 +50,17 @@ class DocumentSerializationExtTest {
     }
 
     @Test
+    fun `empty document placeholder remains presentation-only`() {
+        val holder = EditorStateHolder(EditorState.withBlocks(listOf(Block.paragraph())))
+
+        val json = holder.toJson(BlockTextStates(), BlockSpanStates())
+        val decoded = DocumentSchema.decodeFromString(json)
+        val text = assertIs<BlockContent.Text>(decoded.single().content)
+
+        assertEquals("", text.text)
+    }
+
+    @Test
     fun `toJson runtime text override - captures updated text`() {
         val blockId = BlockId("b1")
         val blocks = listOf(
