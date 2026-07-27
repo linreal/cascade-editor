@@ -180,7 +180,7 @@ The built-in slash executor also distinguishes text and non-text conversion targ
 ### SDK identity and configuration
 
 - `CascadeEditorSdk.version: String` — currently `"1.0.0"`.
-- `CascadeEditorConfiguration` — immutable configuration containing `readOnly`, `toolbarMode`, `slashCommandsEnabled`, `blockSelectionEnabled`, `blockDraggingEnabled`, `blockIndentationEnabled`, `isDark`, and `crashPolicy`. Setting `blockIndentationEnabled` to `false` disables indentation commands and keeps block drag/reorder at the payload's original indentation depth.
+- `CascadeEditorConfiguration` — immutable configuration containing `readOnly`, `toolbarMode`, `slashCommandsEnabled`, `blockSelectionEnabled`, `blockDraggingEnabled`, `blockIndentationEnabled`, `emptyDocumentPlaceholderEnabled`, `isDark`, and `crashPolicy`. The placeholder flag defaults to `false`; when enabled, read-only mode still suppresses the edit-oriented hint.
 - `CascadeToolbarMode` — `builtIn` or `none`; `none` disables both the built-in formatting toolbar and its link popup.
 - `CascadeCrashPolicy` — `containAndReport` or `rethrow`.
 
@@ -224,8 +224,8 @@ Runtime configuration, colors, and localization:
 - `updateConfiguration(value)`, `setReadOnly(value)`, `setDarkMode(value)`, `setToolbarMode(value)`, `setSlashCommandsEnabled(value)`
 - `setColors(CascadeEditorColors)`, `clearCustomColors()`
 - `setLocalization(CascadeEditorLocalization)`
-- `CascadeEditorColors` is a mutable, complete 24-slot palette seeded from the built-in light (`init()`) or light/dark (`init(isDark:)`) preset. Every property is a Swift `Int64` containing `0xAARRGGBB`.
-- `CascadeLocalizedStrings` supplies nullable overrides for built-in UI/accessibility strings.
+- `CascadeEditorColors` is a mutable, complete 25-slot palette seeded from the built-in light (`init()`) or light/dark (`init(isDark:)`) preset. Every property is a Swift `Int64` containing `0xAARRGGBB`; `placeholderText` controls the empty-document hint.
+- `CascadeLocalizedStrings` supplies nullable overrides for built-in UI/accessibility strings, including `emptyDocumentPlaceholder`.
 - `CascadeLocalizedBlockStrings` supplies slash-menu name, description, and additive keywords by block type ID.
 
 `setColors` snapshots the whole bag and can be called before or after
@@ -368,7 +368,7 @@ Back-button flush keeps the editor open and surfaces the save failure.
 - **Registry system:** native blocks extend `BlockRegistry`; native commands extend `SlashCommandRegistry`. Observable revisions make runtime registration visible to an already-mounted editor.
 - **Serialization:** editable JSON uses `DocumentSchema` plus `NativeCustomBlockCodec`; HTML uses `HtmlProfile.Default`. Both share the editor's live text/span holders. The preview facade uses `DocumentSchema` directly to preserve generic unknown/custom data without creating runtime holders or resolving native editor types.
 - **Rich text and toolbar:** the bridge maps `FormattingState`, `IndentationState`, and `LinkState` from `CascadeEditorToolbarController` into Swift-friendly state and actions.
-- **Localization and theme:** Swift string overrides resolve into core `CascadeEditorStrings` and `CascadeEditorBlockStrings`. `CascadeEditorColors` snapshots map all 24 ARGB slots into the core palette and recompose live. Without a custom palette, `isDark` selects the built-in colors; it remains exposed to native custom blocks in either mode.
+- **Localization and theme:** Swift string overrides resolve into core `CascadeEditorStrings` and `CascadeEditorBlockStrings`. `CascadeEditorColors` snapshots map all 25 ARGB slots into the core palette and recompose live. Without a custom palette, `isDark` selects the built-in colors; it remains exposed to native custom blocks in either mode.
 - **Local build:** `scripts/build-xcframework.sh` assembles the dynamic debug XCFramework at `editor-ios-sdk/build/XCFrameworks/debug/CascadeEditor.xcframework`. The Xcode sample links and embeds this local artifact.
 - **External distribution:** `scripts/package-ios-sdk.sh` tests and assembles the release framework, validates resources/privacy/version/dSYMs, and emits a one-root ZIP plus SwiftPM checksum and manifest. `release-ios-sdk.yml` publishes immutable source-tag assets and updates `linreal/cascade-editor-ios`.
 - **Consumer validation:** `scripts/validate-ios-consumer.sh` stages the publication ZIP in `iosConsumerSmokeTest`, builds a generic-device Release app, executes its UI test on an arm64 simulator, and inspects the embedded framework.

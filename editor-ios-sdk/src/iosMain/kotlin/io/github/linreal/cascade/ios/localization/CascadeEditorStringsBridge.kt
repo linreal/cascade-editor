@@ -75,6 +75,9 @@ public class CascadeLocalizedStrings public constructor() {
 
     /** Validation message shown when the link URL field is left blank. */
     public var linkValidationBlankUrl: String? = null
+
+    /** Hint shown in the first block while the editable document is empty. */
+    public var emptyDocumentPlaceholder: String? = null
 }
 
 /**
@@ -147,6 +150,8 @@ internal fun CascadeEditorLocalization.toEditorStrings(): CascadeEditorStrings {
         linkValidationError = overrides.linkValidationBlankUrl?.let { message ->
             { _ -> message }
         } ?: defaults.linkValidationError,
+        emptyDocumentPlaceholder =
+            overrides.emptyDocumentPlaceholder ?: defaults.emptyDocumentPlaceholder,
     )
 }
 

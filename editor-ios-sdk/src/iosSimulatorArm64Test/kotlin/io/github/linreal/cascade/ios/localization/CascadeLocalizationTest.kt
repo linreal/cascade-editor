@@ -42,6 +42,7 @@ class CascadeLocalizationTest {
             italic = "Kursiv"
             linkApply = "Link anwenden"
             linkValidationBlankUrl = "Bitte URL eingeben."
+            emptyDocumentPlaceholder = "Hier beginnen\u2026"
             unsupportedBlock = { typeId -> "Nicht unterstützter Block: $typeId" }
         }
 
@@ -52,6 +53,7 @@ class CascadeLocalizationTest {
         assertEquals("Fett", resolved.bold)
         assertEquals("Kursiv", resolved.italic)
         assertEquals("Link anwenden", resolved.linkApply)
+        assertEquals("Hier beginnen\u2026", resolved.emptyDocumentPlaceholder)
         assertEquals("Bitte URL eingeben.", resolved.linkValidationError(LinkValidationError.Blank))
         assertEquals("Nicht unterstützter Block: table", resolved.unsupportedBlock("table"))
         // Unset fields keep the built-in English defaults.

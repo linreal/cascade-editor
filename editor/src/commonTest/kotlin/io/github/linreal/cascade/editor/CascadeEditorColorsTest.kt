@@ -38,6 +38,14 @@ class CascadeEditorColorsTest {
     }
 
     @Test
+    fun `light and dark differ on placeholderText`() {
+        assertNotEquals(
+            CascadeEditorColors.light().placeholderText,
+            CascadeEditorColors.dark().placeholderText,
+        )
+    }
+
+    @Test
     fun `light codeBlockBackground is non-transparent`() {
         val colors = CascadeEditorColors.light()
         assertNotEquals(Color.Unspecified, colors.codeBlockBackground)
@@ -224,5 +232,6 @@ class CascadeEditorColorsTest {
         "error" to c.error,
         "codeBlockBackground" to c.codeBlockBackground,
         "toolbarBackground" to c.toolbarBackground,
+        "placeholderText" to c.placeholderText,
     )
 }

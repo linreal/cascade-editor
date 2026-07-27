@@ -45,6 +45,7 @@ class CascadeEditorColorsBridgeTest {
         colors.error = 0xFF000016L
         colors.codeBlockBackground = 0xFF000017L
         colors.toolbarBackground = 0xFF000018L
+        colors.placeholderText = 0xFF000019L
 
         assertEquals(
             listOf(
@@ -72,6 +73,7 @@ class CascadeEditorColorsBridgeTest {
                 0xFF000016L,
                 0xFF000017L,
                 0xFF000018L,
+                0xFF000019L,
             ),
             colors.snapshot().argbSlots(),
         )
@@ -134,6 +136,7 @@ private fun CoreCascadeEditorColors.argbSlots(): List<Long> = listOf(
     error.toArgbLong(),
     codeBlockBackground.toArgbLong(),
     toolbarBackground.toArgbLong(),
+    placeholderText.toArgbLong(),
 )
 
 private fun Color.toArgbLong(): Long = toArgb().toLong() and 0xFFFF_FFFFL

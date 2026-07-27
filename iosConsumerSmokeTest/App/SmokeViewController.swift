@@ -26,7 +26,9 @@ final class SmokeViewController: UIViewController {
             blockSelectionEnabled: true,
             blockDraggingEnabled: true,
             isDark: false,
-            crashPolicy: .rethrow
+            crashPolicy: .rethrow,
+            blockIndentationEnabled: true,
+            emptyDocumentPlaceholderEnabled: false
         )
         return CascadeEditorController(initialJson: json, configuration: configuration)
     }()

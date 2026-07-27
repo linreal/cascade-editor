@@ -24,6 +24,9 @@ import io.github.linreal.cascade.editor.CrashPolicy
  *        are disabled and block dragging preserves the payload's original
  *        indentation. Ignored when [readOnly] is `true`, because read-only mode
  *        disables indentation changes regardless of this value.
+ * @param emptyDocumentPlaceholderEnabled When `true`, an editable document
+ *        containing only an empty root paragraph or heading shows the localized
+ *        empty-document placeholder. Read-only mode always suppresses it.
  */
 @Immutable
 public data class CascadeEditorConfig(
@@ -42,26 +45,8 @@ public data class CascadeEditorConfig(
      */
     val onInternalError: CascadeErrorReporter? = null,
     val blockIndentationEnabled: Boolean = true,
+    val emptyDocumentPlaceholderEnabled: Boolean = false,
 ) {
-    /**
-     * Compatibility constructor preserving the pre-indentation-configuration
-     * parameter order for binary callers.
-     */
-    public constructor(
-        readOnly: Boolean,
-        blockSelectionEnabled: Boolean,
-        blockDraggingEnabled: Boolean,
-        crashPolicy: CrashPolicy,
-        onInternalError: CascadeErrorReporter?,
-    ) : this(
-        readOnly = readOnly,
-        blockSelectionEnabled = blockSelectionEnabled,
-        blockDraggingEnabled = blockDraggingEnabled,
-        crashPolicy = crashPolicy,
-        onInternalError = onInternalError,
-        blockIndentationEnabled = true,
-    )
-
     public companion object {
         /** Editable default used when callers do not provide a config. */
         public val Default: CascadeEditorConfig = CascadeEditorConfig()

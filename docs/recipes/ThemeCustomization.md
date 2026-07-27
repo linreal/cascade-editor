@@ -68,7 +68,7 @@ Dark. If the app has its own appearance override, pass that Boolean instead.
 ## Native iOS (Swift/SwiftUI)
 
 The native SDK accepts colors as `0xAARRGGBB` values in a mutable
-`CascadeEditorColors` bag. Seed the bag first so it always contains all 24
+`CascadeEditorColors` bag. Seed the bag first so it always contains all 25
 slots:
 
 ```swift
@@ -147,7 +147,7 @@ variant change.
 
 ## Color-slot checklist
 
-Both APIs expose the same 24 semantic slots:
+Both APIs expose the same 25 semantic slots:
 
 `primary`, `onPrimary`, `text`, `popupBackground`,
 `unknownBlockBackground`, `toolbarIcon`, `toolbarIconDisabled`,
@@ -155,7 +155,7 @@ Both APIs expose the same 24 semantic slots:
 `contentDivider`, `slashSelectedItem`, `inlineCodeBackground`, `highlight`,
 `cursor`, `textSelectionBackground`, `quoteBorder`, `quoteBackground`,
 `selectionOverlay`, `linkText`, `error`, `codeBlockBackground`, and
-`toolbarBackground`.
+`toolbarBackground`, and `placeholderText`.
 
 Reference implementations:
 

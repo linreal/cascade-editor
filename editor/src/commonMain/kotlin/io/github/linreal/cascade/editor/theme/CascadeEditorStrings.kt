@@ -11,6 +11,7 @@ private const val DEFAULT_LINK_CANCEL_LABEL = "Cancel"
 private const val DEFAULT_LINK_REMOVE_LABEL = "Remove Link"
 private const val DEFAULT_LINK_TITLE_LABEL = "Title"
 private const val DEFAULT_LINK_URL_LABEL = "URL"
+private const val DEFAULT_EMPTY_DOCUMENT_PLACEHOLDER = "Start here\u2026"
 
 private val DEFAULT_LINK_VALIDATION_ERROR_LABEL: (LinkValidationError) -> String = { error ->
     when (error) {
@@ -66,6 +67,8 @@ public data class CascadeEditorStrings(
     val linkUrl: String = DEFAULT_LINK_URL_LABEL,
     /** Maps stable link validation errors to localized UI text. */
     val linkValidationError: (LinkValidationError) -> String = DEFAULT_LINK_VALIDATION_ERROR_LABEL,
+    /** Hint shown in the first block while the editable document is empty. */
+    val emptyDocumentPlaceholder: String = DEFAULT_EMPTY_DOCUMENT_PLACEHOLDER,
 ) {
     public companion object {
         /** Default [unsupportedBlock] lambda — extracted as a singleton for stable equality. */
@@ -94,6 +97,7 @@ public data class CascadeEditorStrings(
             linkTitle = DEFAULT_LINK_TITLE_LABEL,
             linkUrl = DEFAULT_LINK_URL_LABEL,
             linkValidationError = DEFAULT_LINK_VALIDATION_ERROR_LABEL,
+            emptyDocumentPlaceholder = DEFAULT_EMPTY_DOCUMENT_PLACEHOLDER,
         )
     }
 }

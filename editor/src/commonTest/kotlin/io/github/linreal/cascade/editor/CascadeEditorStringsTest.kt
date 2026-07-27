@@ -58,6 +58,11 @@ class CascadeEditorStringsTest {
     }
 
     @Test
+    fun `empty document placeholder is non-empty`() {
+        assertTrue(strings.emptyDocumentPlaceholder.isNotEmpty())
+    }
+
+    @Test
     fun `indentForward is non-empty`() {
         assertTrue(strings.indentForward.isNotEmpty())
     }
@@ -108,6 +113,13 @@ class CascadeEditorStringsTest {
         assertEquals("Retour", custom.back)
         // Other fields unchanged
         assertEquals(strings.bold, custom.bold)
+    }
+
+    @Test
+    fun `copy with custom empty document placeholder works`() {
+        val custom = strings.copy(emptyDocumentPlaceholder = "Commencez ici\u2026")
+
+        assertEquals("Commencez ici\u2026", custom.emptyDocumentPlaceholder)
     }
 
     @Test
@@ -188,5 +200,6 @@ class CascadeEditorStringsTest {
         assertEquals("Remove Link", strings.linkRemove)
         assertEquals("Title", strings.linkTitle)
         assertEquals("URL", strings.linkUrl)
+        assertEquals("Start here\u2026", strings.emptyDocumentPlaceholder)
     }
 }

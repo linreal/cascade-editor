@@ -1,7 +1,10 @@
 package io.github.linreal.cascade.editor.ui
 
+import androidx.compose.foundation.text.input.TextFieldState
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * Pure-logic coverage for the ZWSP-sentinel-guard classifier inside
@@ -116,5 +119,30 @@ class SentinelGuardClassificationTest {
             SentinelGuardAction.RestoreSentinel(zwspIndex = -1),
             classifySentinelChange(original, new),
         )
+    }
+
+    @Test
+    fun `sentinel-only field has empty visible text without allocation`() {
+        assertTrue(TextFieldState(zwsp).isVisibleTextEmpty())
+    }
+
+    @Test
+    fun `defensive raw empty field has empty visible text`() {
+        assertTrue(TextFieldState("").isVisibleTextEmpty())
+    }
+
+    @Test
+    fun `visible character after sentinel is not empty`() {
+        assertFalse(TextFieldState("${zwsp}x").isVisibleTextEmpty())
+    }
+
+    @Test
+    fun `single visible character without sentinel is not empty`() {
+        assertFalse(TextFieldState("x").isVisibleTextEmpty())
+    }
+
+    @Test
+    fun `whitespace counts as visible document content`() {
+        assertFalse(TextFieldState("${zwsp} ").isVisibleTextEmpty())
     }
 }

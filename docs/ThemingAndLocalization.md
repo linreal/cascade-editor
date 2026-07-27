@@ -2,7 +2,7 @@
 
 ## 1. Feature Overview
 
-This feature introduces a **theme + strings** configuration layer that lets consumers control every visual and textual aspect of the editor via three top-level parameters on `CascadeEditor()`. All hardcoded `Color(0x...)` values, font sizes, and UI strings have been replaced with reads from `CompositionLocal`-provided config objects. The editor ships light and dark presets and English defaults, while remaining fully open to custom palettes, typography, and translations. Existing consumers are unaffected — all new parameters have defaults that reproduce the previous behavior exactly.
+This feature introduces a **theme + strings** configuration layer that lets consumers control every visual and textual aspect of the editor via three top-level parameters on `CascadeEditor()`. All hardcoded `Color(0x...)` values, font sizes, and UI strings have been replaced with reads from `CompositionLocal`-provided config objects. The editor ships light and dark presets and English defaults, while remaining fully open to custom palettes, typography, and translations. The empty-document hint is available as an opt-in behavior.
 
 ---
 
@@ -12,10 +12,10 @@ This feature introduces a **theme + strings** configuration layer that lets cons
 
 | Class | Role |
 |-------|------|
-| `CascadeEditorColors` | `@Immutable data class` — 21 named color slots covering every hardcoded color in the editor plus rich-text rendering colors. Ships `light()` and `dark()` presets. |
+| `CascadeEditorColors` | `@Immutable data class` — 25 named color slots covering every editor visual, including the empty-document placeholder and rich-text rendering colors. Ships `light()` and `dark()` presets. |
 | `CascadeEditorTypography` | `@Immutable data class` — 11 `TextStyle` slots (body, heading1–6, code, slash UI, toolbar). Ships `default()`. Styles carry font properties only — **no color**. |
 | `CascadeEditorTheme` | Facade combining `colors` + `typography`. Ships `light()` / `dark()`. |
-| `CascadeEditorStrings` | `@Immutable data class` — UI chrome strings: toolbar accessibility labels, link popup labels, back button text, and error-message lambdas. Ships `default()` (English). |
+| `CascadeEditorStrings` | `@Immutable data class` — UI chrome strings: toolbar accessibility labels, link popup labels, the empty-document placeholder, back button text, and error-message lambdas. Ships `default()` (English). |
 | `BlockLocalizedStrings` | Per-block-type display name, description, and additive search keywords. |
 | `CascadeEditorBlockStrings` | `Map<typeId, BlockLocalizedStrings>` with a `forType()` lookup. Ships `default()` (English, mirrors `BlockRegistry`). |
 | `LocalCascadeTheme` | `internal staticCompositionLocalOf<CascadeEditorTheme>` |
@@ -62,6 +62,7 @@ Consumer
        ├─ CompositionLocalProvider(LocalCascadeStrings provides strings, ...)
        │    ├─ RichTextToolbar: localizedLabel(spec, strings) for accessibility
        │    ├─ SlashCommandPopup: strings.back for back button
+       │    ├─ TextBlockField: strings.emptyDocumentPlaceholder for an empty editable document
        │    └─ UnknownBlockRenderer: strings.unsupportedBlock(typeId)
        │
        └─ remember(blockStrings) {
@@ -144,6 +145,9 @@ CascadeEditor(
 ```kotlin
 // Provide French strings
 CascadeEditor(
+    config = CascadeEditorConfig(
+        emptyDocumentPlaceholderEnabled = true,
+    ),
     strings = CascadeEditorStrings(
         back = "\u2039 Retour",
         unsupportedBlock = { "Type de bloc non supporté : $it" },
@@ -164,6 +168,7 @@ CascadeEditor(
         linkTitle = "Titre",
         linkUrl = "URL",
         linkValidationError = { "URL invalide : $it" },
+        emptyDocumentPlaceholder = "Commencez ici…",
     ),
     blockStrings = CascadeEditorBlockStrings(
         blocks = mapOf(
@@ -202,7 +207,7 @@ Theme/string `CompositionLocal` instances (`LocalCascadeTheme`, `LocalCascadeStr
 | `ui/DropIndicator.kt` | Resolves `colors.primary` from theme when no color override; removed `DropIndicatorDefaults.Color` |
 | `ui/BackspaceAwareTextEdit.kt` | Added `cursorBrush` parameter |
 | `ui/renderers/TextBlockRenderer.kt` | Reads typography for heading/body/code styles; applies `colors.text` |
-| `ui/renderers/TextBlockField.kt` | Captures `colors.linkText`/`colors.inlineCodeBackground`/`colors.highlight`, passes them to SpanMapper via OutputTransformation |
+| `ui/renderers/TextBlockField.kt` | Renders the localized/themed empty-document placeholder beneath the real field; captures `colors.linkText`/`colors.inlineCodeBackground`/`colors.highlight` for SpanMapper |
 | `ui/renderers/TodoBlockRenderer.kt` | Reads theme for body typography + text color |
 | `ui/renderers/DividerBlockRenderer.kt` | Reads `colors.contentDivider` |
 | `ui/renderers/UnknownBlockRenderer.kt` | Reads `colors` + `strings` for background/text/error message |
@@ -227,6 +232,8 @@ Theme/string `CompositionLocal` instances (`LocalCascadeTheme`, `LocalCascadeStr
 **Default toolbar config sentinel check.** The highlight color injection uses reference identity (`toolbar.config === RichTextToolbarConfig.Default`) to detect the default config. Custom configs pass through untouched. This means copying the default config creates a new identity that bypasses injection.
 
 **String lambda equality.** `CascadeEditorStrings` is a data class, but lambdas don't participate in structural equality. Default lambdas such as `unsupportedBlock` and `linkValidationError` are extracted as singletons to ensure `CascadeEditorStrings.default() == CascadeEditorStrings.default()` holds true.
+
+**Placeholder is presentation, not content.** `emptyDocumentPlaceholder` is drawn beneath the existing text field only for a sole empty root paragraph or heading. Visibility uses the live text field's sentinel-aware empty check, so the ZWSP backspace sentinel never blocks the hint and the hint never enters blocks, serialization, history, selection, or preview mode. `CascadeEditorConfig.emptyDocumentPlaceholderEnabled` defaults to `false`; read-only mode suppresses the edit-oriented hint when explicitly enabled.
 
 **Typography excludes color.** `TextStyle` slots in `CascadeEditorTypography` carry size, weight, and font family only. Color is always applied from `CascadeEditorColors` at use-site via `.copy(color = colors.text)`. Providing a `TextStyle` with color set will have that color overridden.
 
