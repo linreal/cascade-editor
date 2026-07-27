@@ -44,8 +44,9 @@ public fun CascadeDocumentPreviewController.makeViewController(): UIViewControll
                 )
             }
         }
-        val theme = remember(configurationState.isDark) {
-            configurationState.resolveEditorTheme()
+        val customColors by customColorsSnapshot
+        val theme = remember(configurationState.isDark, customColors) {
+            configurationState.resolveEditorTheme(customColors)
         }
 
         CompositionLocalProvider(LocalResourceReader provides CascadeEditorResourceReader) {

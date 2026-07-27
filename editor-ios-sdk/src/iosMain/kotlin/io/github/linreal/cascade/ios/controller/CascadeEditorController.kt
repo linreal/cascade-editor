@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import io.github.linreal.cascade.editor.action.ClearFocus
 import io.github.linreal.cascade.editor.action.ClearSelection
 import io.github.linreal.cascade.editor.action.DeleteSelectedOrFocused
+import io.github.linreal.cascade.editor.action.FocusBlock
 import io.github.linreal.cascade.editor.core.Block
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockId
@@ -309,6 +310,23 @@ public class CascadeEditorController public constructor(
     }
 
     public fun reset(toJson: String): CascadeDocumentLoadResult = loadJson(toJson)
+
+    /**
+     * Focuses the document's first block through the normal editor focus path.
+     *
+     * Calls made before [makeViewController] are retained and take effect when
+     * the editor mounts. A text-editable first block requests the caret and
+     * software keyboard when the platform and current editor policy allow it;
+     * non-text and read-only blocks still receive editor focus without that
+     * keyboard guarantee.
+     */
+    public fun focusFirstBlock(): Unit = onMainThread(
+        fallback = {},
+    ) {
+        stateHolder.state.blocks.firstOrNull()?.let { first ->
+            dispatchStateAction(FocusBlock(first.id))
+        }
+    }
 
     public fun clearFocus(): Unit = onMainThread(
         fallback = {},

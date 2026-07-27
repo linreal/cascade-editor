@@ -220,6 +220,41 @@ class CascadeEditorControllerTest {
     }
 
     @Test
+    fun focusFirstBlockRetainsPreMountFocusAndNotifiesDirectly() {
+        val controller = CascadeEditorController()
+        val firstBlockId = controller.stateHolder.state.blocks.first().id
+        var stateChanges = 0
+        controller.onStateChanged = { stateChanges++ }
+
+        controller.focusFirstBlock()
+
+        assertEquals(firstBlockId, controller.stateHolder.state.focusedBlockId)
+        assertEquals(1, stateChanges)
+    }
+
+    @Test
+    fun focusFirstBlockClearsSelectionAndDefersMountedNotification() {
+        val controller = CascadeEditorController(
+            initialJson = CascadeEditorDocumentBuilder()
+                .paragraph("Title")
+                .paragraph("Body")
+                .buildJson(),
+        )
+        val firstBlockId = controller.stateHolder.state.blocks.first().id
+        val secondBlockId = controller.stateHolder.state.blocks[1].id
+        controller.stateHolder.dispatch(SelectBlock(secondBlockId))
+        var stateChanges = 0
+        controller.onStateChanged = { stateChanges++ }
+        controller.mounted = true
+
+        controller.focusFirstBlock()
+
+        assertEquals(firstBlockId, controller.stateHolder.state.focusedBlockId)
+        assertFalse(controller.hasSelection)
+        assertEquals(0, stateChanges)
+    }
+
+    @Test
     fun malformedJsonReturnsWarningInsteadOfThrowing() {
         val controller = CascadeEditorController(initialJson = null)
 

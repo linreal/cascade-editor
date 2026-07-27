@@ -94,6 +94,8 @@ let configuration = CascadeDocumentPreviewConfiguration(
 let controller = CascadeDocumentPreviewController(
     configuration: configuration
 )
+// appTheme is the host-resolved family and light/dark variant.
+controller.setColors(colors: appTheme.editorColors)
 let result = controller.loadJson(json: document.json)
 guard result.success else {
     // Surface or recover the malformed stored document.
@@ -107,6 +109,12 @@ guard result.success else {
    instead of remounting Compose. Give the host a bounded frame and disable its
    hit testing when the outer card owns taps.
 
+   When the host theme changes, call both
+   `controller.setDarkMode(value:)` and `controller.setColors(colors:)` on the
+   retained preview controller. The mutable color bag is snapshotted, and the
+   custom palette survives dark-mode updates. Use `clearCustomColors()` to
+   resume the built-in light/dark presets.
+
 4. Navigate by stable document ID to a separate `CascadeEditorController`.
    Debounce ordinary exports, synchronously flush pending edits when the scene
    leaves `.active` and before Back, and keep the editor open if persistence
@@ -118,6 +126,16 @@ do not cross into preview mode; unknown/custom JSON uses the bounded generic
 fallback. The Swift/native setting is `textScale: Double = 1.0`. Invalid values
 (non-finite, non-positive, or non-positive/non-finite after conversion to the
 core `Float`) normalize to `1.0`.
+
+## Verification
+
+- Scroll a populated grid and confirm card hosts keep stable identity without
+  nested scrolling or editor chrome.
+- Switch the host theme family and light/dark appearance without recreating a
+  card controller; preview ink should track the destination editor palette.
+- Reject malformed JSON and confirm the last valid preview remains visible.
+- Run `./gradlew :editor-ios-sdk:compileTestKotlinIosSimulatorArm64` for the
+  native controller contracts.
 
 Reference implementations:
 

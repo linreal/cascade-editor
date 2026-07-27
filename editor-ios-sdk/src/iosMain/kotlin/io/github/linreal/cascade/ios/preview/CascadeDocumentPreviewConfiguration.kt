@@ -3,6 +3,7 @@
 package io.github.linreal.cascade.ios.preview
 
 import io.github.linreal.cascade.editor.CascadeErrorReporter
+import io.github.linreal.cascade.editor.theme.CascadeEditorColors
 import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
 import io.github.linreal.cascade.editor.ui.CascadeDocumentPreviewConfig
 import io.github.linreal.cascade.editor.ui.ExperimentalCascadePreviewApi
@@ -86,5 +87,9 @@ internal fun CascadeDocumentPreviewConfiguration.toCoreConfig(
 private fun Double.toCoreTextScale(): Float =
     toFloat().takeIf { it.isFinite() && it > 0f } ?: DEFAULT_TEXT_SCALE.toFloat()
 
-internal fun CascadeDocumentPreviewConfiguration.resolveEditorTheme(): CascadeEditorTheme =
-    if (isDark) CascadeEditorTheme.dark() else CascadeEditorTheme.light()
+internal fun CascadeDocumentPreviewConfiguration.resolveEditorTheme(
+    customColors: CascadeEditorColors? = null,
+): CascadeEditorTheme {
+    val preset = if (isDark) CascadeEditorTheme.dark() else CascadeEditorTheme.light()
+    return if (customColors == null) preset else preset.copy(colors = customColors)
+}

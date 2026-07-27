@@ -6,8 +6,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import io.github.linreal.cascade.editor.CrashPolicy
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.UnknownBlockType
+import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
 import io.github.linreal.cascade.ios.controller.CascadeCrashPolicy
 import io.github.linreal.cascade.ios.model.CascadeEditorDocumentBuilder
+import io.github.linreal.cascade.ios.theme.CascadeEditorColors
 import platform.Foundation.NSDate
 import platform.Foundation.NSRunLoop
 import platform.Foundation.NSThread
@@ -206,6 +208,38 @@ class CascadeDocumentPreviewControllerTest {
 
         assertEquals(initial.copy(isDark = true), controller.configuration)
         assertEquals(initial.copy(isDark = true), controller.configurationSnapshot.value)
+    }
+
+    @Test
+    fun controllerSnapshotsRuntimeColorsAndCanRestorePresetSelection() {
+        val controller = CascadeDocumentPreviewController()
+        val colors = CascadeEditorColors()
+        colors.primary = 0xFF123456L
+        val expected = colors.snapshot()
+
+        controller.setColors(colors)
+
+        assertEquals(expected, controller.customColorsSnapshot.value)
+        assertEquals(
+            expected,
+            controller.configurationSnapshot.value.resolveEditorTheme(expected).colors,
+        )
+
+        colors.primary = 0xFFABCDEFL
+        assertEquals(expected, controller.customColorsSnapshot.value)
+
+        controller.setDarkMode(true)
+        assertEquals(
+            expected,
+            controller.configurationSnapshot.value.resolveEditorTheme(expected).colors,
+        )
+
+        controller.clearCustomColors()
+        assertNull(controller.customColorsSnapshot.value)
+        assertEquals(
+            CascadeEditorTheme.dark(),
+            controller.configurationSnapshot.value.resolveEditorTheme(),
+        )
     }
 
     @Test

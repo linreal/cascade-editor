@@ -229,6 +229,7 @@ final class io.github.linreal.cascade.ios.controller/CascadeEditorController { /
     final fun exportJson(): kotlin/String // io.github.linreal.cascade.ios.controller/CascadeEditorController.exportJson|exportJson(){}[0]
     final fun exportPlainText(): kotlin/String // io.github.linreal.cascade.ios.controller/CascadeEditorController.exportPlainText|exportPlainText(){}[0]
     final fun exportRichText(): io.github.linreal.cascade.ios.model/CascadeRichTextSnapshot // io.github.linreal.cascade.ios.controller/CascadeEditorController.exportRichText|exportRichText(){}[0]
+    final fun focusFirstBlock() // io.github.linreal.cascade.ios.controller/CascadeEditorController.focusFirstBlock|focusFirstBlock(){}[0]
     final fun indentBackward() // io.github.linreal.cascade.ios.controller/CascadeEditorController.indentBackward|indentBackward(){}[0]
     final fun indentForward() // io.github.linreal.cascade.ios.controller/CascadeEditorController.indentForward|indentForward(){}[0]
     final fun loadHtml(kotlin/String): io.github.linreal.cascade.ios.controller/CascadeDocumentLoadResult // io.github.linreal.cascade.ios.controller/CascadeEditorController.loadHtml|loadHtml(kotlin.String){}[0]
@@ -471,7 +472,9 @@ final class io.github.linreal.cascade.ios.preview/CascadeDocumentPreviewControll
         final fun <get-onOpenLink>(): kotlin/Function1<kotlin/String, kotlin/Unit>? // io.github.linreal.cascade.ios.preview/CascadeDocumentPreviewController.onOpenLink.<get-onOpenLink>|<get-onOpenLink>(){}[0]
         final fun <set-onOpenLink>(kotlin/Function1<kotlin/String, kotlin/Unit>?) // io.github.linreal.cascade.ios.preview/CascadeDocumentPreviewController.onOpenLink.<set-onOpenLink>|<set-onOpenLink>(kotlin.Function1<kotlin.String,kotlin.Unit>?){}[0]
 
+    final fun clearCustomColors() // io.github.linreal.cascade.ios.preview/CascadeDocumentPreviewController.clearCustomColors|clearCustomColors(){}[0]
     final fun loadJson(kotlin/String): io.github.linreal.cascade.ios.controller/CascadeDocumentLoadResult // io.github.linreal.cascade.ios.preview/CascadeDocumentPreviewController.loadJson|loadJson(kotlin.String){}[0]
+    final fun setColors(io.github.linreal.cascade.ios.theme/CascadeEditorColors) // io.github.linreal.cascade.ios.preview/CascadeDocumentPreviewController.setColors|setColors(io.github.linreal.cascade.ios.theme.CascadeEditorColors){}[0]
     final fun setDarkMode(kotlin/Boolean) // io.github.linreal.cascade.ios.preview/CascadeDocumentPreviewController.setDarkMode|setDarkMode(kotlin.Boolean){}[0]
     final fun updateConfiguration(io.github.linreal.cascade.ios.preview/CascadeDocumentPreviewConfiguration) // io.github.linreal.cascade.ios.preview/CascadeDocumentPreviewController.updateConfiguration|updateConfiguration(io.github.linreal.cascade.ios.preview.CascadeDocumentPreviewConfiguration){}[0]
 }

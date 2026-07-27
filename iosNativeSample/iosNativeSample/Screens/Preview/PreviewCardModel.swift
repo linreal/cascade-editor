@@ -14,11 +14,11 @@ final class PreviewCardModel: ObservableObject {
     @Published private(set) var errorMessage = ""
 
     private var currentJson: String
-    private var currentIsDark: Bool
+    private var currentThemeName: String
 
-    init(json: String, isDark: Bool) {
+    init(json: String, theme: AppTheme) {
         currentJson = json
-        currentIsDark = isDark
+        currentThemeName = theme.name
 
         let configuration = CascadeDocumentPreviewConfiguration(
             maxBlocks: 4,
@@ -26,10 +26,11 @@ final class PreviewCardModel: ObservableObject {
             textScale: 0.8,
             textSelectionEnabled: false,
             linksEnabled: false,
-            isDark: isDark,
+            isDark: theme.isDark,
             crashPolicy: CascadeCrashPolicy.containAndReport
         )
         controller = CascadeDocumentPreviewController(configuration: configuration)
+        controller.setColors(colors: theme.editorColors)
 
         controller.onInternalError = { [weak self] message in
             self?.errorMessage = message
@@ -44,7 +45,7 @@ final class PreviewCardModel: ObservableObject {
         }
     }
 
-    func update(json: String, isDark: Bool) {
+    func update(json: String, theme: AppTheme) {
         if json != currentJson {
             let result = controller.loadJson(json: json)
             if result.success {
@@ -55,9 +56,10 @@ final class PreviewCardModel: ObservableObject {
             }
         }
 
-        if isDark != currentIsDark {
-            currentIsDark = isDark
-            controller.setDarkMode(value: isDark)
+        if theme.name != currentThemeName {
+            currentThemeName = theme.name
+            controller.setDarkMode(value: theme.isDark)
+            controller.setColors(colors: theme.editorColors)
         }
     }
 }

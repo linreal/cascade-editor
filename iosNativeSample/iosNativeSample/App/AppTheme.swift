@@ -26,7 +26,7 @@ enum SampleThemeFamily: CaseIterable, Hashable {
 struct AppTheme {
     let name: String
     let isDark: Bool
-    /// Complete SDK palette applied through `CascadeEditorController.setColors`.
+    /// Complete SDK palette applied through editable and preview controllers.
     let editorColors: CascadeEditorColors
 
     // Material-scheme equivalents used by the shared chrome.

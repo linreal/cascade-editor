@@ -35,7 +35,6 @@ struct PreviewGalleryScreen: View {
                     ForEach(library.documents) { document in
                         PreviewDocumentCard(
                             document: document,
-                            isDark: isDark,
                             theme: theme,
                             onOpen: { onOpenDocument(document.id) }
                         )
@@ -76,7 +75,6 @@ struct PreviewGalleryScreen: View {
 
 private struct PreviewDocumentCard: View {
     let document: PreviewDocument
-    let isDark: Bool
     let theme: AppTheme
     let onOpen: () -> Void
 
@@ -84,16 +82,14 @@ private struct PreviewDocumentCard: View {
 
     init(
         document: PreviewDocument,
-        isDark: Bool,
         theme: AppTheme,
         onOpen: @escaping () -> Void
     ) {
         self.document = document
-        self.isDark = isDark
         self.theme = theme
         self.onOpen = onOpen
         _model = StateObject(
-            wrappedValue: PreviewCardModel(json: document.json, isDark: isDark)
+            wrappedValue: PreviewCardModel(json: document.json, theme: theme)
         )
     }
 
@@ -155,13 +151,13 @@ private struct PreviewDocumentCard: View {
         )
         .accessibilityHint("Opens the editable document")
         .onAppear {
-            model.update(json: document.json, isDark: isDark)
+            model.update(json: document.json, theme: theme)
         }
         .onChange(of: document.json) { _, newJson in
-            model.update(json: newJson, isDark: isDark)
+            model.update(json: newJson, theme: theme)
         }
-        .onChange(of: isDark) { _, newValue in
-            model.update(json: document.json, isDark: newValue)
+        .onChange(of: theme.name) { _, _ in
+            model.update(json: document.json, theme: theme)
         }
     }
 }

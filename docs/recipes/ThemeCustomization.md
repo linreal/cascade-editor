@@ -65,6 +65,9 @@ fun EditorScreen(family: ThemeFamily) {
 so an open editor automatically moves from, for example, Forest Light to Forest
 Dark. If the app has its own appearance override, pass that Boolean instead.
 
+Pass the same resolved `CascadeEditorTheme` to `CascadeDocumentPreview` so
+preview cards and their destination editors use identical colors.
+
 ## Native iOS (Swift/SwiftUI)
 
 The native SDK accepts colors as `0xAARRGGBB` values in a mutable
@@ -145,6 +148,17 @@ observe `UITraitCollection` or SwiftUI environment changes itself. `setColors`
 snapshots the bag, so mutate it first and then call `setColors` again for every
 variant change.
 
+Retained native preview controllers expose the same palette bridge:
+
+```swift
+previewController.setDarkMode(value: isDark)
+previewController.setColors(colors: family.colors(isDark: isDark))
+```
+
+Apply both calls to every live `CascadeDocumentPreviewController` when the
+family or appearance changes. `clearCustomColors()` on either controller
+restores the built-in preset selected by `setDarkMode`.
+
 ## Color-slot checklist
 
 Both APIs expose the same 25 semantic slots:
@@ -157,8 +171,20 @@ Both APIs expose the same 25 semantic slots:
 `selectionOverlay`, `linkText`, `error`, `codeBlockBackground`, and
 `toolbarBackground`, and `placeholderText`.
 
+## Verification
+
+- Switch theme family and light/dark appearance while an editor and preview
+  card remain mounted; both should update without controller recreation.
+- Mutate a previously applied native color bag and confirm nothing changes
+  until `setColors` is called again.
+- Call `clearCustomColors()` after `setDarkMode(true)` and confirm the built-in
+  dark preset returns.
+- Run `./gradlew :editor-ios-sdk:compileTestKotlinIosSimulatorArm64` for the
+  native palette bridge contracts.
+
 Reference implementations:
 
 - Multiplatform: `sample/src/commonMain/kotlin/io/github/linreal/cascade/theme/SampleEditorTheme.kt`
 - Native iOS: `iosNativeSample/iosNativeSample/App/AppTheme.swift` and
   `iosNativeSample/iosNativeSample/Screens/EditorDemoScreen.swift`
+- Native iOS preview: `iosNativeSample/iosNativeSample/Screens/Preview/PreviewCardModel.swift`

@@ -213,11 +213,17 @@ Derived state:
 
 Editing commands:
 
-- `clearFocus()`, `clearSelection()`, `deleteSelectedOrFocused()`
+- `focusFirstBlock()`, `clearFocus()`, `clearSelection()`, `deleteSelectedOrFocused()`
 - `undo()`, `redo()`
 - `toggleBold()`, `toggleItalic()`, `toggleUnderline()`, `toggleStrikeThrough()`, `toggleInlineCode()`, `toggleHighlight(argb)`
 - `indentForward()`, `indentBackward()`
 - `applyLink(url, title)`, `removeLink()`
+
+`focusFirstBlock()` may be called before or after `makeViewController()`.
+Pre-mount focus is retained and enters the normal focus pipeline when the
+editor mounts. A text-editable first block then requests the caret and software
+keyboard when current editor policy and platform input allow it; non-text or
+read-only first blocks receive editor focus without a keyboard guarantee.
 
 Runtime configuration, colors, and localization:
 
@@ -294,6 +300,8 @@ Presentation and loading:
 - `configuration` exposes the current presentation snapshot.
 - `updateConfiguration(value)` updates all presentation policy at once.
 - `setDarkMode(value)` updates only `isDark`.
+- `setColors(CascadeEditorColors)` snapshots and applies a complete host
+  palette; `clearCustomColors()` resumes the built-in light/dark preset.
 - `CascadeDocumentPreviewConfiguration` exposes positive bounded
   `maxBlocks`/`maxLinesPerTextBlock`, `textScale`, `textSelectionEnabled`,
   `linksEnabled`, `isDark`, and `crashPolicy`. Defaults are four blocks, three
@@ -326,8 +334,17 @@ guard loadResult.success else {
     // Surface or recover the malformed stored document.
     return
 }
+// theme is the host-resolved family and light/dark variant.
+preview.setColors(colors: theme.editorColors)
 let viewController = preview.makeViewController()
 ```
+
+The preview and editable controllers accept the same `CascadeEditorColors`
+bridge, so a grid card and its destination editor can share one resolved host
+palette. Call both `setDarkMode` and `setColors` when a named theme or
+appearance changes. Both controllers snapshot the mutable color bag, preserve
+the custom palette across `setDarkMode`, and expose `clearCustomColors()` to
+return to preset selection.
 
 The sample's `CascadeDocumentPreviewHost` wraps the view controller with
 `UIViewControllerRepresentable`. `PreviewGalleryScreen` uses a bounded

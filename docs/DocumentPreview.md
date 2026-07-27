@@ -101,9 +101,9 @@ to the core `Float`) normalize to `1.0`.
 
 Create and retain one controller and one returned view controller for each live
 UIKit or SwiftUI cell. Supply a bounded frame, update the existing controller
-with `loadJson(...)`, `updateConfiguration(...)`, or `setDarkMode(...)`, and
-release it when the cell leaves the collection. The outer collection owns
-scrolling, stable item identity, reuse, and navigation.
+with `loadJson(...)`, `updateConfiguration(...)`, `setDarkMode(...)`, or
+`setColors(...)`, and release it when the cell leaves the collection. The outer
+collection owns scrolling, stable item identity, reuse, and navigation.
 
 ```swift
 let controller = CascadeDocumentPreviewController(
@@ -119,6 +119,8 @@ guard loadResult.success else {
     // Surface or recover the malformed stored document.
     return
 }
+// theme is the host-resolved family and light/dark variant.
+controller.setColors(colors: theme.editorColors)
 let previewViewController = controller.makeViewController()
 ```
 
@@ -127,6 +129,13 @@ returns any non-fatal decode warnings. A parse failure returns `success = false`
 and preserves the preview already on screen. `onInternalError` receives
 contained preview errors and main-thread misuse. `onOpenLink` is the only link
 opening seam; without that callback, links are visual-only.
+
+`setColors(colors:)` uses the same complete `CascadeEditorColors` bridge as the
+editable controller and snapshots values immediately. Later mutations to the
+bag do not affect the mounted preview until `setColors` is called again. The
+custom palette survives `setDarkMode`; call both methods when the host changes
+a named theme or light/dark appearance. `clearCustomColors()` returns to the
+built-in preset selected by `isDark`.
 
 The native sample is an integration reference rather than a second editor
 implementation:

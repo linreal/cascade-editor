@@ -9,10 +9,12 @@ import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.serialization.DocumentDecodeWarning
 import io.github.linreal.cascade.editor.serialization.DocumentSchema
 import io.github.linreal.cascade.editor.theme.CascadeEditorBlockStrings
+import io.github.linreal.cascade.editor.theme.CascadeEditorColors as CoreCascadeEditorColors
 import io.github.linreal.cascade.editor.theme.CascadeEditorStrings
 import io.github.linreal.cascade.editor.ui.createEditorRegistry
 import io.github.linreal.cascade.ios.controller.CascadeDocumentLoadResult
 import io.github.linreal.cascade.ios.controller.toCascadeWarningMessage
+import io.github.linreal.cascade.ios.theme.CascadeEditorColors
 import kotlin.experimental.ExperimentalObjCName
 import kotlin.native.ObjCName
 import platform.Foundation.NSThread
@@ -50,6 +52,8 @@ public class CascadeDocumentPreviewController public constructor(
     internal val strings: CascadeEditorStrings = CascadeEditorStrings.default()
     internal val blockStrings: CascadeEditorBlockStrings = CascadeEditorBlockStrings.default()
     internal val hasLinkOpenerSnapshot: MutableState<Boolean> = mutableStateOf(false)
+    internal val customColorsSnapshot: MutableState<CoreCascadeEditorColors?> =
+        mutableStateOf(null)
 
     private var currentConfiguration: CascadeDocumentPreviewConfiguration = configuration
     private var openLinkCallback: ((String) -> Unit)? = null
@@ -123,6 +127,25 @@ public class CascadeDocumentPreviewController public constructor(
     /** Convenience update for hosts following a native light/dark theme. */
     public fun setDarkMode(value: Boolean): Unit = onMainThread(fallback = {}) {
         updateConfigurationOnMain(currentConfiguration.copy(isDark = value))
+    }
+
+    /**
+     * Applies a complete custom color palette to the mounted preview.
+     *
+     * Values are snapshotted immediately, so mutating [colors] afterwards has no
+     * effect until this method is called again. The custom palette remains active
+     * across [setDarkMode] calls.
+     */
+    public fun setColors(colors: CascadeEditorColors): Unit = onMainThread(fallback = {}) {
+        customColorsSnapshot.value = colors.snapshot()
+    }
+
+    /**
+     * Removes the custom palette and resumes the built-in light/dark presets
+     * selected by [setDarkMode].
+     */
+    public fun clearCustomColors(): Unit = onMainThread(fallback = {}) {
+        customColorsSnapshot.value = null
     }
 
     internal fun openLink(target: String): Unit = onMainThread(fallback = {}) {

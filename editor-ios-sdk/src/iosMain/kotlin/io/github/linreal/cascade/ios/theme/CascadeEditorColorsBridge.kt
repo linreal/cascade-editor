@@ -12,8 +12,9 @@ import kotlin.native.ObjCName
  * Complete Swift-facing color palette for CascadeEditor.
  *
  * Construct from the built-in light or dark preset, customize any fields, then
- * apply it through `CascadeEditorController.setColors`. Every value is a
- * 32-bit `0xAARRGGBB` color stored in a Swift-friendly `Int64`.
+ * apply it through `CascadeEditorController.setColors` or
+ * `CascadeDocumentPreviewController.setColors`. Every value is a 32-bit
+ * `0xAARRGGBB` color stored in a Swift-friendly `Int64`.
  *
  * Values are snapshotted when applied: mutating this bag afterwards has no
  * effect until `setColors` is called again.
