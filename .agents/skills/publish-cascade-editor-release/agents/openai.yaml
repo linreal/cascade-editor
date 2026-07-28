@@ -1,0 +1,4 @@
+interface:
+  display_name: "Publish Cascade Editor Release"
+  short_description: "Prepare and publish a guarded Cascade release"
+  default_prompt: "Use $publish-cascade-editor-release to publish Cascade Editor version 1.10.0."
