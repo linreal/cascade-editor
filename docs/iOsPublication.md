@@ -78,9 +78,9 @@ Use a new patch version. Existing tags and assets are immutable; do not move
    source tag:
 
    ```bash
-   git tag -a v1.8.1 -m "CascadeEditor 1.8.1"
+   git tag -a v1.9.0 -m "CascadeEditor 1.9.0"
    git push origin main
-   git push origin v1.8.1
+   git push origin v1.9.0
    ```
 
 Pushing the tag starts `.github/workflows/release-ios-sdk.yml`. The manual

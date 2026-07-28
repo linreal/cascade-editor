@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.9.0] - 2026-07-28
+
+### Added
+
+- Added the experimental `CascadeDocumentPreview` API for bounded, static
+  document summaries in Compose lists, grids, feeds, and search results without
+  mounting editor state, text fields, focus, history, or internal scrolling
+- Added configurable preview block and line limits, text scaling, optional text
+  selection, host-owned link handling, dedicated custom preview renderers, and
+  bounded fallbacks for unknown or custom blocks
+- Added the experimental native iOS `CascadeDocumentPreviewController` and
+  `CascadeDocumentPreviewConfiguration` with JSON loading, live configuration
+  and theme updates, link and error callbacks, and a non-scrolling UIKit host
+- Added persisted preview-gallery and edit-round-trip examples to both the
+  Compose Multiplatform and native Swift samples
+- Added the Swift-visible `CascadeEditorColors` palette and runtime
+  `setColors()` / `clearCustomColors()` support for editable and preview
+  controllers
+- Added an opt-in empty-document placeholder with configurable localized text
+  and theme color, including native iOS configuration and localization bridges
+- Added `CascadeEditorController.focusFirstBlock()` for native hosts that need
+  to move directly from a preview into editing
+
 ## [1.8.1] - 2026-07-26
 
 ### Added
@@ -7,9 +30,6 @@
 - Added Swift Package Manager publication assets, a reproducible release ZIP
   and checksum script, embedded dSYMs and dependency notices, and tag-driven
   GitHub Release automation
-- Added a clean-room UIKit consumer app that links only the packaged Swift
-  binary target, builds for a generic iOS device, and UI-tests the editor and
-  toolbar resources on an iOS simulator
 - Added the SDK privacy manifest for file-timestamp and system-boot-time
   required-reason APIs used by the linked Compose/Skiko runtime
 
@@ -17,9 +37,6 @@
 
 - Changed the iOS SDK from a static to a dynamic XCFramework so SwiftPM embeds
   the framework-owned Compose resources without a consumer copy phase
-- Made the Swift-visible SDK version and framework bundle metadata derive from
-  the shared Gradle `VERSION_NAME`; set the framework deployment target to
-  iOS 16.0
 
 ### Fixed
 
