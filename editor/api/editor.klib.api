@@ -3033,7 +3033,7 @@ final class io.github.linreal.cascade.editor.ui/CascadeDocumentPreviewConfig { /
 }
 
 final class io.github.linreal.cascade.editor.ui/CascadeEditorConfig { // io.github.linreal.cascade.editor.ui/CascadeEditorConfig|null[0]
-    constructor <init>(kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., io.github.linreal.cascade.editor/CrashPolicy = ..., kotlin/Function1<io.github.linreal.cascade.editor/CascadeError, kotlin/Unit>? = ..., kotlin/Boolean = ..., kotlin/Boolean = ...) // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.<init>|<init>(kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;io.github.linreal.cascade.editor.CrashPolicy;kotlin.Function1<io.github.linreal.cascade.editor.CascadeError,kotlin.Unit>?;kotlin.Boolean;kotlin.Boolean){}[0]
+    constructor <init>(kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., io.github.linreal.cascade.editor/CrashPolicy = ..., kotlin/Function1<io.github.linreal.cascade.editor/CascadeError, kotlin/Unit>? = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ...) // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.<init>|<init>(kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;io.github.linreal.cascade.editor.CrashPolicy;kotlin.Function1<io.github.linreal.cascade.editor.CascadeError,kotlin.Unit>?;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean){}[0]
 
     final val blockDraggingEnabled // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.blockDraggingEnabled|{}blockDraggingEnabled[0]
         final fun <get-blockDraggingEnabled>(): kotlin/Boolean // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.blockDraggingEnabled.<get-blockDraggingEnabled>|<get-blockDraggingEnabled>(){}[0]
@@ -3045,6 +3045,8 @@ final class io.github.linreal.cascade.editor.ui/CascadeEditorConfig { // io.gith
         final fun <get-crashPolicy>(): io.github.linreal.cascade.editor/CrashPolicy // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.crashPolicy.<get-crashPolicy>|<get-crashPolicy>(){}[0]
     final val emptyDocumentPlaceholderEnabled // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.emptyDocumentPlaceholderEnabled|{}emptyDocumentPlaceholderEnabled[0]
         final fun <get-emptyDocumentPlaceholderEnabled>(): kotlin/Boolean // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.emptyDocumentPlaceholderEnabled.<get-emptyDocumentPlaceholderEnabled>|<get-emptyDocumentPlaceholderEnabled>(){}[0]
+    final val keyboardInsetsEnabled // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.keyboardInsetsEnabled|{}keyboardInsetsEnabled[0]
+        final fun <get-keyboardInsetsEnabled>(): kotlin/Boolean // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.keyboardInsetsEnabled.<get-keyboardInsetsEnabled>|<get-keyboardInsetsEnabled>(){}[0]
     final val onInternalError // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.onInternalError|{}onInternalError[0]
         final fun <get-onInternalError>(): kotlin/Function1<io.github.linreal.cascade.editor/CascadeError, kotlin/Unit>? // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.onInternalError.<get-onInternalError>|<get-onInternalError>(){}[0]
     final val readOnly // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.readOnly|{}readOnly[0]
@@ -3057,7 +3059,8 @@ final class io.github.linreal.cascade.editor.ui/CascadeEditorConfig { // io.gith
     final fun component5(): kotlin/Function1<io.github.linreal.cascade.editor/CascadeError, kotlin/Unit>? // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.component5|component5(){}[0]
     final fun component6(): kotlin/Boolean // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.component6|component6(){}[0]
     final fun component7(): kotlin/Boolean // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.component7|component7(){}[0]
-    final fun copy(kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., io.github.linreal.cascade.editor/CrashPolicy = ..., kotlin/Function1<io.github.linreal.cascade.editor/CascadeError, kotlin/Unit>? = ..., kotlin/Boolean = ..., kotlin/Boolean = ...): io.github.linreal.cascade.editor.ui/CascadeEditorConfig // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.copy|copy(kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;io.github.linreal.cascade.editor.CrashPolicy;kotlin.Function1<io.github.linreal.cascade.editor.CascadeError,kotlin.Unit>?;kotlin.Boolean;kotlin.Boolean){}[0]
+    final fun component8(): kotlin/Boolean // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.component8|component8(){}[0]
+    final fun copy(kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., io.github.linreal.cascade.editor/CrashPolicy = ..., kotlin/Function1<io.github.linreal.cascade.editor/CascadeError, kotlin/Unit>? = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ...): io.github.linreal.cascade.editor.ui/CascadeEditorConfig // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.copy|copy(kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;io.github.linreal.cascade.editor.CrashPolicy;kotlin.Function1<io.github.linreal.cascade.editor.CascadeError,kotlin.Unit>?;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.github.linreal.cascade.editor.ui/CascadeEditorConfig.toString|toString(){}[0]

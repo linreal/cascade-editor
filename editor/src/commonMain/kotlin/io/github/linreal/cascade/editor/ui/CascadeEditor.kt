@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -523,7 +524,14 @@ public fun CascadeEditor(
         // Outer Column: editor content (weight=1f) + toolbar at bottom.
         // Toolbar is OUTSIDE the drag gesture Box to prevent drag events
         // hitting toolbar children.
-        Column(modifier = modifier.fillMaxWidth()) {
+        // Applying IME padding at this boundary keeps content and toolbar in
+        // the same inset coordinate space.
+        val rootModifier = if (config.keyboardInsetsEnabled) {
+            modifier.fillMaxWidth().imePadding()
+        } else {
+            modifier.fillMaxWidth()
+        }
+        Column(modifier = rootModifier) {
             Box(
                 modifier = Modifier
                     .weight(1f)

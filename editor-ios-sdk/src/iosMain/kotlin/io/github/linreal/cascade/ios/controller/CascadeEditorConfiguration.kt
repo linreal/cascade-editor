@@ -2,9 +2,11 @@
 
 package io.github.linreal.cascade.ios.controller
 
+import io.github.linreal.cascade.editor.CascadeErrorReporter
 import io.github.linreal.cascade.editor.CrashPolicy
 import io.github.linreal.cascade.editor.theme.CascadeEditorColors
 import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
+import io.github.linreal.cascade.editor.ui.CascadeEditorConfig
 import kotlin.experimental.ExperimentalObjCName
 import kotlin.native.ObjCName
 
@@ -33,12 +35,26 @@ public data class CascadeEditorConfiguration(
     public val crashPolicy: CascadeCrashPolicy = CascadeCrashPolicy.containAndReport,
     public val blockIndentationEnabled: Boolean = true,
     public val emptyDocumentPlaceholderEnabled: Boolean = false,
+    public val keyboardInsetsEnabled: Boolean = false,
 )
 
 internal fun CascadeCrashPolicy.toCoreCrashPolicy(): CrashPolicy = when (this) {
     CascadeCrashPolicy.containAndReport -> CrashPolicy.ContainAndReport
     CascadeCrashPolicy.rethrow -> CrashPolicy.Rethrow
 }
+
+internal fun CascadeEditorConfiguration.toCoreEditorConfig(
+    onInternalError: CascadeErrorReporter? = null,
+): CascadeEditorConfig = CascadeEditorConfig(
+    readOnly = readOnly,
+    blockSelectionEnabled = blockSelectionEnabled,
+    blockDraggingEnabled = blockDraggingEnabled,
+    crashPolicy = crashPolicy.toCoreCrashPolicy(),
+    onInternalError = onInternalError,
+    blockIndentationEnabled = blockIndentationEnabled,
+    emptyDocumentPlaceholderEnabled = emptyDocumentPlaceholderEnabled,
+    keyboardInsetsEnabled = keyboardInsetsEnabled,
+)
 
 /**
  * The theme the hosted editor mounts for this configuration. Extracted so tests

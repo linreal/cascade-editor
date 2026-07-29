@@ -27,6 +27,11 @@ import io.github.linreal.cascade.editor.CrashPolicy
  * @param emptyDocumentPlaceholderEnabled When `true`, an editable document
  *        containing only an empty root paragraph or heading shows the localized
  *        empty-document placeholder. Read-only mode always suppresses it.
+ * @param keyboardInsetsEnabled When `true`, the editor applies the platform
+ *        software-keyboard inset to its root so document content and built-in
+ *        toolbar move together. Leave this `false` when the host already resizes
+ *        or pads the editor for the keyboard, otherwise the inset is applied
+ *        twice.
  */
 @Immutable
 public data class CascadeEditorConfig(
@@ -46,6 +51,7 @@ public data class CascadeEditorConfig(
     val onInternalError: CascadeErrorReporter? = null,
     val blockIndentationEnabled: Boolean = true,
     val emptyDocumentPlaceholderEnabled: Boolean = false,
+    val keyboardInsetsEnabled: Boolean = false,
 ) {
     public companion object {
         /** Editable default used when callers do not provide a config. */

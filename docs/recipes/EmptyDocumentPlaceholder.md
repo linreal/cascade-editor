@@ -46,7 +46,8 @@ let configuration = CascadeEditorConfiguration(
     isDark: false,
     crashPolicy: .containAndReport,
     blockIndentationEnabled: true,
-    emptyDocumentPlaceholderEnabled: true
+    emptyDocumentPlaceholderEnabled: true,
+    keyboardInsetsEnabled: false
 )
 
 let controller = CascadeEditorController(
@@ -69,4 +70,3 @@ The localization and color calls are optional; omit them to use the built-in
 `Start here…` string and the preset placeholder color. For an existing
 controller, pass the updated full configuration to
 `controller.updateConfiguration(value:)`.
-

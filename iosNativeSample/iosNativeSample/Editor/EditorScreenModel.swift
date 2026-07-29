@@ -90,7 +90,8 @@ extension CascadeEditorConfiguration {
             isDark: isDark,
             crashPolicy: .containAndReport,
             blockIndentationEnabled: true,
-            emptyDocumentPlaceholderEnabled: true
+            emptyDocumentPlaceholderEnabled: true,
+            keyboardInsetsEnabled: true
         )
     }
 }

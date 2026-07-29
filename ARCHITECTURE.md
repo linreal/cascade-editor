@@ -21,13 +21,14 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 | Native iOS SDK technical context | `docs/iOsNativeSdk.md` | Editable and preview Swift facades, bounded UIKit host lifecycle, native custom blocks/slash commands, runtime colors, public API, integration constraints |
 | Theme customization recipes | `docs/recipes/ThemeCustomization.md` | Agent-oriented Compose Multiplatform and native Swift tutorials for complete palettes and family-aware runtime appearance switching |
 | Empty-document placeholder recipe | `docs/recipes/EmptyDocumentPlaceholder.md` | Short Compose Multiplatform and native Swift setup examples for enabling and customizing the opt-in placeholder |
+| Keyboard-inset ownership recipe | `docs/recipes/KeyboardInsets.md` | Compose Multiplatform and native Swift integration contract for single-owner software-keyboard avoidance |
 | Native iOS color bridge | `editor-ios-sdk/src/iosMain/kotlin/io/github/linreal/cascade/ios/theme/CascadeEditorColorsBridge.kt` | Swift-visible `CascadeEditorColors` complete ARGB palette; controller snapshot mapping into core colors |
 | Native iOS publication runbook | `docs/iOsPublication.md` | Version/tag contract, GitHub/SwiftPM setup, immutable release sequence, recovery |
 | Release publication skill | `.agents/skills/publish-cascade-editor-release/` | Repository-scoped SemVer release preparation, validation, immutable tagging, Maven Central publication, and iOS SwiftPM verification workflow |
 | Native iOS release packaging | `scripts/package-ios-sdk.sh`, `distribution/swift-package/` | Serializes memory-heavy native test/release linking, verifies the dynamic Release XCFramework, and emits one-root ZIP, SHA-256, and external Swift package files |
 | Native iOS clean consumer validation | `scripts/validate-ios-consumer.sh`, `iosConsumerSmokeTest/` | Packaging installs an ignored ZIP-derived framework for direct Xcode use; validation removes it in a temporary copy, then performs generic-device Release and simulator UI/resource tests using only the supplied packaged binary |
 | Native iOS framework resources/privacy | `editor-ios-sdk/PrivacyInfo.xcprivacy`, `editor-ios-sdk/src/iosMain/kotlin/io/github/linreal/cascade/ios/resources/CascadeEditorResourceReader.kt` | Required-reason manifest and exact framework-bundle Compose resource lookup |
-| Editor behavior config | `ui/CascadeEditorConfig.kt`, `ui/LocalCascadeEditorConfig.kt` | `CascadeEditorConfig` (incl. `emptyDocumentPlaceholderEnabled`, `crashPolicy`/`onInternalError`), `LocalCascadeEditorConfig` |
+| Editor behavior config | `ui/CascadeEditorConfig.kt`, `ui/LocalCascadeEditorConfig.kt` | `CascadeEditorConfig` (incl. `emptyDocumentPlaceholderEnabled`, `keyboardInsetsEnabled`, `crashPolicy`/`onInternalError`), `LocalCascadeEditorConfig` |
 | Crash handling | `CrashHandling.kt` | `CrashPolicy`, `CascadeError`, `CascadeErrorReporter`, `guarded()`/`reportContainedFailure()` (internal) |
 | Editor interaction policy | `ui/EditorInteractionPolicy.kt`, `ui/LocalEditorInteractionPolicy.kt` | `EditorInteractionPolicy` (internal) |
 | Text input | `ui/BackspaceAwareTextEdit.kt` | `BackspaceAwareTextField()`, `TextFieldState.selectedVisibleText()` |
@@ -279,6 +280,8 @@ Static preview text is built by `buildPreviewAnnotatedString()` from exact visib
 
 > **Why not sync text via LaunchedEffect?** Causes cursor jumps, race conditions, and double-init. `BlockTextStates` avoids all of this by owning the `TextFieldState` directly.
 
+**Keyboard inset ownership** — `CascadeEditorConfig.keyboardInsetsEnabled` is a layout policy rather than an interaction capability. When enabled, the editor root consumes the platform IME inset so content and toolbar move together. It defaults off because the host must be the only other possible inset owner; safe-area and non-keyboard system insets remain host-owned.
+
 ## Action System
 
 All state changes go through `EditorAction.reduce(state) → newState`.
@@ -403,6 +406,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Keyboard shortcuts — formatting | Done | Cmd+B/I/U (macOS) / Ctrl+B/I/U (other) via `onPreviewKeyEvent` in `TextBlockField` + `LocalFormattingActions` |
 | Keyboard shortcuts — other | Partial | Undo/redo history shortcuts are implemented alongside formatting shortcuts; broader non-formatting shortcut coverage is still open |
 | iOS keyboard dismiss | Done | `HideKeyboardToolbarButton` pinned to trailing toolbar edge, iOS-only via `isIos` expect/actual; dispatches `ClearFocus` |
+| Software-keyboard inset ownership | Done | Opt-in `CascadeEditorConfig.keyboardInsetsEnabled` applies IME padding at the editor root; native `CascadeEditorConfiguration` mirrors it, the iOS sample enables it, and host-owned keyboard avoidance remains the default for compatibility |
 | Native iOS binary publication | Done | Reproducible Release ZIP/checksum and SwiftPM manifest generation, privacy metadata, exact-bundle resources, tag-driven immutable GitHub Release flow, and clean generic-device/simulator consumer validation |
 
 ## Known Gaps
@@ -474,6 +478,8 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | `SlashPopupUtilsTest.kt` | Popup pure functions: estimatePopupHeightDp (compact/clamped), calculatePopupOffset (below/above/clamp), resolveNextHighlight (null/down/up/first/last/clamped/unknown) |
 | `CascadeEditorSlashIntegrationTest.kt` | Slash integration: registry coexistence (built-in + custom), custom override, custom execution alongside built-ins, session invalidation pure function (no session, healthy, drag, selection, anchor missing, different block deleted), full scenarios (drag start, anchor deletion) |
 | `CascadeEditorColorsTest.kt` | Light/dark presets: non-transparent slots including `linkText` and `placeholderText`, known values, light vs dark differ on key slots, copy/equality semantics |
+| `CascadeEditorConfigTest.kt` | Shared editor behavior defaults, including opt-in placeholder and software-keyboard inset ownership |
+| `editor-ios-sdk/.../CascadeEditorControllerTest.kt` | Native controller defaults and configuration-to-core mapping, including keyboard-inset ownership and error reporting |
 | `editor-ios-sdk/.../CascadeEditorColorsBridgeTest.kt` | Native iOS bridge: light/dark preset parity, all 25 Swift-facing ARGB slots map exactly, runtime values are snapshotted, custom palettes survive semantic dark-mode changes, and clearing restores preset selection |
 | `CascadeEditorTypographyTest.kt` | Default preset: positive font sizes, monotonically decreasing headings, monospace code, medium-weight toolbar, copy/equality |
 | `CascadeEditorStringsTest.kt` | Default preset: non-empty strings including the empty-document placeholder, unsupportedBlock interpolation, copy with custom values, known English defaults |

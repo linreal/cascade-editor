@@ -15,6 +15,7 @@ class CascadeEditorConfigTest {
         assertTrue(CascadeEditorConfig.Default.blockDraggingEnabled)
         assertTrue(CascadeEditorConfig.Default.blockIndentationEnabled)
         assertFalse(CascadeEditorConfig.Default.emptyDocumentPlaceholderEnabled)
+        assertFalse(CascadeEditorConfig.Default.keyboardInsetsEnabled)
         assertEquals(
             CascadeEditorConfig(
                 readOnly = false,
@@ -22,6 +23,7 @@ class CascadeEditorConfigTest {
                 blockDraggingEnabled = true,
                 blockIndentationEnabled = true,
                 emptyDocumentPlaceholderEnabled = false,
+                keyboardInsetsEnabled = false,
             ),
             CascadeEditorConfig.Default,
         )

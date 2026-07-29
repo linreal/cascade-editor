@@ -1,5 +1,7 @@
 package io.github.linreal.cascade.ios.controller
 
+import io.github.linreal.cascade.editor.CascadeErrorReporter
+import io.github.linreal.cascade.editor.CrashPolicy
 import io.github.linreal.cascade.editor.action.FocusBlock
 import io.github.linreal.cascade.editor.action.SelectBlock
 import io.github.linreal.cascade.editor.core.Block
@@ -47,8 +49,34 @@ class CascadeEditorControllerTest {
         assertEquals(CascadeCrashPolicy.containAndReport, configuration.crashPolicy)
         assertTrue(configuration.blockIndentationEnabled)
         assertFalse(configuration.emptyDocumentPlaceholderEnabled)
+        assertFalse(configuration.keyboardInsetsEnabled)
         assertEquals(configuration, emptyController.configuration)
         assertEquals("Seed", jsonController.exportPlainText())
+    }
+
+    @Test
+    fun editorConfigurationMapsKeyboardInsetsAndReporterToCoreConfig() {
+        val reporter: CascadeErrorReporter = {}
+        val configuration = CascadeEditorConfiguration(
+            readOnly = true,
+            blockSelectionEnabled = false,
+            blockDraggingEnabled = false,
+            crashPolicy = CascadeCrashPolicy.rethrow,
+            blockIndentationEnabled = false,
+            emptyDocumentPlaceholderEnabled = true,
+            keyboardInsetsEnabled = true,
+        )
+
+        val core = configuration.toCoreEditorConfig(reporter)
+
+        assertTrue(core.readOnly)
+        assertFalse(core.blockSelectionEnabled)
+        assertFalse(core.blockDraggingEnabled)
+        assertEquals(CrashPolicy.Rethrow, core.crashPolicy)
+        assertSame(reporter, core.onInternalError)
+        assertFalse(core.blockIndentationEnabled)
+        assertTrue(core.emptyDocumentPlaceholderEnabled)
+        assertTrue(core.keyboardInsetsEnabled)
     }
 
     @Test

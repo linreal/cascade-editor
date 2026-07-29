@@ -150,7 +150,7 @@ final class io.github.linreal.cascade.ios.controller/CascadeDocumentLoadResult {
 }
 
 final class io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration { // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration|null[0]
-    constructor <init>(kotlin/Boolean = ..., io.github.linreal.cascade.ios.controller/CascadeToolbarMode = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., io.github.linreal.cascade.ios.controller/CascadeCrashPolicy = ..., kotlin/Boolean = ..., kotlin/Boolean = ...) // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.<init>|<init>(kotlin.Boolean;io.github.linreal.cascade.ios.controller.CascadeToolbarMode;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;io.github.linreal.cascade.ios.controller.CascadeCrashPolicy;kotlin.Boolean;kotlin.Boolean){}[0]
+    constructor <init>(kotlin/Boolean = ..., io.github.linreal.cascade.ios.controller/CascadeToolbarMode = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., io.github.linreal.cascade.ios.controller/CascadeCrashPolicy = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ...) // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.<init>|<init>(kotlin.Boolean;io.github.linreal.cascade.ios.controller.CascadeToolbarMode;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;io.github.linreal.cascade.ios.controller.CascadeCrashPolicy;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean){}[0]
 
     final val blockDraggingEnabled // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.blockDraggingEnabled|{}blockDraggingEnabled[0]
         final fun <get-blockDraggingEnabled>(): kotlin/Boolean // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.blockDraggingEnabled.<get-blockDraggingEnabled>|<get-blockDraggingEnabled>(){}[0]
@@ -164,6 +164,8 @@ final class io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration 
         final fun <get-emptyDocumentPlaceholderEnabled>(): kotlin/Boolean // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.emptyDocumentPlaceholderEnabled.<get-emptyDocumentPlaceholderEnabled>|<get-emptyDocumentPlaceholderEnabled>(){}[0]
     final val isDark // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.isDark|{}isDark[0]
         final fun <get-isDark>(): kotlin/Boolean // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.isDark.<get-isDark>|<get-isDark>(){}[0]
+    final val keyboardInsetsEnabled // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.keyboardInsetsEnabled|{}keyboardInsetsEnabled[0]
+        final fun <get-keyboardInsetsEnabled>(): kotlin/Boolean // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.keyboardInsetsEnabled.<get-keyboardInsetsEnabled>|<get-keyboardInsetsEnabled>(){}[0]
     final val readOnly // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.readOnly|{}readOnly[0]
         final fun <get-readOnly>(): kotlin/Boolean // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.readOnly.<get-readOnly>|<get-readOnly>(){}[0]
     final val slashCommandsEnabled // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.slashCommandsEnabled|{}slashCommandsEnabled[0]
@@ -172,6 +174,7 @@ final class io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration 
         final fun <get-toolbarMode>(): io.github.linreal.cascade.ios.controller/CascadeToolbarMode // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.toolbarMode.<get-toolbarMode>|<get-toolbarMode>(){}[0]
 
     final fun component1(): kotlin/Boolean // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.component1|component1(){}[0]
+    final fun component10(): kotlin/Boolean // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.component10|component10(){}[0]
     final fun component2(): io.github.linreal.cascade.ios.controller/CascadeToolbarMode // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.component2|component2(){}[0]
     final fun component3(): kotlin/Boolean // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.component3|component3(){}[0]
     final fun component4(): kotlin/Boolean // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.component4|component4(){}[0]
@@ -180,7 +183,7 @@ final class io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration 
     final fun component7(): io.github.linreal.cascade.ios.controller/CascadeCrashPolicy // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.component7|component7(){}[0]
     final fun component8(): kotlin/Boolean // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.component8|component8(){}[0]
     final fun component9(): kotlin/Boolean // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.component9|component9(){}[0]
-    final fun copy(kotlin/Boolean = ..., io.github.linreal.cascade.ios.controller/CascadeToolbarMode = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., io.github.linreal.cascade.ios.controller/CascadeCrashPolicy = ..., kotlin/Boolean = ..., kotlin/Boolean = ...): io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.copy|copy(kotlin.Boolean;io.github.linreal.cascade.ios.controller.CascadeToolbarMode;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;io.github.linreal.cascade.ios.controller.CascadeCrashPolicy;kotlin.Boolean;kotlin.Boolean){}[0]
+    final fun copy(kotlin/Boolean = ..., io.github.linreal.cascade.ios.controller/CascadeToolbarMode = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., io.github.linreal.cascade.ios.controller/CascadeCrashPolicy = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ...): io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.copy|copy(kotlin.Boolean;io.github.linreal.cascade.ios.controller.CascadeToolbarMode;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean;io.github.linreal.cascade.ios.controller.CascadeCrashPolicy;kotlin.Boolean;kotlin.Boolean;kotlin.Boolean){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.github.linreal.cascade.ios.controller/CascadeEditorConfiguration.toString|toString(){}[0]

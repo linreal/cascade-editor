@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ComposeUIViewController
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.ui.CascadeEditor
-import io.github.linreal.cascade.editor.ui.CascadeEditorConfig
 import io.github.linreal.cascade.editor.ui.LinkPopupSlot
 import io.github.linreal.cascade.editor.ui.SlashCommandSlot
 import io.github.linreal.cascade.editor.ui.ToolbarSlot
@@ -51,21 +50,12 @@ public fun CascadeEditorController.makeViewController(): UIViewController = onMa
         val configurationState by configurationSnapshot
         val customColors by customColorsSnapshot
         val editorConfig = remember(configurationState) {
-            CascadeEditorConfig(
-                readOnly = configurationState.readOnly,
-                blockSelectionEnabled = configurationState.blockSelectionEnabled,
-                blockDraggingEnabled = configurationState.blockDraggingEnabled,
-                blockIndentationEnabled = configurationState.blockIndentationEnabled,
-                crashPolicy = configurationState.crashPolicy.toCoreCrashPolicy(),
-                onInternalError = { error ->
-                    reportInternalError(
-                        "CascadeEditor ${error.context} failed: " +
-                            (error.cause.message ?: error.cause.toString())
-                    )
-                },
-                emptyDocumentPlaceholderEnabled =
-                    configurationState.emptyDocumentPlaceholderEnabled,
-            )
+            configurationState.toCoreEditorConfig { error ->
+                reportInternalError(
+                    "CascadeEditor ${error.context} failed: " +
+                        (error.cause.message ?: error.cause.toString())
+                )
+            }
         }
         val theme = remember(configurationState.isDark, customColors) {
             configurationState.resolveEditorTheme(customColors)

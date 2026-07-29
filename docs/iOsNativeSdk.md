@@ -37,6 +37,14 @@ This is a facade pattern: Swift sees curated value objects and controller method
 
 `CascadeEditorController.makeViewController()` creates a `ComposeUIViewController` and mounts `CascadeEditor` with the controller-owned state, runtime holders, and registries. It maps `CascadeEditorConfiguration` to `CascadeEditorConfig`, theme, toolbar, link popup, and slash-command slots. A Swift-supplied color snapshot replaces all core `CascadeEditorColors` slots while retaining the preset typography and dimensions; without a custom snapshot, `isDark` selects the built-in light/dark theme. The host is created non-opaque (`opaque = false`): `CascadeEditor` paints no canvas background, so the native screen background behind the view controller shows through the editor.
 
+Keyboard avoidance has one explicit owner. `keyboardInsetsEnabled` defaults to
+`false` for compatibility with hosts that already resize or pad the editor. When
+enabled, Cascade applies the Compose IME inset to the root containing both the
+document viewport and built-in toolbar. The host must keep the returned view
+controller at its normal full height and must not also constrain its bottom to
+`keyboardLayoutGuide.topAnchor`; combining both strategies applies the inset
+twice. Safe-area and non-keyboard system insets remain host-owned.
+
 The host uses Compose snapshot state and `snapshotFlow` for two bridge streams:
 
 1. formatting, indentation, and link state are mapped into `CascadeToolbarState`;
@@ -180,7 +188,7 @@ The built-in slash executor also distinguishes text and non-text conversion targ
 ### SDK identity and configuration
 
 - `CascadeEditorSdk.version: String` — currently `"1.0.0"`.
-- `CascadeEditorConfiguration` — immutable configuration containing `readOnly`, `toolbarMode`, `slashCommandsEnabled`, `blockSelectionEnabled`, `blockDraggingEnabled`, `blockIndentationEnabled`, `emptyDocumentPlaceholderEnabled`, `isDark`, and `crashPolicy`. The placeholder flag defaults to `false`; when enabled, read-only mode still suppresses the edit-oriented hint.
+- `CascadeEditorConfiguration` — immutable configuration containing `readOnly`, `toolbarMode`, `slashCommandsEnabled`, `blockSelectionEnabled`, `blockDraggingEnabled`, `blockIndentationEnabled`, `emptyDocumentPlaceholderEnabled`, `keyboardInsetsEnabled`, `isDark`, and `crashPolicy`. The placeholder and keyboard-inset flags default to `false`; when the placeholder is enabled, read-only mode still suppresses the edit-oriented hint. Keyboard inset ownership is independent of read-only mode.
 - `CascadeToolbarMode` — `builtIn` or `none`; `none` disables both the built-in formatting toolbar and its link popup.
 - `CascadeCrashPolicy` — `containAndReport` or `rethrow`.
 
@@ -405,6 +413,10 @@ Back-button flush keeps the editor open and surfaces the save failure.
 - Custom-block mutations return `readOnly` when either editor read-only state or `BlockRenderScope.canUpdateBlock` denies mutation. `focusBlock()` remains available because it is not a document mutation.
 - Custom block height is clamped to `1...10,000` points; NaN/infinity falls back to `120` points. Native views must report height changes to avoid clipping or excess space.
 - Custom UIKit renderers opt out of live drag previews and receive a generic placeholder ghost. Renderer factory failures are reported and replaced with an empty `UIViewController`.
+- `keyboardInsetsEnabled` must have one layout owner. If Cascade consumes the
+  IME inset, the native host must not also resize or pad the editor against the
+  keyboard. Changing ownership at runtime requires updating host constraints
+  and the complete configuration together.
 - Native callbacks and custom-block `onChange` handlers are exception-contained. Errors in `onInternalError` itself are swallowed to prevent exceptions crossing the Swift/Objective-C boundary.
 - `exportPlainText()` omits non-text blocks completely. `exportRichText()` includes every block, representing non-text blocks with empty text/spans; unsupported custom span styles are omitted, and exported ranges are clamped to text length.
 - Rich-text offsets are core text offsets and are consumed as UTF-16 offsets by the Swift sample. Consumers combining block runs must shift ranges using UTF-16 length, not Swift grapheme-cluster count.
