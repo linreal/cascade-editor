@@ -220,6 +220,21 @@ An aborted import leaves the editor untouched. A successful import resets
 focus, selection, transient runtime state, and undo/redo history like other
 whole-document load paths.
 
+### Native iOS facade
+
+`CascadeEditorController.loadMarkdown`, `exportMarkdown`, and
+`exportMarkdownWithReport` bridge the default profile to Swift.
+`CascadeDocumentPreviewController.loadMarkdown` decodes the same bytes into an
+immutable preview snapshot. Both load paths preserve the current
+document/snapshot on abort.
+
+The native report types expose `hasDataLoss` plus human-readable warning
+messages prefixed by fidelity impact. Native persistence should use
+`exportMarkdownWithReport`; the nullable convenience export deliberately drops
+diagnostics. The facade does not expose custom profiles or `analyze`, so its
+supported storage boundary is app-owned canonical output. See
+[`docs/recipes/MarkdownPersistence.md`](recipes/MarkdownPersistence.md).
+
 ### Limits
 
 | Default limit | Value |

@@ -1,4 +1,7 @@
-@file:OptIn(io.github.linreal.cascade.editor.ui.ExperimentalCascadePreviewApi::class)
+@file:OptIn(
+    io.github.linreal.cascade.editor.markdown.ExperimentalCascadeMarkdownApi::class,
+    io.github.linreal.cascade.editor.ui.ExperimentalCascadePreviewApi::class,
+)
 
 package io.github.linreal.cascade.ios.preview
 
@@ -6,6 +9,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import io.github.linreal.cascade.editor.CrashPolicy
 import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.UnknownBlockType
+import io.github.linreal.cascade.editor.markdown.MarkdownCodecLimits
 import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
 import io.github.linreal.cascade.ios.controller.CascadeCrashPolicy
 import io.github.linreal.cascade.ios.model.CascadeEditorDocumentBuilder
@@ -170,6 +174,40 @@ class CascadeDocumentPreviewControllerTest {
             "Keep this preview",
             assertIs<BlockContent.Text>(controller.blocksSnapshot.value.single().content).text,
         )
+    }
+
+    @Test
+    fun validMarkdownLoadReplacesTheImmutablePreviewSnapshot() {
+        val controller = CascadeDocumentPreviewController()
+
+        val result = controller.loadMarkdown("# Field notes\n\nPreview body\n")
+
+        assertTrue(result.success)
+        assertFalse(result.hasDataLoss)
+        assertEquals(2, controller.blocksSnapshot.value.size)
+        assertEquals(
+            "Field notes",
+            assertIs<BlockContent.Text>(controller.blocksSnapshot.value[0].content).text,
+        )
+        assertEquals(
+            "Preview body",
+            assertIs<BlockContent.Text>(controller.blocksSnapshot.value[1].content).text,
+        )
+    }
+
+    @Test
+    fun abortedMarkdownLoadPreservesThePreviouslyLoadedPreviewSnapshot() {
+        val controller = CascadeDocumentPreviewController()
+        assertTrue(controller.loadMarkdown("Keep this preview\n").success)
+        val originalBlocks = controller.blocksSnapshot.value
+        val oversizedMarkdown = "x".repeat(MarkdownCodecLimits.Default.maxInputChars + 1)
+
+        val result = controller.loadMarkdown(oversizedMarkdown)
+
+        assertFalse(result.success)
+        assertFalse(result.hasDataLoss)
+        assertTrue(result.warningMessages.any { message -> message.startsWith("Fatal:") })
+        assertSame(originalBlocks, controller.blocksSnapshot.value)
     }
 
     @Test

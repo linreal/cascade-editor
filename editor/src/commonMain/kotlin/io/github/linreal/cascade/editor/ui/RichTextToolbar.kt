@@ -56,6 +56,7 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
 private val ToolbarPillShape = RoundedCornerShape(percent = 50)
+private val ToolbarShadowElevation = 8.dp
 private val ToolbarDividerPadding = Modifier.padding(horizontal = 4.dp)
 
 /**
@@ -100,12 +101,14 @@ internal fun RichTextToolbar(
             .fillMaxWidth()
             .focusProperties { canFocus = false }
             .padding(horizontal = 12.dp)
-            .padding(top = 4.dp, bottom = 12.dp),
+            // Keep the full shadow radius inside the toolbar layout bounds so
+            // parent or sibling clipping cannot flatten the top of the pill.
+            .padding(top = ToolbarShadowElevation, bottom = 12.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(8.dp, ToolbarPillShape)
+                .shadow(ToolbarShadowElevation, ToolbarPillShape)
                 .clip(ToolbarPillShape)
                 .background(colors.toolbarBackground)
                 .padding(start = 10.dp, end = 8.dp)

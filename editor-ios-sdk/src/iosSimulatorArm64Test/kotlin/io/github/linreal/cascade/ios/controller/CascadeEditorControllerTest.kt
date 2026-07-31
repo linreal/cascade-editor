@@ -1,3 +1,5 @@
+@file:OptIn(io.github.linreal.cascade.editor.markdown.ExperimentalCascadeMarkdownApi::class)
+
 package io.github.linreal.cascade.ios.controller
 
 import io.github.linreal.cascade.editor.CascadeErrorReporter
@@ -10,6 +12,7 @@ import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
 import io.github.linreal.cascade.editor.htmlserialization.HtmlDecodeWarning
+import io.github.linreal.cascade.editor.markdown.MarkdownCodecLimits
 import io.github.linreal.cascade.editor.registry.BlockDescriptor
 import io.github.linreal.cascade.editor.serialization.DocumentSchema
 import io.github.linreal.cascade.editor.theme.CascadeEditorTheme
@@ -134,6 +137,59 @@ class CascadeEditorControllerTest {
 
         assertTrue(result.success)
         assertEquals(jsonDocumentText(json), jsonDocumentText(controller.exportJson()))
+    }
+
+    @Test
+    fun loadAndExportMarkdownRoundTripWithReport() {
+        val markdown = "# Field notes\n\nBody text\n"
+        val controller = CascadeEditorController()
+
+        val loadResult = controller.loadMarkdown(markdown)
+        val exportResult = controller.exportMarkdownWithReport()
+
+        assertTrue(loadResult.success)
+        assertFalse(loadResult.hasDataLoss)
+        assertTrue(exportResult.success)
+        assertFalse(exportResult.hasDataLoss)
+        assertEquals(markdown, exportResult.markdown)
+        assertEquals(markdown, controller.exportMarkdown())
+    }
+
+    @Test
+    fun abortedMarkdownLoadPreservesTheCurrentDocument() {
+        val controller = CascadeEditorController(
+            initialJson = CascadeEditorDocumentBuilder().paragraph("Keep me").buildJson(),
+        )
+        val oversizedMarkdown = "x".repeat(MarkdownCodecLimits.Default.maxInputChars + 1)
+
+        val result = controller.loadMarkdown(oversizedMarkdown)
+
+        assertFalse(result.success)
+        assertFalse(result.hasDataLoss)
+        assertTrue(result.warningMessages.any { message -> message.startsWith("Fatal:") })
+        assertEquals("Keep me", controller.exportPlainText())
+    }
+
+    @Test
+    fun markdownExportReportSurfacesDataLoss() {
+        val json = DocumentSchema.encodeToString(
+            listOf(
+                Block.paragraph(
+                    text = "Styled",
+                    spans = listOf(
+                        TextSpan(0, 6, SpanStyle.Custom("native-only")),
+                    ),
+                ),
+            ),
+        )
+        val controller = CascadeEditorController(initialJson = json)
+
+        val result = controller.exportMarkdownWithReport()
+
+        assertTrue(result.success)
+        assertTrue(result.hasDataLoss)
+        assertNotNull(result.markdown)
+        assertTrue(result.warningMessages.any { message -> message.startsWith("DataLoss:") })
     }
 
     @Test

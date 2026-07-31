@@ -207,11 +207,24 @@ Document APIs:
 
 - `loadJson(json): CascadeDocumentLoadResult`
 - `loadHtml(html): CascadeHtmlLoadResult`
+- `loadMarkdown(markdown): CascadeMarkdownLoadResult` (experimental)
 - `reset(toJson): CascadeDocumentLoadResult`
 - `exportJson(): String`
 - `exportHtml(): String`
+- `exportMarkdown(): String?` (experimental convenience API)
+- `exportMarkdownWithReport(): CascadeMarkdownExportResult` (experimental)
 - `exportPlainText(): String`
 - `exportRichText(): CascadeRichTextSnapshot`
+
+The Markdown facade uses `MarkdownProfile.Default`. An aborted load preserves
+the current document and history; a successful load is a hard replacement and
+may still carry fidelity-loss diagnostics. `exportMarkdownWithReport()` exposes
+`hasDataLoss` so persistence code can reject a completed but lossy encode.
+`exportMarkdown()` discards diagnostics and is not the recommended save path.
+The facade does not yet expose `MarkdownSchema.analyze`; use it for app-owned
+canonical Markdown, not as the sole editor for arbitrary external files. The
+full persistence contract is in
+[`docs/recipes/MarkdownPersistence.md`](recipes/MarkdownPersistence.md).
 
 Derived state:
 
@@ -276,6 +289,11 @@ Callbacks:
 ### Document and rich-text models
 
 - `CascadeDocumentLoadResult(success, warningMessages)`; `CascadeHtmlLoadResult` is a type alias.
+- `CascadeMarkdownLoadResult(success, warningMessages, hasDataLoss)` reports
+  abort separately from a completed decode that lost fidelity.
+- `CascadeMarkdownExportResult(success, markdown, warningMessages, hasDataLoss)`
+  keeps successful empty output distinct from an abort and exposes a
+  machine-readable save guard.
 - `CascadeEditorDocumentBuilder` fluently adds paragraphs, headings, todos, bullet/numbered lists, quotes, code, dividers, and custom blocks, then emits canonical JSON with `buildJson()`.
 - `CascadeRichTextSnapshot` contains document-ordered `CascadeRichTextBlock` values.
 - `CascadeRichTextSpan(start, end, kind, argb, url)` exposes supported core span styles through `CascadeSpanKind`.
@@ -305,6 +323,9 @@ Presentation and loading:
 
 - `loadJson(json): CascadeDocumentLoadResult` decodes a new immutable preview
   snapshot. Parse failure preserves the previously displayed blocks.
+- `loadMarkdown(markdown): CascadeMarkdownLoadResult` uses the default
+  experimental Markdown profile. An aborted decode also preserves the
+  previously displayed blocks.
 - `configuration` exposes the current presentation snapshot.
 - `updateConfiguration(value)` updates all presentation policy at once.
 - `setDarkMode(value)` updates only `isDark`.

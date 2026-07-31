@@ -5,6 +5,8 @@ package io.github.linreal.cascade.ios.preview
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import io.github.linreal.cascade.editor.core.Block
+import io.github.linreal.cascade.editor.markdown.ExperimentalCascadeMarkdownApi
+import io.github.linreal.cascade.editor.markdown.MarkdownSchema
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.serialization.DocumentDecodeWarning
 import io.github.linreal.cascade.editor.serialization.DocumentSchema
@@ -13,6 +15,8 @@ import io.github.linreal.cascade.editor.theme.CascadeEditorColors as CoreCascade
 import io.github.linreal.cascade.editor.theme.CascadeEditorStrings
 import io.github.linreal.cascade.editor.ui.createEditorRegistry
 import io.github.linreal.cascade.ios.controller.CascadeDocumentLoadResult
+import io.github.linreal.cascade.ios.controller.CascadeMarkdownLoadResult
+import io.github.linreal.cascade.ios.controller.toCascadeMarkdownLoadResult
 import io.github.linreal.cascade.ios.controller.toCascadeWarningMessage
 import io.github.linreal.cascade.ios.theme.CascadeEditorColors
 import kotlin.experimental.ExperimentalObjCName
@@ -116,6 +120,30 @@ public class CascadeDocumentPreviewController public constructor(
                 warning.toCascadeWarningMessage()
             },
         )
+    }
+
+    /**
+     * Replaces the immutable preview snapshot with decoded Markdown.
+     *
+     * An aborted decode preserves the currently displayed snapshot. Successful
+     * loads may still report fidelity loss from content outside the default
+     * Markdown profile.
+     */
+    @ExperimentalCascadeMarkdownApi
+    public fun loadMarkdown(markdown: String): CascadeMarkdownLoadResult = onMainThread(
+        fallback = {
+            CascadeMarkdownLoadResult(
+                success = false,
+                warningMessages = listOf(MAIN_THREAD_ERROR),
+                hasDataLoss = false,
+            )
+        },
+    ) {
+        val result = MarkdownSchema.decodeWithReport(markdown)
+        result.blocks?.let { blocks ->
+            blocksSnapshot.value = blocks
+        }
+        result.toCascadeMarkdownLoadResult()
     }
 
     /** Replaces the presentation configuration observed by a mounted preview. */

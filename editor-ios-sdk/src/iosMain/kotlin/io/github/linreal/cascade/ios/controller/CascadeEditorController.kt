@@ -18,6 +18,9 @@ import io.github.linreal.cascade.editor.htmlserialization.HtmlDecodeWarning
 import io.github.linreal.cascade.editor.htmlserialization.HtmlProfile
 import io.github.linreal.cascade.editor.htmlserialization.loadFromHtml
 import io.github.linreal.cascade.editor.htmlserialization.toHtml
+import io.github.linreal.cascade.editor.markdown.ExperimentalCascadeMarkdownApi
+import io.github.linreal.cascade.editor.markdown.loadFromMarkdown
+import io.github.linreal.cascade.editor.markdown.toMarkdownWithReport
 import io.github.linreal.cascade.editor.registry.BlockDescriptor
 import io.github.linreal.cascade.editor.registry.BlockRegistry
 import io.github.linreal.cascade.editor.serialization.DocumentDecodeWarning
@@ -250,6 +253,31 @@ public class CascadeEditorController public constructor(
     }
 
     /**
+     * Loads Markdown with the core default profile and replaces the document
+     * only when decoding completes.
+     *
+     * An aborted decode preserves the current document and history. A
+     * successful decode may still report fidelity loss; this API is intended
+     * for app-owned Markdown previously emitted by the matching Cascade codec.
+     */
+    @ExperimentalCascadeMarkdownApi
+    public fun loadMarkdown(markdown: String): CascadeMarkdownLoadResult = onMainThread(
+        fallback = {
+            CascadeMarkdownLoadResult(
+                success = false,
+                warningMessages = listOf(MAIN_THREAD_ERROR),
+                hasDataLoss = false,
+            )
+        },
+    ) {
+        val result = stateHolder.loadFromMarkdown(markdown, textStates, spanStates)
+        if (result.isSuccess) {
+            notifyDocumentAndStateChangedFromPublicMutation()
+        }
+        result.toCascadeMarkdownLoadResult()
+    }
+
+    /**
      * Exports the current document as canonical JSON.
      *
      * Safe to call from any thread: off-main calls hop synchronously onto the
@@ -267,6 +295,28 @@ public class CascadeEditorController public constructor(
      */
     public fun exportHtml(): String = onMainThreadSync {
         stateHolder.toHtml(textStates, spanStates, HtmlProfile.Default)
+    }
+
+    /**
+     * Exports the current document as Markdown, or `null` when encoding aborts.
+     *
+     * This convenience method discards diagnostics. Persistence code should use
+     * [exportMarkdownWithReport] and reject a result with `hasDataLoss = true`.
+     * It has the same threading contract as [exportJson].
+     */
+    @ExperimentalCascadeMarkdownApi
+    public fun exportMarkdown(): String? = exportMarkdownWithReport().markdown
+
+    /**
+     * Exports the current document as Markdown with Swift-facing diagnostics.
+     *
+     * A successful result can still be lossy when the document contains content
+     * outside the default Markdown profile, including unsupported custom data.
+     */
+    @ExperimentalCascadeMarkdownApi
+    public fun exportMarkdownWithReport(): CascadeMarkdownExportResult = onMainThreadSync {
+        stateHolder.toMarkdownWithReport(textStates, spanStates)
+            .toCascadeMarkdownExportResult()
     }
 
     /**
