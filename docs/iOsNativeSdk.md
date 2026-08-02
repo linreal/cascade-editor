@@ -187,7 +187,7 @@ The built-in slash executor also distinguishes text and non-text conversion targ
 
 ### SDK identity and configuration
 
-- `CascadeEditorSdk.version: String` — currently `"1.0.0"`.
+- `CascadeEditorSdk.version: String` — currently `"1.9.1"`.
 - `CascadeEditorConfiguration` — immutable configuration containing `readOnly`, `toolbarMode`, `slashCommandsEnabled`, `blockSelectionEnabled`, `blockDraggingEnabled`, `blockIndentationEnabled`, `emptyDocumentPlaceholderEnabled`, `keyboardInsetsEnabled`, `isDark`, and `crashPolicy`. The placeholder and keyboard-inset flags default to `false`; when the placeholder is enabled, read-only mode still suppresses the edit-oriented hint. Keyboard inset ownership is independent of read-only mode.
 - `CascadeToolbarMode` — `builtIn` or `none`; `none` disables both the built-in formatting toolbar and its link popup.
 - `CascadeCrashPolicy` — `containAndReport` or `rethrow`.

@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.9.1] - 2026-08-02
+
+### Added
+
+- Added opt-in `keyboardInsetsEnabled` configuration for Compose Multiplatform
+  and native iOS so the document viewport and built-in toolbar can share one
+  software-keyboard inset
+- Added experimental default-profile Markdown load and export APIs to the
+  native iOS editor and preview controllers, including warning and data-loss
+  reports and preservation of existing content when decoding aborts
+
+### Changed
+
+- Native Swift callers constructing `CascadeEditorConfiguration` must now pass
+  `keyboardInsetsEnabled`; keep it `false` when the host already owns keyboard
+  avoidance, or enable it only when Cascade is the sole inset owner
+
+### Fixed
+
+- Fixed clipping of the built-in formatting toolbar's top shadow
+
 ## [1.9.0] - 2026-07-28
 
 ### Added

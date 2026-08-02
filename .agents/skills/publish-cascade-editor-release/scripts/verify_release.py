@@ -53,7 +53,9 @@ def run_git(root: Path, *args: str, check: bool = True) -> str:
     if check and result.returncode != 0:
         detail = result.stderr.strip() or result.stdout.strip()
         raise RuntimeError(f"git {' '.join(args)} failed: {detail}")
-    return result.stdout.strip()
+    # Preserve the leading status column from `git status --porcelain`. Using
+    # `strip()` here corrupts the first entry when its index column is blank.
+    return result.stdout.rstrip()
 
 
 def parse_version(raw: str) -> tuple[str, tuple[int, int, int]]:

@@ -44,7 +44,7 @@ the Apple Silicon `macos-26` image.
 ## Prepare a release
 
 Use a new patch version. Existing tags and assets are immutable; do not move
-`v1.8.0`. For the current publication, the version is `1.8.1`.
+`v1.8.0`. For the current publication, the version is `1.9.1`.
 
 1. Set `VERSION_NAME` in `gradle.properties`.
 2. Update `CHANGELOG.md`, README installation examples, and the version in
@@ -52,9 +52,9 @@ Use a new patch version. Existing tags and assets are immutable; do not move
 3. Run the local release gate:
 
    ```bash
-   scripts/package-ios-sdk.sh 1.8.1
+   scripts/package-ios-sdk.sh 1.9.1
    scripts/validate-ios-consumer.sh \
-     build/ios-release/1.8.1/CascadeEditor.xcframework.zip
+     build/ios-release/1.9.1/CascadeEditor.xcframework.zip
    ```
 
    Packaging also installs an ignored copy of that final ZIP under
@@ -78,9 +78,9 @@ Use a new patch version. Existing tags and assets are immutable; do not move
    source tag:
 
    ```bash
-   git tag -a v1.9.0 -m "CascadeEditor 1.9.0"
+   git tag -a v1.9.1 -m "CascadeEditor 1.9.1"
    git push origin main
-   git push origin v1.9.0
+   git push origin v1.9.1
    ```
 
 Pushing the tag starts `.github/workflows/release-ios-sdk.yml`. The manual
