@@ -78,6 +78,25 @@ for slice in "${SLICES[@]}"; do
     file "$binary" | grep -q "dynamically linked shared library" ||
         fail "$slice is not a dynamic framework"
 
+    # Kotlin/Native keeps a large local symbol table in the linked framework
+    # even though the matching dSYM already owns the debug information. Strip
+    # only the staged publication copy so Gradle outputs and dSYMs stay intact.
+    # The exported-symbol digest guards the Swift/Objective-C ABI boundary.
+    binary_size_before_strip="$(stat -f '%z' "$binary")"
+    exported_symbols_before_strip="$(
+        nm -gjU "$binary" | LC_ALL=C sort | shasum -a 256 | awk '{print $1}'
+    )"
+    xcrun strip -x "$binary"
+    binary_size_after_strip="$(stat -f '%z' "$binary")"
+    exported_symbols_after_strip="$(
+        nm -gjU "$binary" | LC_ALL=C sort | shasum -a 256 | awk '{print $1}'
+    )"
+    [[ "$exported_symbols_before_strip" == "$exported_symbols_after_strip" ]] ||
+        fail "$slice exported symbols changed during stripping"
+    (( binary_size_after_strip <= binary_size_before_strip )) ||
+        fail "$slice framework grew during stripping"
+    echo "$slice framework binary: $binary_size_before_strip -> $binary_size_after_strip bytes after local-symbol stripping"
+
     bundle_id="$(plutil -extract CFBundleIdentifier raw "$info_plist")"
     short_version="$(plutil -extract CFBundleShortVersionString raw "$info_plist")"
     build_version="$(plutil -extract CFBundleVersion raw "$info_plist")"

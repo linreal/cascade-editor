@@ -22,6 +22,11 @@ The ZIP contains exactly one `CascadeEditor.xcframework` root. Each dynamic
 framework slice contains Compose resources, `PrivacyInfo.xcprivacy`, the MIT
 license, dependency notices, and a matching dSYM. Supported slices are arm64
 iOS devices and arm64 Apple Silicon simulators; minimum deployment is iOS 16.0.
+Release linking enables Kotlin/Native's experimental `smallBinary` mode (LLVM
+`-Oz`). Packaging then strips local Mach-O symbols from the staged framework
+copies only, after dSYMs have been generated, and fails if the exported-symbol
+set changes. The distributed dSYMs retain the same UUIDs and full symbolication
+data.
 
 ## One-time GitHub setup
 
@@ -44,7 +49,7 @@ the Apple Silicon `macos-26` image.
 ## Prepare a release
 
 Use a new patch version. Existing tags and assets are immutable; do not move
-`v1.8.0`. For the current publication, the version is `1.9.1`.
+`v1.8.0`. For the current publication, the version is `1.9.2`.
 
 1. Set `VERSION_NAME` in `gradle.properties`.
 2. Update `CHANGELOG.md`, README installation examples, and the version in
@@ -52,9 +57,9 @@ Use a new patch version. Existing tags and assets are immutable; do not move
 3. Run the local release gate:
 
    ```bash
-   scripts/package-ios-sdk.sh 1.9.1
+   scripts/package-ios-sdk.sh 1.9.2
    scripts/validate-ios-consumer.sh \
-     build/ios-release/1.9.1/CascadeEditor.xcframework.zip
+     build/ios-release/1.9.2/CascadeEditor.xcframework.zip
    ```
 
    Packaging also installs an ignored copy of that final ZIP under
@@ -71,6 +76,11 @@ Use a new patch version. Existing tags and assets are immutable; do not move
    serialized prebuild before calling the tag's packaging script, allowing an
    existing immutable tag to be retried after workflow-only fixes on `main`.
 
+   `smallBinary` trades some runtime optimization for code size. Before a
+   Kotlin or Compose upgrade is released, exercise startup, typing, scrolling,
+   selection, drag, and large-document behavior in the native sample in
+   addition to the automated consumer gates.
+
 4. Review the committed public API dumps. If an intentional Swift-facing
    declaration changed, run `./gradlew :editor-ios-sdk:apiDump`, inspect the
    generated `CascadeEditor.h`, and commit the API change.
@@ -78,9 +88,9 @@ Use a new patch version. Existing tags and assets are immutable; do not move
    source tag:
 
    ```bash
-   git tag -a v1.9.1 -m "CascadeEditor 1.9.1"
+   git tag -a v1.9.2 -m "CascadeEditor 1.9.2"
    git push origin main
-   git push origin v1.9.1
+   git push origin v1.9.2
    ```
 
 Pushing the tag starts `.github/workflows/release-ios-sdk.yml`. The manual
@@ -93,6 +103,8 @@ Publication stops unless all of these pass:
 
 - Kotlin iOS SDK tests and binary API compatibility;
 - release links for arm64 device and arm64 simulator;
+- size-optimized Release linking plus staged local-symbol stripping, with an
+  unchanged exported-symbol digest;
 - dynamic Mach-O type and `@rpath` identity;
 - bundle ID, semantic version, and iOS 16.0 metadata;
 - Compose toolbar icon resources in both slices;

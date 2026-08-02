@@ -1,7 +1,7 @@
 # CascadeEditor iOS SDK dependency notices
 
 This inventory covers the dependencies linked into the distributed
-`CascadeEditor.xcframework` for version 1.9.1. CascadeEditor itself is licensed
+`CascadeEditor.xcframework` for version 1.9.2. CascadeEditor itself is licensed
 under the MIT License in the repository root.
 
 ## Apache License 2.0

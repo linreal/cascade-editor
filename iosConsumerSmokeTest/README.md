@@ -22,7 +22,7 @@ Run the isolated publication harness with:
 
 ```bash
 scripts/validate-ios-consumer.sh \
-  build/ios-release/1.9.1/CascadeEditor.xcframework.zip
+  build/ios-release/1.9.2/CascadeEditor.xcframework.zip
 ```
 
 The harness creates a temporary clean copy, removes any locally prepared

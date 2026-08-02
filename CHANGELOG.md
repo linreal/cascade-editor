@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.2] - 2026-08-02
+
+### Changed
+
+- Reduced the native iOS arm64 framework executable by about 32% using
+  size-optimized Kotlin/Native release linking and staged local-symbol
+  stripping, while preserving the exported Swift/Objective-C surface and
+  matching dSYMs
+
 ## [1.9.1] - 2026-08-02
 
 ### Added

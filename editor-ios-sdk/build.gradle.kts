@@ -79,6 +79,11 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "CascadeEditor"
             isStatic = false
+            // Favor install/download size for the distributed Release binary.
+            // Kotlin/Native maps this experimental option to LLVM -Oz for
+            // release linking; benchmark native editor interactions when
+            // upgrading Kotlin/Compose because -Oz can trade speed for size.
+            binaryOption("smallBinary", "true")
             binaryOption("bundleId", "io.github.linreal.cascade.editor")
             binaryOption("bundleShortVersionString", cascadeEditorVersion)
             binaryOption("bundleVersion", cascadeEditorVersion)

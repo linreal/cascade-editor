@@ -187,7 +187,7 @@ The built-in slash executor also distinguishes text and non-text conversion targ
 
 ### SDK identity and configuration
 
-- `CascadeEditorSdk.version: String` — currently `"1.9.1"`.
+- `CascadeEditorSdk.version: String` — currently `"1.9.2"`.
 - `CascadeEditorConfiguration` — immutable configuration containing `readOnly`, `toolbarMode`, `slashCommandsEnabled`, `blockSelectionEnabled`, `blockDraggingEnabled`, `blockIndentationEnabled`, `emptyDocumentPlaceholderEnabled`, `keyboardInsetsEnabled`, `isDark`, and `crashPolicy`. The placeholder and keyboard-inset flags default to `false`; when the placeholder is enabled, read-only mode still suppresses the edit-oriented hint. Keyboard inset ownership is independent of read-only mode.
 - `CascadeToolbarMode` — `builtIn` or `none`; `none` disables both the built-in formatting toolbar and its link popup.
 - `CascadeCrashPolicy` — `containAndReport` or `rethrow`.
@@ -416,7 +416,7 @@ Back-button flush keeps the editor open and surfaces the save failure.
 - **Rich text and toolbar:** the bridge maps `FormattingState`, `IndentationState`, and `LinkState` from `CascadeEditorToolbarController` into Swift-friendly state and actions.
 - **Localization and theme:** Swift string overrides resolve into core `CascadeEditorStrings` and `CascadeEditorBlockStrings`. `CascadeEditorColors` snapshots map all 25 ARGB slots into the core palette and recompose live. Without a custom palette, `isDark` selects the built-in colors; it remains exposed to native custom blocks in either mode.
 - **Local build:** `scripts/build-xcframework.sh` assembles the dynamic debug XCFramework at `editor-ios-sdk/build/XCFrameworks/debug/CascadeEditor.xcframework`. The Xcode sample links and embeds this local artifact.
-- **External distribution:** `scripts/package-ios-sdk.sh` tests and assembles the release framework, validates resources/privacy/version/dSYMs, and emits a one-root ZIP plus SwiftPM checksum and manifest. `release-ios-sdk.yml` publishes immutable source-tag assets and updates `linreal/cascade-editor-ios`.
+- **External distribution:** `scripts/package-ios-sdk.sh` tests and assembles the size-optimized release framework, strips local symbols from staged copies while preserving the exported-symbol set and dSYM UUIDs, validates resources/privacy/version/dSYMs, and emits a one-root ZIP plus SwiftPM checksum and manifest. `release-ios-sdk.yml` publishes immutable source-tag assets and updates `linreal/cascade-editor-ios`.
 - **Consumer validation:** `scripts/validate-ios-consumer.sh` stages the publication ZIP in `iosConsumerSmokeTest`, builds a generic-device Release app, executes its UI test on an arm64 simulator, and inspects the embedded framework.
 - **Release operations:** `docs/iOsPublication.md` is the publication and recovery runbook.
 
