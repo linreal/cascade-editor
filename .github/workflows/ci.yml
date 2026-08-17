@@ -45,7 +45,7 @@ jobs:
       - name: Check editor
         run: |
           ./gradlew \
-            :editor:assembleDebug \
+            :editor:assemble \
             :editor:allTests \
             :editor:apiCheck
 

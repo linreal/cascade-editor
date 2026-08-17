@@ -194,6 +194,8 @@ Block-based editor (Craft/Notion-like) for Compose Multiplatform. Unidirectional
 
 Unless a row uses an explicit module-root path such as `sample/src/...`, paths are relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
 
+Modules (AGP 9 layout): `editor` and `sample` are KMP libraries using `com.android.kotlin.multiplatform.library` (single Android variant, config inside `kotlin { android {} }`); `sample-android` is the pure-Android sample app hosting `MainActivity`, the manifest, and launcher resources; `editor-ios-sdk` has no Android target. Android host tests live in `src/androidHostTest/` (AGP 9 name for `androidUnitTest`).
+
 ## Layer Diagram
 
 ```
