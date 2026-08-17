@@ -9,7 +9,9 @@ git clone https://github.com/linreal/cascade-editor.git
 cd cascade-editor
 ```
 
-Open the project in Android Studio or IntelliJ IDEA with the Kotlin Multiplatform plugin installed.
+Open the project in Android Studio (Otter 3 / 2025.2.3 or newer — required for AGP 9). IntelliJ IDEA does not support AGP 9 yet, but can still be used for the non-Android targets (desktop, iOS, wasm).
+
+To run the Android sample, use the `sample-android` run configuration/module (the `sample` module is a KMP library; the Android entry point lives in `sample-android`).
 
 ## Running Tests
 

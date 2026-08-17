@@ -1,8 +1,9 @@
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.vanniktechPublish)
@@ -10,9 +11,10 @@ plugins {
 }
 
 // Public-API snapshots under api/ are verified by `apiCheck` (wired into `check`):
-// .api files cover the JVM/Android surface, .klib.api covers klib-backed targets
-// (iOS/wasm) at Kotlin-declaration level. After an intentional API change, refresh
-// the baseline with `./gradlew :editor:apiDump` and commit the diff.
+// api/desktop/editor.api covers the JVM surface (BCV does not hook the AGP 9 KMP
+// android target, but its API is identical to desktop's), .klib.api covers
+// klib-backed targets (iOS/wasm) at Kotlin-declaration level. After an intentional
+// API change, refresh the baseline with `./gradlew :editor:apiDump` and commit the diff.
 apiValidation {
     @OptIn(kotlinx.validation.ExperimentalBCVApi::class)
     klib {
@@ -23,11 +25,26 @@ apiValidation {
 kotlin {
     explicitApi()
 
-    androidTarget {
+    android {
+        namespace = "io.github.linreal.cascade.editor"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
+
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
-        publishLibraryVariants("release")
+
+        // Compose Multiplatform resources are packaged through the Android
+        // resource pipeline; without this they are silently dropped (CMP-9547)
+        androidResources { enable = true }
+
+        // androidHostTest runs commonTest against the android/ framework stubs
+        withHostTest {}
+
+        optimization {
+            consumerKeepRules.file("consumer-rules.pro")
+            consumerKeepRules.publish = true
+        }
     }
 
     jvm("desktop") {
@@ -36,6 +53,7 @@ kotlin {
         }
     }
 
+    @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         browser()
     }
@@ -74,31 +92,6 @@ kotlin {
                 implementation(compose.desktop.currentOs)
             }
         }
-    }
-}
-
-android {
-    namespace = "io.github.linreal.cascade.editor"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-
-    defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
-        consumerProguardFiles("consumer-rules.pro")
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
     }
 }
 

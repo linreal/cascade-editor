@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.2"
+agp = "9.0.1"
 android-compileSdk = "36"
 android-minSdk = "26"
 android-targetSdk = "36"
@@ -37,7 +37,7 @@ jetbrains-markdown = { module = "org.jetbrains:markdown", version.ref = "jetbrai
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
-androidLibrary = { id = "com.android.library", version.ref = "agp" }
+androidKmpLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "binaryCompatibilityValidator" }
 applePrivacyManifests = { id = "org.jetbrains.kotlin.apple-privacy-manifests", version.ref = "applePrivacyManifests" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }

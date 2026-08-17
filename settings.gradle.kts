@@ -29,5 +29,6 @@ dependencyResolutionManagement {
 }
 
 include(":sample")
+include(":sample-android")
 include(":editor")
 include(":editor-ios-sdk")
