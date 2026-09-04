@@ -360,7 +360,7 @@ private val CustomSupportSet: HtmlProfileSupportSet = HtmlProfileSupportSet(
 .withSupportSet(CustomSupportSet)
 ```
 
-`HtmlProfileSupportSet.supportsDocument(blocks)` automatically rejects (a) outlines that violate the parent/child indentation invariant and (b) documents whose `NumberedList(number)` values would change under `renumberNumberedLists()`. You only need to define the per-block / per-span predicates.
+`HtmlProfileSupportSet.supportsDocument(blocks)` automatically rejects (a) outlines with out-of-range depths or indentation on unsupported block types and (b) documents whose `NumberedList(number)` values would change under `renumberNumberedLists()`. Free/skipped depths and an indented first supported block are valid. You only need to define the per-block / per-span predicates.
 
 ### Optional steps
 
@@ -380,7 +380,7 @@ private val CustomSupportSet: HtmlProfileSupportSet = HtmlProfileSupportSet(
 - **Editor state holder.** `loadFromHtml` calls `setState(EditorState.withBlocks(result.blocks))`, the same hard-replacement path as `loadFromJson`. Focus, selection, slash, drag, undo/redo all reset.
 - **Core normalization helpers.** `HtmlDecodeEngine` runs `core.normalizeIndentationOutline(...)` then `core.renumberNumberedLists(...)` after each decode (`HtmlDecodeEngine.kt:23`). `HtmlProfileSupportSet.supportsDocument` reuses both helpers (plus `core.isValidIndentationOutline`) to reject non-normalized inputs from round-trip claims.
 - **Span rendering.** `HtmlEncodeContextImpl.encodeInlineFragment` runs `richtext.SpanAlgorithms.normalize(...)` before emitting tags — same algorithm `RichTextSchema` uses, so encoded output is consistent with persisted JSON.
-- **Link normalization.** Default `<a>` decode runs `richtext.LinkUrlPolicy.validate(...)` so persisted URLs match the editor's runtime contract; missing/blank/invalid `href` drops the link span and emits `HtmlDecodeWarning.DroppedAttribute`.
+- **Stored link targets.** Default `<a>` decode runs `richtext.LinkUrlPolicy.validateStoredTarget(...)`; surrounding whitespace is trimmed, blank targets are rejected, and every other `href` is preserved exactly. Missing or blank `href` drops the link span and emits `HtmlDecodeWarning.DroppedAttribute`.
 - **`BlockAttributes` visibility change.** `BlockAttributes.MIN_INDENTATION_LEVEL` and `MAX_INDENTATION_LEVEL` were `internal` and are now `public` so dialect profiles outside `:editor` can clamp depth correctly. Diff: `BlockAttributes.kt:25-27`.
 - **`ARCHITECTURE.md`.** Quick Reference + Implementation Status + testing tables updated to point at new files.
 
@@ -403,7 +403,7 @@ No existing JSON, span, or editor-state behavior was modified.
 
 - **`<br>` is context-dependent.** Inside a text context decoder, `<br>` returns `AsText("\n", emptyList())` so the surrounding block accumulates a literal newline. At root or in pure block context, `<br>` returns `Drop` and emits `HtmlDecodeWarning.DroppedContent` (`DefaultTagDecoders.kt:183`).
 - **`<pre>` / `<pre><code>` strip spans at the decode edge.** Code blocks do not support rich spans by editor model. `decodeCode` uses plain-text collection when `parentTag == "pre"`, so no `InlineCode` span leaks into a `BlockType.Code`. Outer `<pre>` decoder also drops a single trailing `\n` immediately before `</pre>` (matches `<pre>x\ny\n</pre>` → `"x\ny"`).
-- **`<a>` href validation.** Missing, blank, or invalid `href` → drop the link span entirely, keep the inner text, emit `DroppedAttribute(tag = "a", attr = "href", ...)`. Bare-domain URLs are normalized via `LinkUrlPolicy` before becoming `SpanStyle.Link`.
+- **`<a>` href validation.** Missing or blank `href` → drop the link span entirely, keep the inner text, emit `DroppedAttribute(tag = "a", attr = "href", ...)`. Any non-blank target is otherwise preserved exactly after trimming, including bare domains, relative paths, fragments, `mailto:`, `tel:`, and custom schemes.
 - **`<mark>` defaults.** No `data-cascade-highlight` → default yellow `0xFFFF_FF00` (`HtmlProfile.DEFAULT_HIGHLIGHT_COLOR_ARGB`). Malformed value (not 8 hex digits) → default yellow + `InvalidAttribute` warning.
 
 **Normalization And Lists**

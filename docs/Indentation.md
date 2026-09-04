@@ -1,6 +1,6 @@
 # Indentation — Technical Context
 
-> HTML import/export round-trips indentation through nested `<ul>` / `<ol>` for list outlines and `class="cascade-indent-N"` for free/skipped depths and indented non-list blocks. See [`HtmlImportExportFeatureContext.md`](HtmlImportExport.md) (`DefaultListOutlineEncoder`, `openTagWithCascadeIndentation`) for the encoding strategy and the `HtmlProfileSupportSet`-scoped round-trip claim.
+> HTML import/export round-trips indentation through nested `<ul>` / `<ol>` for list outlines and `class="cascade-indent-N"` for free/skipped depths and indented non-list blocks. See [`HtmlImportExport.md`](HtmlImportExport.md) (`DefaultListOutlineEncoder`, `openTagWithCascadeIndentation`) for the encoding strategy and the `HtmlProfileSupportSet`-scoped round-trip claim.
 
 ## 1. Feature Overview
 
@@ -194,7 +194,7 @@ val indentationActions = LocalIndentationActions.current
 | Reducers | `IndentForward`, `IndentBackward`, conversion, split, merge, replace, insert, delete, move, and drag completion preserve or clear attributes according to type support. |
 | Numbered lists | `renumberNumberedLists()` scopes sequences by depth and derived parent within a supported outline segment, then stores decimal numbers in `BlockType.NumberedList(number)`. Unsupported blocks reset numbering scope and outline ancestry. |
 | Rendering | `withBlockIndentation()` applies animated leading inset through `IndentationAnimation`; ordered-list prefix styles are precomputed from numbered-list ancestry and formatted with an O(1) per-block lookup at render time. |
-| Serialization | `DocumentSchema.CURRENT_VERSION = 2`; supported non-zero indentation is encoded under `attributes.indentationLevel`; out-of-range or unsupported-block indentation values warn and fall back to normalized depths. |
+| Serialization | `DocumentSchema.CURRENT_VERSION = 2`; supported non-zero indentation is encoded under `attributes.indentationLevel`; malformed or out-of-range values warn and fall back to depth `0`, while valid non-zero indentation on unsupported block types is discarded to `0`. |
 | Toolbar | Default toolbar shows indent/outdent buttons when `RichTextToolbarConfig.showIndentation` is true; custom toolbars use indentation locals. |
 | History | Built-in indentation commands and drag completion are structural transactions when routed through the history-aware holder boundary. |
 | Drag | Drag state stores roots, full payload IDs, payload index metadata, original depths, and future root depth; hover resolution uses a cached block index, prevents invalid drops before completion, and pins unsupported primary roots to depth `0`. |

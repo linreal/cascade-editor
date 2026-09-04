@@ -1,6 +1,6 @@
 # Feature Context: Numbered and Bullet Lists
 
-> HTML import/export emits a single `listOutline` `BlockGroupEncoder` that produces genuinely nested `<ul>` / `<ol>` for mixed bullet/numbered runs. Decoded numbered values are *not* trusted from input — `HtmlDecodeEngine` runs `renumberNumberedLists(...)` after every decode, and `HtmlProfileSupportSet.supportsDocument(...)` rejects documents whose numbering would change under that pass. See [`HtmlImportExportFeatureContext.md`](HtmlImportExport.md) for the outline-encoder contract and the flat-vs-nested tradeoff that dialect profiles such as `CustomHtmlProfile` make.
+> HTML import/export emits a single `listOutline` `BlockGroupEncoder` that produces genuinely nested `<ul>` / `<ol>` for mixed bullet/numbered runs. Decoded numbered values are *not* trusted from input — `HtmlDecodeEngine` runs `renumberNumberedLists(...)` after every decode, and `HtmlProfileSupportSet.supportsDocument(...)` rejects documents whose numbering would change under that pass. See [`HtmlImportExport.md`](HtmlImportExport.md) for the outline-encoder contract and the flat-vs-nested tradeoff that dialect profiles such as `CustomHtmlProfile` make.
 
 ## 1. Feature Overview
 

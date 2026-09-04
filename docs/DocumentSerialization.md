@@ -1,6 +1,6 @@
 # Document Save/Load Serialization — Technical Context
 
-> Covers the JSON serialization layer (`toJson()` / `loadFromJson()`). For HTML interchange, see [`HtmlImportExportFeatureContext.md`](HtmlImportExport.md), which describes a parallel codec under `htmlserialization/` driven by `HtmlProfile`.
+> Covers the JSON serialization layer (`toJson()` / `loadFromJson()`). For HTML interchange, see [`HtmlImportExport.md`](HtmlImportExport.md), which describes a parallel codec under `htmlserialization/` driven by `HtmlProfile`.
 
 ## 1. Feature Overview
 
@@ -11,7 +11,7 @@ The implementation solves four problems:
 1. **Save** — Snapshot the current document, merging live runtime text/spans (from on-screen blocks) with snapshot content (from off-screen blocks) into a single canonical JSON string.
 2. **Load** — Deserialize JSON back into blocks, clear stale runtime state, and set the editor to the loaded content.
 3. **Forward compatibility** — Unknown block types encountered during decode are preserved as opaque `UnknownBlockType` objects and rendered with a placeholder UI, preventing silent data loss on round-trip.
-4. **Outline persistence** — Supported block indentation is stored in version 2 documents through a block-level `attributes` object while older version 1 documents still load with default depth. Decode also normalizes structurally invalid outline depths so loaded documents cannot start with an indented block or keep children under unsupported blocks.
+4. **Outline persistence** — Supported block indentation is stored in version 2 documents through a block-level `attributes` object while older version 1 documents still load with default depth when the field is absent. Decode accepts any supported depth in `0..5`, including skipped levels and an indented first block, while clearing indentation from block types that do not support it.
 
 ---
 
@@ -101,9 +101,9 @@ EditorStateHolder.loadFromJson(jsonString, textStates, spanStates)
   |     |     +-- Assemble Block(id, type, content, attributes)
   |     |
   |     +-- normalizeIndentationOutlineWithReport(blocks)
-  |     |     +-- first supported block and post-boundary supported blocks normalize to root depth
-  |     |     +-- depth jumps greater than one level normalize to the nearest legal depth
-  |     |     +-- structural depth changes emit InvalidBlockAttributeParam warnings
+  |     |     +-- valid free/skipped depths remain unchanged
+  |     |     +-- unsupported block types remain at depth 0
+  |     |     +-- any corrective depth changes emit InvalidBlockAttributeParam warnings
   |     +-- renumberNumberedLists(normalizedBlocks)
   |     +-- Return DocumentDecodeResult(blocks, warnings)
   |
@@ -222,7 +222,7 @@ public fun setUnknownBlockRenderer(renderer: BlockRenderer<*>)   // NEW
 }
 ```
 
-Link URLs are normalized by `LinkUrlPolicy` during encode/decode. Bare domain-shaped values decode to `https://...`; values that already contain `://` are kept verbatim after trimming. Only blank URLs and entries whose `url` field is missing, non-string, or `null` drop the affected link span. Other spans and the surrounding text content continue decoding normally.
+Persisted link URLs use `LinkUrlPolicy.validateStoredTarget(...)`: surrounding whitespace is trimmed and blank values are rejected, but every other target is preserved exactly. Bare domains, relative paths, fragments, `mailto:`, `tel:`, and custom schemes are not rewritten during encode/decode. A missing, non-string, `null`, or blank `url` drops only the affected link span; other spans and the surrounding text continue decoding normally.
 
 ### 5.2 Editor Composable
 
@@ -258,14 +258,14 @@ Link URLs are normalized by `LinkUrlPolicy` during encode/decode. Bare domain-sh
 
 - Missing `version` field defaults to `1`.
 - Version `1` documents decode as unindented unless individual block entries already contain a compatible `attributes.indentationLevel` field.
-- `version > CURRENT_VERSION` throws `IllegalArgumentException` — there is no graceful degradation for future major versions.
+- `decodeWithReport(JsonObject, ...)` throws `IllegalArgumentException` for `version > CURRENT_VERSION`. The string entry points contain that failure: `decodeFromStringWithReport(...)` returns an empty block list with `DocumentParseFailed`, while `decodeFromString(...)` returns the empty list and logs the warning.
 
 ### Block Attributes
 
 - `attributes` is optional on every block entry. Missing `attributes` and missing `attributes.indentationLevel` both decode as depth `0`.
 - `attributes` must be a JSON object. Non-object values emit `InvalidBlockAttributeParam` and fall back to depth `0`.
 - `indentationLevel` must be a non-string integer in the supported range `0..5`. Strings, malformed values, and out-of-range values emit `InvalidBlockAttributeParam` and fall back to depth `0`.
-- Unsupported block types cannot carry indentation. If an unsupported block decodes with non-zero indentation, it is normalized to depth `0` and emits `InvalidBlockAttributeParam` with the normalized fallback depth.
+- Unsupported block types cannot carry indentation. A valid non-zero depth on an unsupported block is discarded to `0`; malformed or out-of-range values still emit `InvalidBlockAttributeParam` before falling back to `0`.
 - Encode omits `attributes` when the effective indentation level is `0`, keeping root-level documents compact.
 - Decode runs outline normalization before `renumberNumberedLists()`, so loaded nested ordered lists use valid outline-aware sequence numbers.
 
@@ -288,7 +288,7 @@ Link URLs are normalized by `LinkUrlPolicy` during encode/decode. Bare domain-sh
 
 ### Unknown Block Rendering
 
-- `UnknownBlockRenderer` displays hardcoded English text: `"Unsupported block type: {typeId}"`. Localization is deferred.
+- `UnknownBlockRenderer` reads the unsupported-block label from `LocalCascadeStrings`, including the unrecognized `typeId`.
 - Unknown blocks participate in drag-and-drop (reorderable) but are non-editable and non-focusable.
 
 ---
@@ -300,7 +300,7 @@ Link URLs are normalized by `LinkUrlPolicy` during encode/decode. Bare domain-sh
 | **Block** | The fundamental content unit in CascadeEditor. Has an `id`, `type`, `content`, and `attributes`. |
 | **BlockAttributes** | Block-level document metadata. Currently stores `indentationLevel` for supported outline blocks. |
 | **BlockType** | Sealed interface describing the semantic type of a block (Paragraph, Heading, Todo, etc.). |
-| **BlockContent** | Sealed interface for block payload: `Text` (with spans), `Image`, `Empty`, or `Custom`. |
+| **BlockContent** | Sealed interface for block payload: `Text` (with spans), `Empty`, or `Custom`. Image content is not built in; consumers can represent it with a custom block type and `Custom` payload. |
 | **BlockId** | Value class wrapping a `String` identifier for a block. |
 | **TextSpan** | A range (`start`, `end`) plus a `SpanStyle` applied to text content. |
 | **UnknownBlockType** | A `CustomBlockType` subclass that holds raw JSON for an unrecognized type, enabling lossless round-trip. |

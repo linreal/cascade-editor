@@ -2,7 +2,7 @@
 
 ## 1. Feature Overview
 
-The Slash Command Palette provides a Notion-style `/` menu that lets users convert block types and insert new blocks inline. When a user types `/` in any text block, a popup appears with a searchable list of commands (headings, lists, code, divider, image, etc.). The user can filter by typing, navigate with arrow keys, and execute with Enter or tap.
+The Slash Command Palette provides a Notion-style `/` menu that lets users convert block types and insert new blocks inline. When a user types `/` in a built-in editable text block other than `Code`, a popup appears with commands for paragraph, headings 1–6, todo, bullet and numbered lists, quote, code, and divider. Code blocks intentionally suppress the slash observer so `/` remains literal code. The user can filter by typing, navigate with arrow keys, and execute with Enter or tap. Image is not a built-in block or command; consumers can add one through a custom block descriptor and slash command.
 
 The feature is fully extensible: consumers register custom `SlashCommandItem`s alongside auto-generated built-in commands derived from `BlockDescriptor` metadata. The palette supports submenu navigation and keyboard-driven workflows without stealing focus from the text field.
 
@@ -24,21 +24,21 @@ The feature is fully extensible: consumers register custom `SlashCommandItem`s a
 | **Spec** | `BuiltInSlashCommandSpec`, `BuiltInBlockSlashBehavior` | Per-descriptor slash config: execution semantics (`ConvertInPlace` vs. `AlwaysInsert`) |
 | **State** | `SlashCommandState`, `SlashQueryRange` | Immutable snapshot of the active session (anchor, query, navigation path, highlighted item) |
 | **UI** | `SlashCommandPopup`, `SlashCommandRow`, `SlashPopupDefaults` | Compose overlay, row rendering, layout math |
-| **Locals** | `LocalSlashCaretRect`, `LocalSlashCommandExecutor`, `LocalSlashHighlightedCommandId`, `LocalSlashPopupItems`, `LocalSlashSessionAnchorBlockId` | CompositionLocals bridging CascadeEditor to TextBlockField and popup |
+| **Locals** | `LocalSlashCommandsEnabled`, `LocalSlashCaretRect`, `LocalSlashCommandExecutor`, `LocalSlashHighlightedCommandId`, `LocalSlashPopupItems`, `LocalSlashSessionAnchorBlockId` | CompositionLocals bridging CascadeEditor to TextBlockField and popup |
 
 ### Patterns
 
 - **Sealed hierarchy for items**: `SlashCommandItem` → `SlashCommandAction` | `SlashCommandMenu`. Enables pattern matching in the executor without runtime type checks elsewhere.
-- **Action/Reducer for session state**: Seven new `EditorAction` subtypes (`OpenSlashCommand`, `UpdateSlashCommandSession`, `NavigateSlashSubmenu`, `NavigateSlashBack`, `HighlightSlashCommand`, `CloseSlashCommand`) integrate into the existing unidirectional data flow.
+- **Action/Reducer for session state**: Six `EditorAction` subtypes (`OpenSlashCommand`, `UpdateSlashCommandSession`, `NavigateSlashSubmenu`, `NavigateSlashBack`, `HighlightSlashCommand`, `CloseSlashCommand`) integrate into the existing unidirectional data flow.
 - **Observer pattern (not Flow)**: `SlashCommandTextObserver` uses imperative callbacks (`onOpen`/`onUpdate`/`onClose`) rather than `StateFlow` because it tracks fine-grained character-level edits inside a `snapshotFlow` collector that already runs on the main dispatcher. This avoids an extra flow layer.
 - **Facade for safe mutations**: `SlashCommandEditor` interface prevents commands from dispatching raw `EditorAction`s. `SlashCommandEditorHost` coordinates runtime text (`BlockTextStates`), runtime spans (`BlockSpanStates`), and snapshot state (`EditorStateHolder`) so they never diverge.
 - **Factory + executor lambda**: `BuiltInSlashCommandFactory` is pure — it generates items at composition time. Actual execution is deferred via a `builtInExecutor` lambda injected from `SlashCommandExecutor`, keeping the factory testable without editor dependencies.
-- **CompositionLocal threading**: Five new locals carry slash state from `CascadeEditor` down to `TextBlockField` without prop-drilling, while keeping recomposition scoped (e.g., `LocalSlashSessionAnchorBlockId` carries only the block ID, not the full query).
+- **CompositionLocal threading**: Six locals carry slash state and enablement from `CascadeEditor` down to `TextBlockField` without prop-drilling, while keeping recomposition scoped (e.g., `LocalSlashSessionAnchorBlockId` carries only the block ID, not the full query).
 - **Read-only high-level gate**: `CascadeEditor` treats read-only mode like `SlashCommandSlot.None` for editor-owned slash wiring. Observer construction, registry/executor wiring, popup rendering, keyboard execution, and toolbar slash insertion are disabled when `CascadeEditorConfig(readOnly = true)`.
 
 ### Why These Choices
 
-- `SlashCommandRegistry` uses `synchronized(lock)` rather than `Mutex` because registration happens on the main thread during composition; a lock is simpler and avoids suspend overhead.
+- `SlashCommandRegistry` is a main-thread-only Compose object. Registration and search stay synchronous and avoid coroutine or locking overhead.
 - The popup is rendered as a sibling overlay inside the existing editor `Box` (same pattern as `DropIndicator`/`DragPreview`) rather than a `Popup` composable, avoiding focus-stealing and z-order issues on Android.
 - `focusProperties { canFocus = false }` is applied to every popup element to ensure the text field retains focus during keyboard navigation.
 
@@ -126,10 +126,8 @@ ConvertInPlace:
 
 AlwaysInsert:
   └─ Creates new block from descriptor factory
-  └─ Calls editor.insertBlockAfterAnchor(newBlock)
-       ├─ Dispatches InsertBlockAfter
-       ├─ Sets up runtime text/span state
-       └─ Optionally focuses new block
+  └─ Calls editor.insertBlockBeforeAnchor(newBlock)
+       └─ Dispatches InsertBlockBefore while focus remains on the anchor
 ```
 
 ### Session Dismissal
@@ -151,6 +149,7 @@ The session closes when any of these occur:
 // CascadeEditor parameter
 fun CascadeEditor(
     slashRegistry: SlashCommandRegistry = remember { SlashCommandRegistry() },
+    slashCommand: SlashCommandSlot = SlashCommandSlot.Default,
     // ... other params
     config: CascadeEditorConfig = CascadeEditorConfig.Default,
 )
@@ -175,6 +174,7 @@ interface SlashCommandEditor {
     fun replaceQueryText(replacement: String = "")
     fun updateAnchorText(text: String, cursorPosition: Int? = null)
     fun replaceAnchorBlock(block, preserveAnchorId, requestFocus, cursorPosition)
+    fun insertBlockBeforeAnchor(block)
     fun insertBlockAfterAnchor(block, requestFocus, cursorPosition)
     fun focusBlock(blockId, cursorPosition)
     fun closeMenu()
@@ -225,11 +225,11 @@ CascadeEditor(stateHolder = stateHolder, slashRegistry = slashRegistry)
 | System | Integration |
 |--------|-------------|
 | **EditorState** | New `slashCommandState: SlashCommandState?` field |
-| **EditorAction** | Seven new action types for session lifecycle |
+| **EditorAction** | Six action types for session lifecycle |
 | **BlockDescriptor** | New optional `slash: BuiltInSlashCommandSpec?` field |
 | **BlockRegistry** | `registerBuiltInDescriptors()` now populates `slash` metadata for all built-in types |
 | **TextBlockField** | Hosts `SlashCommandTextObserver`, keyboard interception for arrow/Enter/Escape, caret rect reporting |
-| **CascadeEditor** | Wires registry, executor, factory; provides five CompositionLocals; renders popup overlay; disables scroll during slash session |
+| **CascadeEditor** | Wires registry, executor, factory; provides six CompositionLocals; renders popup overlay; disables scroll during slash session |
 | **BlockCallbacks** | New `onSlashCommand(blockId, queryRange, query)` callback |
 
 ### Module Dependencies
@@ -261,7 +261,7 @@ CascadeEditor (composable)
 
 - **KeepOpen + RemoveBeforeExecute conflict**: If a command returns `KeepOpen` but its `queryTextPolicy` was `RemoveBeforeExecute`, the menu is force-closed anyway because the tracked `/` token no longer exists in the text.
 
-- **Thread safety**: `SlashCommandRegistry` guards internal collections with `synchronized(lock)`. All other slash components (`SlashCommandTextObserver`, `SlashCommandExecutor`, `SlashCommandEditorHost`) are designed for main-thread-only access within Compose's snapshot system.
+- **Threading**: `SlashCommandRegistry` and the other slash components (`SlashCommandTextObserver`, `SlashCommandExecutor`, `SlashCommandEditorHost`) are main-thread-only within Compose's snapshot model. The registry does not lock around registration or search.
 
 - **Empty results auto-close**: A `LaunchedEffect` in `CascadeEditor` dispatches `CloseSlashCommand` when `slashPopupItems` becomes empty. This handles the case where the user's query filters out all items.
 
@@ -270,8 +270,6 @@ CascadeEditor (composable)
 - **Read-only mode**: No slash observer is installed, no popup renders, no executor runs, and slash keyboard handling no-ops while read-only is active. If app-owned code externally leaves `slashCommandState` set, `CascadeEditor` still does not render or execute the popup and transition cleanup dispatches `CloseSlashCommand`.
 
 - **Edit-before-range handling**: When the user types before the `/` character (e.g., inserting text at the beginning of the line), the observer shifts both `slashStart` and `rangeEnd` by the edit delta. A dedicated `editBeforeRange` flag skips cursor validation in this case because the cursor is naturally at the edit site, not inside the slash range.
-
-- **Debug logging**: `SlashPopupDefaults.calculatePopupOffset` contains `loge(...)` calls that should be removed before release.
 
 - **Duplicate ID policy**: In both `SlashCommandRegistry` and the merged registry, the last registration wins. Custom items override built-ins on ID collision. Built-in IDs follow the format `builtin.block.<typeId>`.
 
@@ -284,7 +282,7 @@ CascadeEditor (composable)
 | **Visible text** | Text content without the ZWSP (`\u200B`) sentinel character that `BlockTextStates` prepends for backspace detection |
 | **Navigation path** | Stack of `SlashCommandId`s representing the submenu drill-down. Empty = root menu level |
 | **ConvertInPlace** | Built-in behavior: changes the anchor block's type without inserting a new block. Text/spans survive after query removal |
-| **AlwaysInsert** | Built-in behavior: creates a new block from the descriptor factory and inserts it below the anchor |
+| **AlwaysInsert** | Built-in behavior: creates a new block from the descriptor factory and inserts it above the anchor while focus remains on the anchor |
 | **Programmatic commit** | A text change initiated by code (merge, setText, replaceVisibleRange) rather than user keystroke. Tracked via `pendingProgrammaticCommits` to suppress false slash triggers |
 | **Highlighted command** | The item currently selected via keyboard navigation (Up/Down arrows). Enter executes it |
 | **Effective registry** | A merged `SlashCommandRegistry` containing built-in items (from `BlockDescriptor` metadata) plus consumer-registered custom items, rebuilt on each composition |

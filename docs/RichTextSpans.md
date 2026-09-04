@@ -2,7 +2,7 @@
 
 This document explains how inline rich text formatting (bold, italic, underline, etc.) works in CascadeEditor. It covers the domain model, algorithms, runtime state management, rendering, edit maintenance, serialization, and the toolbar/formatting API.
 
-> Span emission for HTML uses the same `SpanAlgorithms.normalize(...)` pipeline described here; see [`HtmlImportExportFeatureContext.md`](HtmlImportExport.md) for the HTML-side encode walker (`HtmlEncodeContextImpl.encodeInlineFragment`) and the `SpanEncoder<T>` / span-fallback contract.
+> Span emission for HTML uses the same `SpanAlgorithms.normalize(...)` pipeline described here; see [`HtmlImportExport.md`](HtmlImportExport.md) for the HTML-side encode walker (`HtmlEncodeContextImpl.encodeInlineFragment`) and the `SpanEncoder<T>` / span-fallback contract.
 
 All file paths are relative to `editor/src/commonMain/kotlin/io/github/linreal/cascade/editor/`.
 
@@ -100,8 +100,8 @@ sealed interface SpanStyle {
 - `Custom.payload` is an opaque JSON string. The core layer never parses it — serialization layer handles conversion.
 - **Kind-based matching for Highlight:** `SpanStyle.kindMatches(a, b)` treats all `Highlight` instances as equivalent regardless of `colorArgb`. This is used throughout algorithms, formatting state, and toggle logic. Link merge identity still uses exact `Link(url)` equality so same-URL links can merge and different URLs remain distinct.
 - `Highlight.colorArgb` is retained for serialization backward compatibility but ignored at render time — the theme's `CascadeEditorColors.highlight` controls the visual color.
-- `Link.url` stores only the normalized URL. The visible link title remains the covered `TextSpan` range, so title text cannot drift from duplicated span metadata.
-- `LinkUrlPolicy.validate(...)` is the shared URL policy for producing normalized URLs and stable `LinkValidationError` values. The policy is permissive (Slack-style): anything non-blank is accepted. Inputs that already contain `://` are kept verbatim after trimming; everything else is normalized by prepending `https://`. The only `LinkValidationError` is `Blank`. Blocking unsafe schemes, allowlists, and similar policy decisions are deferred to consumer-side opening callbacks (`onOpenLink`).
+- `Link.url` stores the target exactly as validated for its call site. The visible link title remains the covered `TextSpan` range, so title text cannot drift from duplicated span metadata.
+- `LinkUrlPolicy` has two contracts. `validate(...)` handles user entry and prepends `https://` when the non-blank input has no `://`. `validateStoredTarget(...)` handles JSON/HTML/Markdown persistence: it trims and rejects blank input but otherwise preserves relative paths, fragments, `mailto:`, `tel:`, and custom schemes exactly. The only `LinkValidationError` is `Blank`. Blocking unsafe schemes, allowlists, and similar policy decisions are deferred to consumer-side opening callbacks (`onOpenLink`).
 - `SpanStyle.kindKey(Link(url))` uses the full link style, so same-URL links share merge identity and different URLs stay distinct. Link-wide operation matching, such as removing or querying all links regardless of URL, is handled inside `SpanAlgorithms` rather than by changing this merge key.
 
 > **Source compatibility note.** `SpanStyle` is a public sealed interface; adding `Link(url)` introduces a new exhaustive `when` case. Consumers who match `SpanStyle` exhaustively need to add a `Link` branch (or an `else`) to compile against this version. Custom `SpanStyle.Custom` consumers are unaffected.
@@ -119,7 +119,7 @@ The `spans` field defaults to empty, preserving backward compatibility with all 
 
 ### Capability Gating — `supportsSpans`
 
-`BlockType` declares an orthogonal `supportsSpans: Boolean` capability with default `get() = supportsText`. Every existing built-in inherits the default and behaves as before. `BlockType.Code` overrides to `false`, making it the first text-supporting block that opts out of rich-text spans. `CustomBlockType` consumers may override `supportsSpans = false` to ship plain-text custom blocks and inherit the same gating for free.
+`BlockType` declares an orthogonal `supportsSpans: Boolean` capability with default `get() = supportsText`. Every built-in other than `BlockType.Code` inherits the default. `Code` overrides to `false`, making it the first text-supporting block that opts out of rich-text spans. `CustomBlockType` consumers may override `supportsSpans = false` to ship plain-text custom blocks and inherit the same gating for free.
 
 When `block.type.supportsSpans == false`:
 
@@ -131,9 +131,7 @@ When `block.type.supportsSpans == false`:
 - **Runtime state** — `TextBlockField` initializes `BlockSpanStates.getOrCreate(...)` with `emptyList()`, sets `outputTransformation = null` (no `SpanMapper` decoration), and constructs no `SpanMaintenanceTextObserver`. The unfocused link-hit overlay passes `emptyList()` to `LinkHitTester.linkUrlForTap(...)`.
 - **Persistence** — `DocumentSchema` encode/decode and `DocumentSerializationExt.resolveCurrentBlocks(...)` defensively strip spans from text content for non-spans block types. Malformed JSON arriving with non-empty spans on a code block decodes to `BlockContent.Text(text, emptyList())` without producing a `DocumentDecodeWarning`.
 
-All gates key on `block.type.supportsSpans` (or `focusedBlockType.supportsSpans`) and never pattern-match on `BlockType.Code` directly. `TextBlockField` includes `block.type.typeId` (or the derived predicate) in the `remember(...)` keys for span-affected observers and the `outputTransformation`, so same-id Paragraph ↔ Code conversion drops the prior runtime constructs entirely. The same observer-key strategy applies to `SlashCommandTextObserver` (suppressed when `block.type is BlockType.Code`) and `ListAutoDetectObserver` (suppressed via the call-site `isCurrentlyList || block.type is BlockType.Code` predicate).
-
-> **Known programmatic-commit consume gap (Code Enter).** Code Enter mutations in `DefaultBlockCallbacks.onEnter` register a programmatic commit via `BlockTextStates.replaceVisibleRange(...)`. For non-Code blocks, `SpanMaintenanceTextObserver` consumes that commit. Code blocks have neither `SpanMaintenanceTextObserver` (suppressed by `supportsSpans`) nor a slash observer that would naturally drain it, so a pending commit can linger. The "snapshot identity changed without text change" branch in `TextBlockField` already calls `consumeProgrammaticCommit` defensively. If post-Enter typing in Code is later observed to misclassify the first user character as programmatic, the targeted fix is one extra `consumeProgrammaticCommit(block.id)` next to the `spanTextObserver?.onCommittedVisibleText(...)` call.
+All gates key on `block.type.supportsSpans` (or `focusedBlockType.supportsSpans`) and never pattern-match on `BlockType.Code` directly. `TextBlockField` includes `block.type.typeId` (or the derived predicate) in the `remember(...)` keys for span-affected observers and the `outputTransformation`, so same-id Paragraph ↔ Code conversion drops the prior runtime constructs entirely. The same observer-key strategy applies to `SlashCommandTextObserver` (suppressed when `block.type is BlockType.Code`) and `ListAutoDetectObserver` (suppressed via the call-site `isCurrentlyList || block.type is BlockType.Code` predicate). When no `SpanMaintenanceTextObserver` exists, `TextBlockField` explicitly consumes pending programmatic commits so Code Enter mutations cannot misclassify the next user edit.
 
 ### Read-Only Policy Gating
 
@@ -543,8 +541,7 @@ data class FormattingState(
 
 `canFormat` is `false` when:
 - No block is focused
-- Focused block doesn't support text (Divider, Image)
-- Focused block is `Code`
+- The focused block does not support text or spans (`Divider`, `Code`, or a custom opt-out)
 - Multi-block selection is active
 - Drag-and-drop is in progress
 - Read-only mode is active
@@ -621,7 +618,7 @@ JSON schema (version 1):
 | Link | `"link"` | `url: String` |
 | Custom | `"custom"` | `typeId: String`, `payload?: JsonElement` |
 
-Link URLs are normalized through `LinkUrlPolicy` at the persistence boundary. Bare domain-shaped values decode to `https://...`; values that already contain `://` are kept verbatim. Only blank URLs and link entries whose `url` field is missing, non-string (e.g. a numeric primitive), or `null` cause the affected link span to be dropped — surrounding text and other spans decode normally.
+Link URLs use `LinkUrlPolicy.validateStoredTarget(...)` at the persistence boundary. Surrounding whitespace is trimmed and blank values are rejected; every other target is preserved exactly, including bare domains, relative paths, fragments, `mailto:`, `tel:`, and custom schemes. A missing, non-string, `null`, or blank `url` drops only the affected link span — surrounding text and other spans decode normally.
 
 ### Decode Normalization
 
@@ -692,7 +689,7 @@ Conversion helpers in `ui/BackspaceAwareTextEdit.kt`:
 
 9. **Reducers are pure** — `ApplySpanStyle`/`RemoveSpanStyle` actions only modify snapshot state. Runtime mutations happen at the integration layer (`SpanActionDispatcher`, `DefaultBlockCallbacks`).
 
-10. **Link URL policy is centralized** — link creation should use `LinkUrlPolicy.validate(...)` and store only the returned normalized URL in `SpanStyle.Link`.
+10. **Link URL policy is centralized by call-site intent** — link creation uses `LinkUrlPolicy.validate(...)`; JSON/HTML/Markdown persistence uses `validateStoredTarget(...)` so stored targets are not rewritten.
 
 11. **Link actions use captured targets** — link popup/session code passes a `LinkTarget` back to `LinkActionDispatcher`; the dispatcher clamps that target against current runtime text and never retargets based on later cursor movement.
 
@@ -707,7 +704,7 @@ Conversion helpers in `ui/BackspaceAwareTextEdit.kt`:
 | `core/TextSpan.kt` | `TextSpan` data class |
 | `core/SpanStyle.kt` | `SpanStyle` sealed hierarchy |
 | `core/BlockContent.kt` | `BlockContent.Text` with `spans` field |
-| `richtext/LinkUrlPolicy.kt` | Shared link URL validation and normalization |
+| `richtext/LinkUrlPolicy.kt` | User-entry normalization plus stored-target validation/preservation |
 | `richtext/LinkHitTester.kt` | Pure visible-offset link opening resolver |
 | `richtext/SpanAlgorithms.kt` | Pure span manipulation functions + `StyleStatus` enum |
 | `richtext/SpanMapper.kt` | Domain-to-Compose style mapping + `OutputTransformation` builder |

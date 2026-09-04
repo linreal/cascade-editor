@@ -73,7 +73,7 @@ Good for document editors, task descriptions, knowledge bases, note apps, and in
 - **Block editor workflows** — split, merge, convert, indent, reorder, drag-and-drop, slash commands, undo/redo, and list continuation
 - **Custom block system** — add your own block types, renderers, slash commands, serialization, and product-specific behavior
 - **Shared multiplatform editor core** — Android, iOS, and desktop from one Kotlin/Compose codebase, without WebView, contentEditable, or an embedded JavaScript editor
-- **Reliability-oriented core** — crash containment, bounded no-throw JSON/HTML decode, structured warnings, deterministic reducers, and 1600+ tests
+- **Reliability-oriented core** — crash containment, bounded no-throw JSON/HTML decode, structured warnings, deterministic reducers, and 2,185 declared Kotlin/Swift test functions
 
 ## Why this is not just a styled text field
 
@@ -203,7 +203,7 @@ val html = stateHolder.toHtml(textStates, spanStates, HtmlProfile.Default)
 val result = stateHolder.loadFromHtml(html, textStates, spanStates, HtmlProfile.Default)
 ```
 
-`HtmlProfile.Default` ships an HTML5-ish canonical mapping. For dialect-specific HTML, including Quill-flavored payloads, custom link attributes, flat `ql-indent-N` lists, and other backend rules, compose a custom profile from `HtmlProfile.Default` using `withTagDecoder()`, `withSpanEncoder()`, `withBlockGroupEncoder()`, and `withParserPolicy()`. See [HtmlImportExportFeatureContext.md](docs/HtmlImportExport.md) for the full extension recipe and the reference `CustomHtmlProfile` in `sample/`.
+`HtmlProfile.Default` ships an HTML5-ish canonical mapping. For dialect-specific HTML, including Quill-flavored payloads, custom link attributes, flat `ql-indent-N` lists, and other backend rules, compose a custom profile from `HtmlProfile.Default` using `withTagDecoder()`, `withSpanEncoder()`, `withBlockGroupEncoder()`, and `withParserPolicy()`. See [HtmlImportExport.md](docs/HtmlImportExport.md) for the full extension recipe and the reference `CustomHtmlProfile` in `sample/`.
 
 ## Read-only rendering
 
@@ -434,9 +434,11 @@ CascadeEditor(
 )
 ```
 
-With slash commands enabled, typing `/` in any text block opens a Notion-style command palette with fuzzy search, keyboard navigation, and submenus without stealing focus from the text field.
+With slash commands enabled, typing `/` in a built-in editable text block other than `Code` opens a Notion-style command palette with fuzzy search, keyboard navigation, and submenus without stealing focus from the text field. Code blocks intentionally suppress the slash observer so `/` remains literal code.
 
-Built-in commands for all block types are generated automatically. Add your own:
+Commands for every built-in block descriptor are generated automatically: paragraph, headings 1–6, todo, bullet and numbered lists, quote, code, and divider. Image is not a built-in block or slash command; add it as a custom block and command when your product needs one.
+
+Add your own command:
 
 ```kotlin
 val slashRegistry = remember { SlashCommandRegistry() }
@@ -614,7 +616,7 @@ Composition-phase throws from custom renderers cannot be contained in-tree becau
 
 ### Testing
 
-1600+ tests across 117 test files cover reducers, history/undo/redo, span algorithms, slash commands, serialization, crash containment, drag-and-drop, and integration workflows. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full test matrix.
+The repository currently contains 2,185 declared test functions across 179 test source files: 2,184 Kotlin `@Test` declarations in 178 files plus one Swift XCTest method. They cover reducers, history/undo/redo, span algorithms, slash commands, serialization, crash containment, drag-and-drop, and integration workflows. See [ARCHITECTURE.md](ARCHITECTURE.md#testing) for the inventory definition and representative coverage map.
 
 ```bash
 ./gradlew :editor:allTests
