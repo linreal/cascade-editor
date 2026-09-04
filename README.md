@@ -2,9 +2,9 @@
 
 A Compose Multiplatform editor that starts as a rich text input and scales into a block-based document editor.
 
-Use Cascade Editor for a simple formatted comment field today. Keep the same editor when that field grows into product-specific rich text, HTML/JSON persistence, read-only previews, custom toolbars, slash commands, draggable blocks, or full Notion/Craft-style document editing without moving your editor core to WebView, contentEditable, or JavaScript.
+Use Cascade Editor for a simple formatted comment field today. Keep the same editor when that field grows into product-specific rich text, Markdown/HTML/JSON persistence, read-only previews, custom toolbars, slash commands, draggable blocks, or full Notion/Craft-style document editing without moving your editor core to WebView, contentEditable, or JavaScript.
 
-Rich text input | HTML/JSON round-trip | Read-only rendering | Custom toolbars | Block editor | Android + iOS + Desktop
+Rich text input | Markdown/HTML/JSON round-trip | Read-only rendering | Custom toolbars | Block editor | Android + iOS + Desktop + Web/Wasm
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
 [![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.11-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
@@ -23,6 +23,17 @@ Rich text input | HTML/JSON round-trip | Read-only rendering | Custom toolbars |
 
 ![Demo](assets/demo.gif)
 
+## One editor core, four targets
+
+Compose clients use the same `editor` artifact on Android, iOS, JVM desktop, and Kotlin/Wasm. Swift apps can use the native iOS SDK, which wraps the shared core in a UIKit controller and ships through Swift Package Manager.
+
+| Target | Working sample |
+|---|---|
+| Android | [`sample-android`](sample-android/) runs the shared Compose sample as an Android app |
+| iOS | [`iosNativeSample`](iosNativeSample/) shows the native SDK in SwiftUI and UIKit |
+| Desktop | [`sample`](sample/) runs as a JVM desktop app with `./gradlew :sample:run` |
+| Web/Wasm | The [live web demo](https://linreal.github.io/cascade-editor/) runs the shared sample as a Kotlin/Wasm browser app |
+
 ## Pick your starting point
 
 Cascade Editor is designed for apps where rich text usually starts small and then grows.
@@ -37,7 +48,9 @@ Good for comments, notes, custom fields, descriptions, and short rich text input
 
 ### I need product-specific import/export
 
-Round-trip content through JSON or HTML-like formats, including custom backend dialects and app-specific rules.
+Round-trip content through versioned JSON, customizable HTML, or the experimental Markdown codec. Markdown imports carry structured warnings and a fidelity recommendation, so an app can keep raw-source editing for files that would not survive a native round trip.
+
+Try the [Markdown round-trip screen](sample/src/commonMain/kotlin/io/github/linreal/cascade/screens/markdownfield/MarkdownFieldScreen.kt) from the [live Web/Wasm demo](https://linreal.github.io/cascade-editor/), or follow the [Markdown persistence recipe](docs/recipes/MarkdownPersistence.md).
 
 Good for apps that already store rich text on the backend and cannot simply adopt another editor's internal format.
 
@@ -67,13 +80,14 @@ Good for document editors, task descriptions, knowledge bases, note apps, and in
 - **Rich text input** — bold, italic, underline, strikethrough, inline code, highlight, links, and custom styles inside text-capable blocks
 - **Configurable formatting UI** — use the built-in toolbar, limit available actions, hide it, or render your own external toolbar
 - **JSON and HTML round-trip** — save/load documents through `toJson()` / `loadFromJson()` or `toHtml()` / `loadFromHtml()`
+- **Markdown import/export (experimental)** — use a CommonMark/GFM-oriented, profile-driven codec with fidelity analysis, structured warnings, source preservation, and report-bearing editor APIs
 - **HTML-like dialect support** — customize tag decoders, span encoders, block group encoders, parser policies, and backend-specific import/export rules
 - **Read-only rendering** — show selectable, scrollable content while editor-owned mutations are disabled
 - **Structured document editing** — paragraphs, headings, todos, bullet lists, numbered lists, quotes, code blocks, and dividers as independent blocks
 - **Block editor workflows** — split, merge, convert, indent, reorder, drag-and-drop, slash commands, undo/redo, and list continuation
 - **Custom block system** — add your own block types, renderers, slash commands, serialization, and product-specific behavior
-- **Shared multiplatform editor core** — Android, iOS, and desktop from one Kotlin/Compose codebase, without WebView, contentEditable, or an embedded JavaScript editor
-- **Reliability-oriented core** — crash containment, bounded no-throw JSON/HTML decode, structured warnings, deterministic reducers, and 2,185 declared Kotlin/Swift test functions
+- **Shared multiplatform editor core** — Android, iOS, desktop, and Web/Wasm from one Kotlin/Compose codebase, without WebView, contentEditable, or an embedded JavaScript editor
+- **Reliability-oriented core** — crash containment, bounded no-throw JSON/HTML/Markdown decode, structured warnings, deterministic reducers, and 2,185 declared Kotlin/Swift test functions
 
 ## Why this is not just a styled text field
 
@@ -95,7 +109,7 @@ Some of the harder problems handled by the editor core:
 | Best starting point | Rich input that may grow               | Simple formatted text field      |
 | Block operations    | Split, merge, convert, indent, reorder | Usually manual or unsupported    |
 | Custom blocks       | First-class extension point            | Usually outside the editor model |
-| Persistence         | Versioned JSON + HTML profiles         | App-specific                     |
+| Persistence         | Versioned JSON, HTML profiles, Markdown | App-specific                    |
 | Backend dialects    | Custom import/export profiles          | Usually custom glue code         |
 | Tradeoff            | More structure, more growth path       | Simpler initial integration      |
 
@@ -170,9 +184,9 @@ configuration, persistence, custom blocks, and slash commands.
 
 | Path                   | Start with | Add later                                  |
 |------------------------|---|--------------------------------------------|
-| Simple input           | Paragraph + limited toolbar | Custom spans, links, HTML export           |
+| Simple input           | Paragraph + limited toolbar | Custom spans, links, HTML/Markdown export  |
 | Custom field           | Read-only preview + edit screen | Backend HTML-like dialect                  |
-| Task description       | Blocks + JSON/HTML persistence | Custom blocks, attachments, permissions    |
+| Task description       | Blocks + JSON/HTML/Markdown persistence | Custom blocks, attachments, permissions |
 | Knowledge base / notes | Full block editor | Slash commands, drag/drop, custom renderers |
 
 ## Persistence and import/export
@@ -204,6 +218,14 @@ val result = stateHolder.loadFromHtml(html, textStates, spanStates, HtmlProfile.
 ```
 
 `HtmlProfile.Default` ships an HTML5-ish canonical mapping. For dialect-specific HTML, including Quill-flavored payloads, custom link attributes, flat `ql-indent-N` lists, and other backend rules, compose a custom profile from `HtmlProfile.Default` using `withTagDecoder()`, `withSpanEncoder()`, `withBlockGroupEncoder()`, and `withParserPolicy()`. See [HtmlImportExport.md](docs/HtmlImportExport.md) for the full extension recipe and the reference `CustomHtmlProfile` in `sample/`.
+
+### Markdown (experimental)
+
+The Markdown codec is built for explicit round-trip decisions rather than silent best-effort conversion. `MarkdownSchema.analyze()` tells the host whether a source is safe to edit as native blocks or should stay in a raw-text editor. Import and export reports distinguish canonical rewrites from data loss and fatal failures.
+
+For app-owned canonical Markdown, use `loadFromMarkdown()` and `toMarkdownWithReport()`. For arbitrary external files, keep the original source and persistence revision until a report-gated save succeeds. The [Markdown persistence recipe](docs/recipes/MarkdownPersistence.md) covers that host contract; [Markdown Serialization](docs/MarkdownSerialization.md) documents profiles, policies, supported syntax, diagnostics, limits, and the native iOS facade.
+
+The shared [Markdown round-trip sample](sample/src/commonMain/kotlin/io/github/linreal/cascade/screens/markdownfield/MarkdownFieldScreen.kt) exposes newline, unsupported-syntax, embedded-HTML, entity, and line-ending policies. It is available in the Android, iOS, desktop, and [Web/Wasm](https://linreal.github.io/cascade-editor/) sample app.
 
 ## Read-only rendering
 
@@ -654,11 +676,11 @@ Cascade Editor handles several problems that usually become painful when a rich 
 - preserving rich-text spans through split, merge, replace, typing, undo, and redo;
 - supporting indentation, drag/reorder, serialization, custom renderers, and editor behavior from shared multiplatform code.
 
-Most of this logic lives in `editor/src/commonMain`, with platform-specific code limited to thin Android/iOS/desktop adapters.
+Most of this logic lives in `editor/src/commonMain`, with platform-specific code limited to thin Android, iOS, desktop, and Wasm adapters.
 
 ## Platform Requirements
 
-| | Version |
+| Target/toolchain | Requirement |
 |---|---|
 | Kotlin | 2.3.21 |
 | Compose Multiplatform | 1.11.1 |
@@ -669,6 +691,7 @@ Most of this logic lives in `editor/src/commonMain`, with platform-specific code
 | Desktop runtime | JDK 11+ |
 | Desktop packaging | JDK 17+ |
 | JVM target | 11 |
+| Web target | Kotlin/Wasm browser (`wasmJs`) |
 
 ## Contributing
 
