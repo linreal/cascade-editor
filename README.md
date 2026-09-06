@@ -103,16 +103,25 @@ Some of the harder problems handled by the editor core:
 
 ## Cascade Editor vs single-buffer rich text editors
 
-| Area                | Cascade Editor                         | Single-buffer rich text editor   |
-| ------------------- | -------------------------------------- | -------------------------------- |
-| Content model       | Ordered block document                 | One styled text buffer           |
-| Best starting point | Rich input that may grow               | Simple formatted text field      |
-| Block operations    | Split, merge, convert, indent, reorder | Usually manual or unsupported    |
-| Custom blocks       | First-class extension point            | Usually outside the editor model |
-| Persistence         | Versioned JSON, HTML profiles, Markdown | App-specific                    |
-| Backend dialects    | Custom import/export profiles          | Usually custom glue code         |
-| Tradeoff            | More structure, more growth path       | Simpler initial integration      |
+A single-buffer editor makes one text field richer. Cascade Editor makes the document itself editable. Both can handle familiar formatting; the difference appears when paragraphs, todos, callouts, or sections need their own identity and behavior.
 
+| Where it matters | Cascade Editor | Typical single-buffer editor |
+|---|---|---|
+| Document model | Ordered blocks with stable IDs, types, content, and attributes | One continuous text value, with paragraphs and spans addressed by character offsets |
+| Editing surface | Each text-capable block owns a long-lived `TextFieldState` and can be focused or rendered independently | One text input with one document-wide cursor and selection |
+| Structural editing | Split, merge, convert, indent, outdent, multi-select, and subtree-aware drag/reorder are built-in document operations | Paragraph and list editing fits naturally; stable nodes and subtree operations need a separate structural layer |
+| Custom content | Custom block types can bring their own Compose renderer, slash command, serializer, and lightweight preview | Inline styles and tokens fit naturally; interactive non-text content usually lives outside the text model |
+| Document scale | Blocks render in a `LazyColumn`, and a separate static preview path avoids mounting editor state in lists and grids | One input surface owns document-wide text layout; there is no block-level composition boundary |
+| Undo and redo | Text edits and structural changes replay as editor transactions, including focus, caret, selection, indentation, and block order | Text and formatting history is simpler; app-owned document structure needs its own coordinated history |
+| Persistence | Versioned block JSON, unknown-block preservation, customizable HTML profiles, and experimental report-bearing Markdown | HTML or Markdown maps naturally to one buffer; stable IDs, custom blocks, and backend-specific structure need additional schema |
+| Backend dialects | Tag decoders, span encoders, block-group encoders, and parser policies can adapt import/export without changing the editor model | Product-specific structure is commonly handled by conversion code around the editor |
+| Read paths | Full read-only mode plus experimental bounded previews that mount no text fields, focus, history, or editor scroll state | A read-only rich-text surface is straightforward; structured previews remain an application concern |
+| Growth path | Start with one paragraph, then add blocks, previews, custom renderers, drag, and slash commands without replacing the editor core | The smaller starting model stays attractive while the product remains one continuous formatted field |
+| Tradeoff | More editor surface to integrate, and native text selection stays within one block | Simpler initial integration and continuous selection across the whole text value |
+
+Cascade's advantage is not another bold button. A block remains the same addressable object while its text changes, its type changes, or it moves with its descendants. Rendering, history, persistence, read-only behavior, and drag-and-drop all work from that shared structure instead of relying on a second model wrapped around the text field.
+
+For a one-off formatted input, the smaller model may be the right call. When the roadmap includes custom blocks, block-level actions, document previews, or backend-owned structure, Cascade starts where a single-buffer editor eventually has to be extended.
 
 ## Quick Start
 
