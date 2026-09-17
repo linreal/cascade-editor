@@ -26,7 +26,7 @@ The default GFM-oriented behavior includes:
 
 ## 2. Parser dependency decision
 
-Decode grammar recognition is delegated to `org.jetbrains:markdown:0.7.7`.
+Decode grammar recognition is delegated to `org.jetbrains:markdown:0.7.14`.
 Cascade uses its GFM AST internally; JetBrains types do not cross the public
 API. The dependency is Apache-2.0 licensed and publishes the KMP variants used
 by this project.
@@ -78,7 +78,7 @@ other sources outside Cascade's documented math subset. Cascade performs a
 small conservative math recognition pass while code spans and images remain
 opaque.
 
-The adapter contains two narrow JetBrains 0.7.7 compatibility shims covered by
+The adapter contains two narrow JetBrains 0.7.x compatibility shims (introduced against 0.7.7, still exercised on 0.7.14) covered by
 tests:
 
 - angle-form link destinations can arrive as an `AUTOLINK` child rather than
@@ -98,7 +98,7 @@ character-exactly without a second source scan.
 
 Named entity replacement code points come from JetBrains Markdown's generated
 table. Cascade retains the documented v1 name subset, exact unknown-name
-diagnostics, and its own numeric-code-point handling because JetBrains 0.7.7's
+diagnostics, and its own numeric-code-point handling because JetBrains 0.7.x's
 converter narrows numeric values through a single UTF-16 `Char`.
 
 ## 4. Encode architecture

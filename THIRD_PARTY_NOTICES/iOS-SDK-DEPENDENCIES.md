@@ -1,7 +1,7 @@
 # CascadeEditor iOS SDK dependency notices
 
 This inventory covers the dependencies linked into the distributed
-`CascadeEditor.xcframework` for version 1.9.2. CascadeEditor itself is licensed
+`CascadeEditor.xcframework` for version 1.9.3. CascadeEditor itself is licensed
 under the MIT License in the repository root.
 
 ## Apache License 2.0
@@ -16,7 +16,7 @@ License 2.0:
 - kotlinx.coroutines 1.9.0
 - kotlinx.serialization 1.11.0
 - kotlinx.atomicfu 0.28.0
-- JetBrains Markdown 0.7.7
+- JetBrains Markdown 0.7.14
 - Skiko 0.144.6
 
 The full Apache License 2.0 text is included in

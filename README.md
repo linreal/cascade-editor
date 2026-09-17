@@ -128,7 +128,7 @@ For a one-off formatted input, the smaller model may be the right call. When the
 Start with the smallest useful setup: one paragraph block, a limited toolbar, and slash commands disabled.
 
 ```groovy
-implementation("io.github.linreal:cascade-editor:1.9.2")
+implementation("io.github.linreal:cascade-editor:1.9.3")
 ```
 
 ```kotlin

@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.9.3] - 2026-09-17
+
+### Fixed
+
+- Upgraded JetBrains Markdown from 0.7.7 to 0.7.14. The 0.7.7 lexer compiled
+  its `ArrayList.pop()` helper to `java.util.ArrayList.removeLast()`, which
+  exists only on Android 15 (API 35) and throws `NoSuchMethodError` on older
+  devices; it also triggered the Play Console "Kotlin incompatibilities"
+  warning for every consuming app. Cascade's own GFM decode path never reached
+  that lexer, but the class shipped in every consumer APK
+
+### Changed
+
+- The Android artifact is now built and published with Android Gradle Plugin
+  9.2.1 through `com.android.kotlin.multiplatform.library`. Consumer keep rules
+  are still published with the artifact; no consumer code changes are required
+
 ## [1.9.2] - 2026-08-02
 
 ### Changed
