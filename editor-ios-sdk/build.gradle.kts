@@ -109,7 +109,7 @@ kotlin {
             }
         }
 
-        val iosSimulatorArm64Test by getting {
+        getByName("iosSimulatorArm64Test") {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)
