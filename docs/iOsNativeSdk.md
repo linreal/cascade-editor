@@ -43,7 +43,11 @@ enabled, Cascade applies the Compose IME inset to the root containing both the
 document viewport and built-in toolbar. The host must keep the returned view
 controller at its normal full height and must not also constrain its bottom to
 `keyboardLayoutGuide.topAnchor`; combining both strategies applies the inset
-twice. Safe-area and non-keyboard system insets remain host-owned.
+twice. SwiftUI hosts must likewise opt the editor out of SwiftUI's automatic
+keyboard avoidance with `.ignoresSafeArea(.keyboard, edges: .bottom)`; otherwise
+SwiftUI shrinks the representable while Cascade pads it, which leaves a
+keyboard-height gap above the keyboard on iOS 26 until the next layout pass.
+Safe-area and non-keyboard system insets remain host-owned.
 
 The host uses Compose snapshot state and `snapshotFlow` for two bridge streams:
 

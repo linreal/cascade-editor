@@ -73,6 +73,27 @@ including its normal bottom edge. Do not constrain that bottom edge to
 `view.keyboardLayoutGuide.topAnchor`; doing so resizes the Compose canvas while
 Cascade is also applying the keyboard inset.
 
+### SwiftUI hosts
+
+SwiftUI applies its own keyboard avoidance to a `UIViewControllerRepresentable`
+by shrinking it to the keyboard's top edge. With `keyboardInsetsEnabled` that is
+a second inset owner: on iOS 26 the editor pads for the full keyboard height
+while SwiftUI also shrinks it, leaving a keyboard-height gap between the toolbar
+and the keyboard until the next layout pass. Opt the screen out of SwiftUI's
+keyboard avoidance so Cascade is the only owner:
+
+```swift
+VStack(spacing: 0) {
+    header
+    CascadeEditorHost(model: editor)   // wraps controller.makeViewController()
+}
+.ignoresSafeArea(.keyboard, edges: .bottom)
+```
+
+When a layout relies on SwiftUI lifting the editor instead (for example a
+compact chat composer pinned to the bottom of a screen), keep SwiftUI's keyboard
+avoidance and leave `keyboardInsetsEnabled` `false`.
+
 To change ownership after mounting, construct the complete updated
 `CascadeEditorConfiguration` and pass it to
 `controller.updateConfiguration(value:)`. Update the host constraints and
@@ -86,6 +107,9 @@ owners or no inset owner.
 - Interactively dismiss the keyboard and confirm there is no gap below the
   toolbar.
 - Exercise focus with the keyboard already visible and confirm no double inset.
+- On iOS, check iOS 26 explicitly: a SwiftUI host that still applies its own
+  keyboard avoidance shows a keyboard-height gap there that later iOS versions
+  can hide.
 - On Android, repeat the check in the app's actual window-inset mode.
 - Run `./gradlew :editor:allTests :editor-ios-sdk:iosSimulatorArm64Test` for
   configuration defaults and native mapping coverage.
