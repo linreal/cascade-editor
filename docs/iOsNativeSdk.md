@@ -442,7 +442,7 @@ Back-button flush keeps the editor open and surfaces the save failure.
 - `exportPlainText()` omits non-text blocks completely. `exportRichText()` includes every block, representing non-text blocks with empty text/spans; unsupported custom span styles are omitted, and exported ranges are clamped to text length.
 - Rich-text offsets are core text offsets and are consumed as UTF-16 offsets by the Swift sample. Consumers combining block runs must shift ranges using UTF-16 length, not Swift grapheme-cluster count.
 - The built XCFramework includes arm64 device and arm64 simulator slices only;
-  Compose Multiplatform 1.11.1 does not publish the `iosX64` dependencies
+  Compose Multiplatform 1.12.2 does not publish the `iosX64` dependencies
   required for an Intel simulator framework.
 - The framework is dynamic. Xcode embeds and signs it in the consuming app
   through SwiftPM; consumers must not add a second manual Embed Frameworks

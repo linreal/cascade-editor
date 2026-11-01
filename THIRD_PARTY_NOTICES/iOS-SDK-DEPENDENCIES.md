@@ -9,15 +9,15 @@ under the MIT License in the repository root.
 The following linked component families are distributed under the Apache
 License 2.0:
 
-- Kotlin standard library 2.3.21
-- Compose Multiplatform runtime, animation, foundation, UI, and resources 1.11.1
+- Kotlin standard library 2.4.21
+- Compose Multiplatform runtime, animation, foundation, UI, and resources 1.12.2
 - Jetpack/AndroidX annotation, collection, lifecycle, navigation-event, and
   saved-state multiplatform artifacts resolved by Compose Multiplatform
 - kotlinx.coroutines 1.9.0
-- kotlinx.serialization 1.11.0
+- kotlinx.serialization 1.12.0
 - kotlinx.atomicfu 0.28.0
-- JetBrains Markdown 0.7.14
-- Skiko 0.144.6
+- JetBrains Markdown 0.7.18
+- Skiko 0.150.2
 
 The full Apache License 2.0 text is included in
 `JetBrains-Markdown-Apache-2.0.txt`.

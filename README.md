@@ -691,10 +691,10 @@ Most of this logic lives in `editor/src/commonMain`, with platform-specific code
 
 | Target/toolchain | Requirement |
 |---|---|
-| Kotlin | 2.3.21 |
-| Compose Multiplatform | 1.11.1 |
+| Kotlin | 2.4.21 |
+| Compose Multiplatform | 1.12.2 |
 | Android minSdk | 26 |
-| Android compileSdk | 36 |
+| Android compileSdk | 37 |
 | iOS min version | 16.0 |
 | iOS targets | arm64, simulatorArm64 |
 | Desktop runtime | JDK 11+ |

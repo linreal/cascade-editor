@@ -1,21 +1,21 @@
 [versions]
 agp = "9.5.0"
-android-compileSdk = "36"
+android-compileSdk = "37"
 android-minSdk = "26"
-android-targetSdk = "36"
+android-targetSdk = "37"
 androidx-activity = "1.13.0"
-androidx-lifecycle = "2.10.0"
-binaryCompatibilityValidator = "0.18.1"
+androidx-lifecycle = "2.11.0"
+binaryCompatibilityValidator = "0.18.2"
 applePrivacyManifests = "1.0.0"
-composeMultiplatform = "1.11.1"
-kotlin = "2.3.21"
+composeMultiplatform = "1.12.2"
+kotlin = "2.4.21"
 kotlinxCoroutinesTest = "1.11.0"
 kotlinxDatetime = "0.8.0"
-kotlinxSerializationJson = "1.11.0"
-jetbrainsMarkdown = "0.7.14"
-vanniktechPublish = "0.35.0"
+kotlinxSerializationJson = "1.12.0"
+jetbrainsMarkdown = "0.7.18"
+vanniktechPublish = "0.37.0"
 #sample only
-material3 = "1.10.0-alpha05"
+material3 = "1.12.0-alpha03"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }

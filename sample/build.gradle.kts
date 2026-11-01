@@ -74,11 +74,10 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
-        val desktopMain by getting
-        desktopMain.dependencies {
+        getByName("desktopMain").dependencies {
             implementation(compose.desktop.currentOs)
         }
-        val desktopTest by getting {
+        getByName("desktopTest") {
             dependencies {
                 implementation(libs.compose.ui.test)
                 implementation(compose.desktop.currentOs)

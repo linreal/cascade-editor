@@ -56,6 +56,9 @@ kotlin {
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         browser()
+        // CMP 1.12+ requires an executable binary so wasm Compose UI tests are bundled
+        // with webpack and can load the Skiko runtime (CMP-4906); the published klib is unaffected
+        binaries.executable()
     }
 
     listOf(
@@ -86,7 +89,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
 
-        val desktopTest by getting {
+        getByName("desktopTest") {
             dependencies {
                 implementation(libs.compose.ui.test)
                 implementation(compose.desktop.currentOs)
