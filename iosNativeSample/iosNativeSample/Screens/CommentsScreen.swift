@@ -19,7 +19,10 @@ struct CommentsScreen: View {
                 toolbarMode: CascadeToolbarMode.none,
                 slashCommandsEnabled: false,
                 blockSelectionEnabled: false,
-                blockDraggingEnabled: false
+                blockDraggingEnabled: false,
+                // SwiftUI keyboard avoidance lifts the whole composer; the editor
+                // must not apply the keyboard inset a second time.
+                keyboardInsetsEnabled: false
             ),
             colors: initialTheme.editorColors
         )

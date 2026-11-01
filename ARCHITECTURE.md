@@ -409,7 +409,7 @@ All state changes go through `EditorAction.reduce(state) → newState`.
 | Keyboard shortcuts — formatting | Done | Cmd+B/I/U (macOS) / Ctrl+B/I/U (other) via `onPreviewKeyEvent` in `TextBlockField` + `LocalFormattingActions` |
 | Keyboard shortcuts — other | Partial | Undo/redo history shortcuts are implemented alongside formatting shortcuts; broader non-formatting shortcut coverage is still open |
 | iOS keyboard dismiss | Done | `HideKeyboardToolbarButton` pinned to trailing toolbar edge, iOS-only via `isIos` expect/actual; dispatches `ClearFocus` |
-| Software-keyboard inset ownership | Done | Opt-in `CascadeEditorConfig.keyboardInsetsEnabled` applies IME padding at the editor root; native `CascadeEditorConfiguration` mirrors it, the iOS sample enables it, and host-owned keyboard avoidance remains the default for compatibility |
+| Software-keyboard inset ownership | Done | Opt-in `CascadeEditorConfig.keyboardInsetsEnabled` applies IME padding at the editor root; native `CascadeEditorConfiguration` mirrors it, the iOS sample enables it on full-screen editors (which opt out of SwiftUI keyboard avoidance via `.ignoresSafeArea(.keyboard)`) and leaves it off for the SwiftUI-lifted Comments composer, and host-owned keyboard avoidance remains the default for compatibility |
 | Native iOS binary publication | Done | Reproducible Release ZIP/checksum and SwiftPM manifest generation, privacy metadata, exact-bundle resources, tag-driven immutable GitHub Release flow, and clean generic-device/simulator consumer validation |
 
 ## Known Gaps

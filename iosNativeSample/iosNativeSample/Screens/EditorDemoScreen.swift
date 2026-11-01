@@ -39,6 +39,9 @@ struct EditorDemoScreen: View {
             }
         }
         .background(theme.background)
+        // The editor owns the keyboard inset (keyboardInsetsEnabled); keep SwiftUI
+        // from also resizing the host, which double-applies it on iOS 26.
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .onChange(of: selectedTheme) { _, newValue in
             editor.applyTheme(newValue.appTheme(isDark: isDark))
         }

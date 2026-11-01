@@ -73,13 +73,19 @@ final class EditorScreenModel: ObservableObject {
 extension CascadeEditorConfiguration {
     /// The sample's baseline editor configuration; colors are applied separately
     /// through the runtime theme bridge.
+    ///
+    /// `keyboardInsetsEnabled` makes the editor the sole keyboard-inset owner, so
+    /// screens that keep it `true` must opt their editor host out of SwiftUI
+    /// keyboard avoidance (`.ignoresSafeArea(.keyboard, edges: .bottom)`).
+    /// Screens whose layout relies on SwiftUI lifting the editor pass `false`.
     static func standard(
         isDark: Bool,
         readOnly: Bool = false,
         toolbarMode: CascadeToolbarMode = .builtIn,
         slashCommandsEnabled: Bool = true,
         blockSelectionEnabled: Bool = true,
-        blockDraggingEnabled: Bool = true
+        blockDraggingEnabled: Bool = true,
+        keyboardInsetsEnabled: Bool = true
     ) -> CascadeEditorConfiguration {
         CascadeEditorConfiguration(
             readOnly: readOnly,
@@ -91,7 +97,7 @@ extension CascadeEditorConfiguration {
             crashPolicy: .containAndReport,
             blockIndentationEnabled: true,
             emptyDocumentPlaceholderEnabled: true,
-            keyboardInsetsEnabled: true
+            keyboardInsetsEnabled: keyboardInsetsEnabled
         )
     }
 }
