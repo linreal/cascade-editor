@@ -10,7 +10,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import io.github.linreal.cascade.editor.core.SpanStyle
 import io.github.linreal.cascade.editor.core.TextSpan
+import io.github.linreal.cascade.editor.richtext.DetectedPhoneLink
 import io.github.linreal.cascade.editor.richtext.SpanMapper
+import io.github.linreal.cascade.editor.richtext.automaticPhoneLinkSpans
 import io.github.linreal.cascade.editor.richtext.buildPreviewAnnotatedString
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -123,6 +125,31 @@ class PreviewAnnotatedStringTest {
         annotation.linkInteractionListener?.onClick(annotation)
 
         assertEquals(listOf("../guide.md"), opened)
+    }
+
+    @Test
+    fun `automatic phone span becomes clickable tel annotation`() {
+        val text = "Call +1 (415) 555-2671"
+        val phoneSpans = automaticPhoneLinkSpans(
+            text = text,
+            explicitSpans = emptyList(),
+            detections = listOf(
+                DetectedPhoneLink(5, text.length, "tel:+14155552671"),
+            ),
+        )
+        val result = buildPreviewAnnotatedString(
+            text = text,
+            spans = phoneSpans,
+            inlineCodeBackground = inlineCodeBackground,
+            highlightBackground = highlightBackground,
+            linkText = linkText,
+            onOpenLink = {},
+        )
+
+        val link = result.getLinkAnnotations(0, result.length).single()
+        assertEquals(5, link.start)
+        assertEquals(text.length, link.end)
+        assertEquals("tel:+14155552671", (link.item as LinkAnnotation.Clickable).tag)
     }
 
     @Test

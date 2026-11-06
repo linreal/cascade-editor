@@ -140,6 +140,7 @@ fun EditorDemoScreen(
                     config = CascadeEditorConfig(
                         readOnly = isReadOnly,
                         emptyDocumentPlaceholderEnabled = true,
+                        autoDetectPhoneNumbers = true,
                     ),
                     modifier = Modifier.fillMaxSize().imePadding(),
                 )

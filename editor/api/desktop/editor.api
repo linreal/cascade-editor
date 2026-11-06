@@ -3665,8 +3665,8 @@ public final class io/github/linreal/cascade/editor/ui/CascadeDocumentPreviewCon
 	public static final field $stable I
 	public static final field Companion Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig$Companion;
 	public fun <init> ()V
-	public synthetic fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;FIZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;FIZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;FIZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;FIZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/Integer;
 	public final fun component2 ()Ljava/lang/Integer;
 	public final fun component3 ()F
@@ -3675,9 +3675,11 @@ public final class io/github/linreal/cascade/editor/ui/CascadeDocumentPreviewCon
 	public final fun component6 ()Z
 	public final fun component7 ()Lio/github/linreal/cascade/editor/CrashPolicy;
 	public final fun component8 ()Lkotlin/jvm/functions/Function1;
-	public final fun copy-ZNqEYIc (Ljava/lang/Integer;Ljava/lang/Integer;FIZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;)Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;
-	public static synthetic fun copy-ZNqEYIc$default (Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;Ljava/lang/Integer;Ljava/lang/Integer;FIZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;
+	public final fun component9 ()Z
+	public final fun copy-J2qo7bo (Ljava/lang/Integer;Ljava/lang/Integer;FIZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;Z)Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;
+	public static synthetic fun copy-J2qo7bo$default (Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;Ljava/lang/Integer;Ljava/lang/Integer;FIZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZILjava/lang/Object;)Lio/github/linreal/cascade/editor/ui/CascadeDocumentPreviewConfig;
 	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAutoDetectPhoneNumbers ()Z
 	public final fun getCrashPolicy ()Lio/github/linreal/cascade/editor/CrashPolicy;
 	public final fun getLinksEnabled ()Z
 	public final fun getMaxBlocks ()Ljava/lang/Integer;
@@ -3704,8 +3706,8 @@ public final class io/github/linreal/cascade/editor/ui/CascadeEditorConfig {
 	public static final field $stable I
 	public static final field Companion Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig$Companion;
 	public fun <init> ()V
-	public fun <init> (ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZZZ)V
-	public synthetic fun <init> (ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZZZZ)V
+	public synthetic fun <init> (ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZZZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Z
 	public final fun component2 ()Z
 	public final fun component3 ()Z
@@ -3714,9 +3716,11 @@ public final class io/github/linreal/cascade/editor/ui/CascadeEditorConfig {
 	public final fun component6 ()Z
 	public final fun component7 ()Z
 	public final fun component8 ()Z
-	public final fun copy (ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZZZ)Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig;
-	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig;ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZZZILjava/lang/Object;)Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig;
+	public final fun component9 ()Z
+	public final fun copy (ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZZZZ)Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig;
+	public static synthetic fun copy$default (Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig;ZZZLio/github/linreal/cascade/editor/CrashPolicy;Lkotlin/jvm/functions/Function1;ZZZZILjava/lang/Object;)Lio/github/linreal/cascade/editor/ui/CascadeEditorConfig;
 	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAutoDetectPhoneNumbers ()Z
 	public final fun getBlockDraggingEnabled ()Z
 	public final fun getBlockIndentationEnabled ()Z
 	public final fun getBlockSelectionEnabled ()Z

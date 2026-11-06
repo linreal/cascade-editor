@@ -10,6 +10,11 @@ The codec is common-only Kotlin Multiplatform: no `org.jsoup`, no browser DOM, n
 
 Out of scope (intentionally): full HTML5 spec compliance, browser-equivalent error recovery, a generic cross-format `DocumentImporter`/`DocumentExporter`, and any built-in vendor-specific profile inside `:editor`.
 
+Automatic phone-number detection is also outside the codec. Detected phone
+links are transient editor/preview presentation state, so plain phone text
+encodes as plain text. Only an explicit `SpanStyle.Link("tel:...")` emits an
+`<a href="tel:...">` element.
+
 ## 2. Architecture & Design Decisions
 
 ### 2.1 Module placement

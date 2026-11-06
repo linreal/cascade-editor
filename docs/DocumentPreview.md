@@ -174,6 +174,7 @@ preview-provider registration API yet.
 - ellipsis overflow;
 - text selection disabled;
 - built-in link annotations and scope link delegation enabled;
+- automatic phone links disabled;
 - `CrashPolicy.ContainAndReport`.
 
 Both limits accept only positive values. A `null` limit means that dimension is
@@ -210,6 +211,10 @@ while preserving the typographic hierarchy.
 Limits are presentation-only. Preview never truncates the stored model,
 renumbers lists, normalizes indentation, or appends the editor's trailing empty
 paragraph.
+
+`autoDetectPhoneNumbers = true` adds transient `tel:` annotations to built-in
+text previews on Android and iOS. Explicit links win overlapping ranges.
+Detection does not mutate input blocks or affect JSON, HTML, or Markdown.
 
 ## Immutable input and projection
 

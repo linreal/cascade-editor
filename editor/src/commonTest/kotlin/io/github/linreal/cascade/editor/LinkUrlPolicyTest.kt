@@ -42,6 +42,14 @@ class LinkUrlPolicyTest {
     }
 
     @Test
+    fun `tel target is preserved verbatim`() {
+        assertValid(
+            input = "tel:+14155552671",
+            expected = "tel:+14155552671",
+        )
+    }
+
+    @Test
     fun `surrounding whitespace is trimmed before normalization`() {
         assertValid(
             input = "  example.com/path?q=One#Two  ",
