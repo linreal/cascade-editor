@@ -46,6 +46,7 @@ class CascadeDocumentPreviewControllerTest {
         assertTrue(configuration.linksEnabled)
         assertFalse(configuration.isDark)
         assertEquals(CascadeCrashPolicy.containAndReport, configuration.crashPolicy)
+        assertFalse(configuration.autoDetectPhoneNumbers)
 
         val core = configuration.toCoreConfig()
 
@@ -56,6 +57,7 @@ class CascadeDocumentPreviewControllerTest {
         assertFalse(core.textSelectionEnabled)
         assertTrue(core.linksEnabled)
         assertEquals(CrashPolicy.ContainAndReport, core.crashPolicy)
+        assertFalse(core.autoDetectPhoneNumbers)
     }
 
     @Test
@@ -71,6 +73,7 @@ class CascadeDocumentPreviewControllerTest {
 
         assertEquals(1.0, configuration.textScale)
         assertEquals(1f, configuration.toCoreConfig().textScale)
+        assertFalse(configuration.autoDetectPhoneNumbers)
     }
 
     @Test
@@ -83,6 +86,7 @@ class CascadeDocumentPreviewControllerTest {
             linksEnabled = false,
             isDark = true,
             crashPolicy = CascadeCrashPolicy.rethrow,
+            autoDetectPhoneNumbers = true,
         )
 
         val core = configuration.toCoreConfig()
@@ -94,6 +98,7 @@ class CascadeDocumentPreviewControllerTest {
         assertTrue(core.textSelectionEnabled)
         assertFalse(core.linksEnabled)
         assertEquals(CrashPolicy.Rethrow, core.crashPolicy)
+        assertTrue(core.autoDetectPhoneNumbers)
     }
 
     @Test

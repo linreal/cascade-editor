@@ -119,4 +119,11 @@ class LinkHitTesterTest {
 
         assertEquals("ftp://example.com", LinkHitTester.linkUrlAtVisibleOffset(spans, 2))
     }
+
+    @Test
+    fun `tel target resolves without https rewrite`() {
+        val spans = listOf(TextSpan(0, 4, SpanStyle.Link("tel:+123")))
+
+        assertEquals("tel:+123", LinkHitTester.linkUrlAtVisibleOffset(spans, 2))
+    }
 }

@@ -38,7 +38,31 @@ public data class CascadeDocumentPreviewConfiguration(
     public val linksEnabled: Boolean,
     public val isDark: Boolean,
     public val crashPolicy: CascadeCrashPolicy,
+    public val autoDetectPhoneNumbers: Boolean,
 ) {
+    /**
+     * Compatibility initializer for hosts using the configuration shape from
+     * before automatic phone-number detection was added.
+     */
+    public constructor(
+        maxBlocks: Int,
+        maxLinesPerTextBlock: Int,
+        textScale: Double,
+        textSelectionEnabled: Boolean,
+        linksEnabled: Boolean,
+        isDark: Boolean,
+        crashPolicy: CascadeCrashPolicy,
+    ) : this(
+        maxBlocks = maxBlocks,
+        maxLinesPerTextBlock = maxLinesPerTextBlock,
+        textScale = textScale,
+        textSelectionEnabled = textSelectionEnabled,
+        linksEnabled = linksEnabled,
+        isDark = isDark,
+        crashPolicy = crashPolicy,
+        autoDetectPhoneNumbers = false,
+    )
+
     /**
      * Compatibility initializer for hosts compiled against the original
      * bounded-preview configuration shape.
@@ -58,6 +82,7 @@ public data class CascadeDocumentPreviewConfiguration(
         linksEnabled = linksEnabled,
         isDark = isDark,
         crashPolicy = crashPolicy,
+        autoDetectPhoneNumbers = false,
     )
 
     public constructor() : this(
@@ -68,6 +93,7 @@ public data class CascadeDocumentPreviewConfiguration(
         linksEnabled = true,
         isDark = false,
         crashPolicy = CascadeCrashPolicy.containAndReport,
+        autoDetectPhoneNumbers = false,
     )
 }
 
@@ -82,6 +108,7 @@ internal fun CascadeDocumentPreviewConfiguration.toCoreConfig(
     linksEnabled = linksEnabled,
     crashPolicy = crashPolicy.toCoreCrashPolicy(),
     onInternalError = onInternalError,
+    autoDetectPhoneNumbers = autoDetectPhoneNumbers,
 )
 
 private fun Double.toCoreTextScale(): Float =

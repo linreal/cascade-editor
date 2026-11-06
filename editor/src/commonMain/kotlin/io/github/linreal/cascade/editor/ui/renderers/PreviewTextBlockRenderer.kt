@@ -12,6 +12,7 @@ import io.github.linreal.cascade.editor.core.BlockContent
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.registry.BlockPreviewRenderer
 import io.github.linreal.cascade.editor.registry.BlockPreviewScope
+import io.github.linreal.cascade.editor.richtext.automaticPhoneLinkSpans
 import io.github.linreal.cascade.editor.richtext.buildPreviewAnnotatedString
 import io.github.linreal.cascade.editor.theme.LocalCascadeTheme
 import io.github.linreal.cascade.editor.ui.ExperimentalCascadePreviewApi
@@ -122,7 +123,19 @@ internal fun PreviewBlockText(
     baseDecoration: TextDecoration? = null,
 ) {
     val colors = LocalCascadeTheme.current.colors
-    val renderSpans = if (supportsSpans) content.spans else emptyList()
+    val storedSpans = if (supportsSpans) content.spans else emptyList()
+    val renderSpans = remember(
+        content.text,
+        storedSpans,
+        supportsSpans,
+        scope.config.autoDetectPhoneNumbers,
+    ) {
+        if (supportsSpans && scope.config.autoDetectPhoneNumbers) {
+            storedSpans + automaticPhoneLinkSpans(content.text, storedSpans)
+        } else {
+            storedSpans
+        }
+    }
     val openLink = remember(scope) {
         { target: String -> scope.openLink(target) }
     }

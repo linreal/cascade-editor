@@ -138,6 +138,18 @@ class HtmlLinkAttributesTest {
     }
 
     @Test
+    fun `plain phone number remains plain HTML`() {
+        val block = io.github.linreal.cascade.editor.core.Block.paragraph(
+            text = "Call +1 (415) 555-2671",
+        )
+
+        assertEquals(
+            "<p>Call +1 (415) 555-2671</p>",
+            HtmlSchema.encode(listOf(block), HtmlProfile.Default),
+        )
+    }
+
+    @Test
     fun `default profile encodes highlight attribute in canonical order`() {
         val block = io.github.linreal.cascade.editor.core.Block.paragraph(
             text = "green",

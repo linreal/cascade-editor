@@ -516,10 +516,23 @@ Opening a link never dispatches an editor action, never writes runtime text/span
 
 Read-only mode keeps this opening path enabled. Link editing state/actions are disabled, but tapping an existing link in an unfocused text block still routes through `LinkHitTester` and `LocalLinkOpener`.
 
+### Automatic phone links
+
+`CascadeEditorConfig(autoDetectPhoneNumbers = true)` enables transient phone links
+in unfocused built-in text blocks on Android and iOS. Android uses
+`Linkify.PHONE_NUMBERS`; iOS uses `NSDataDetector`. Their locale-sensitive results
+can differ. Explicit link spans win when ranges overlap.
+
+Detected links exist only for rendering and tap handling. They are never written
+to `BlockSpanStates`, history, JSON, HTML, or Markdown. Focused blocks retain
+normal editing behavior. Static previews opt in independently through
+`CascadeDocumentPreviewConfig.autoDetectPhoneNumbers`. Desktop, Web/Wasm, and
+custom renderers do not auto-detect numbers.
+
 ### Out of V1
 
 - **No popup "Open" action.** The link popup (`LinkPopupSlot.Default` and the `LinkPopupState`/`LinkPopupActions` surface) does not include an open-link button. Opening is exclusively the unfocused-block tap path described above. This keeps the popup focused on editing and avoids bypassing the focused-block editing semantics.
-- **No automatic linkification.** Typing a URL-shaped string is not converted to a link. The user must explicitly invoke the link UI (toolbar button, custom chrome) to create a link span.
+- **No automatic URL linkification.** Typing a URL-shaped string is not converted to a persisted link. The user must explicitly invoke the link UI (toolbar button, custom chrome) to create a link span.
 - **No paste-to-link conversion.** Pasting a URL while text is selected does not convert the selection into a link, and pasting a URL at a cursor position does not auto-link the inserted text. Apps that want this behavior can layer it on top of `LinkActions` themselves.
 
 ---

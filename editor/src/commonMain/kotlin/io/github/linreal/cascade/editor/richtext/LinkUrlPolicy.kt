@@ -33,7 +33,8 @@ public sealed interface LinkValidationResult {
  * [validate] is user-entry normalization for link creation chrome (toolbar, link
  * popup), modeled on Slack's link entry: anything non-blank is accepted, and inputs
  * without a `<scheme>://` prefix are rewritten by prepending `https://`, so bare
- * hosts like `example.com/path` become `https://example.com/path`.
+ * hosts like `example.com/path` become `https://example.com/path`. The standard
+ * non-hierarchical `tel:` scheme is preserved.
  *
  * [validateStoredTarget] is stored-target validation for codec and persistence
  * paths (JSON [io.github.linreal.cascade.editor.serialization.RichTextSchema],
@@ -51,7 +52,7 @@ public object LinkUrlPolicy {
 
     /**
      * User-entry normalization for link creation. May rewrite the input
-     * (prepends `https://` to values without a `<scheme>://` prefix).
+     * (prepends `https://` to values without a recognized scheme).
      */
     public fun validate(input: String): LinkValidationResult {
         val trimmed = input.trim()
@@ -59,7 +60,14 @@ public object LinkUrlPolicy {
             return LinkValidationResult.Invalid(LinkValidationError.Blank)
         }
 
-        val normalized = if (trimmed.contains("://")) trimmed else "https://$trimmed"
+        val normalized = if (
+            trimmed.contains("://") ||
+            trimmed.startsWith("tel:", ignoreCase = true)
+        ) {
+            trimmed
+        } else {
+            "https://$trimmed"
+        }
         return LinkValidationResult.Valid(normalized)
     }
 
