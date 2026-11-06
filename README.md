@@ -6,8 +6,8 @@ Use Cascade Editor for a simple formatted comment field today. Keep the same edi
 
 Rich text input | Markdown/HTML/JSON round-trip | Read-only rendering | Custom toolbars | Block editor | Android + iOS + Desktop + Web/Wasm
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
-[![Compose](https://img.shields.io/badge/Compose_Multiplatform-1.11-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
+[![Built with Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-7F52FF?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
+[![Built with Compose Multiplatform](https://img.shields.io/badge/Compose_Multiplatform-1.12.2-4285F4?logo=jetpackcompose)](https://www.jetbrains.com/compose-multiplatform/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Android](https://img.shields.io/badge/Android-minSdk_26-3DDC84?logo=android)](https://developer.android.com/)
 [![iOS](https://img.shields.io/badge/iOS-16+-000000?logo=apple)](https://developer.apple.com/)
@@ -689,18 +689,31 @@ Most of this logic lives in `editor/src/commonMain`, with platform-specific code
 
 ## Platform Requirements
 
+Release 1.10.0 is built with Kotlin **2.4.21** and Compose Multiplatform
+**1.12.2**, using Android Gradle Plugin **9.5.0** and Gradle **9.8.2**. The
+Kotlin and Compose badges show these build dependency versions.
+
+Consumer minimums for 1.10.0 depend on the target:
+
 | Target/toolchain | Requirement |
 |---|---|
-| Kotlin | 2.4.21 |
-| Compose Multiplatform | 1.12.2 |
+| Kotlin compiler — Android/JVM consumers | 2.3.0+ |
+| Kotlin compiler — KMP consumers with iOS or Wasm targets | 2.4.0+ |
 | Android minSdk | 26 |
 | Android compileSdk | 37 |
+| Android Gradle Plugin | 9.1.0+ |
 | iOS min version | 16.0 |
 | iOS targets | arm64, simulatorArm64 |
 | Desktop runtime | JDK 11+ |
 | Desktop packaging | JDK 17+ |
 | JVM target | 11 |
 | Web target | Kotlin/Wasm browser (`wasmJs`) |
+
+The Kotlin minimums follow the [compiler compatibility rules](https://kotlinlang.org/docs/api-guidelines-backward-compatibility.html#choose-compatible-language-and-api-versions).
+Android's `compileSdk` and AGP minimums also account for the AndroidX Compose
+1.12.1 dependency. See the [1.10.0 migration notes](CHANGELOG.md#1100---2026-11-05)
+for details. Swift package consumers use the packaged XCFramework and do not
+need a Kotlin or Gradle integration.
 
 ## Contributing
 
