@@ -25,6 +25,7 @@ class CascadeDocumentPreviewConfigTest {
         assertTrue(config.linksEnabled)
         assertEquals(CrashPolicy.ContainAndReport, config.crashPolicy)
         assertNull(config.onInternalError)
+        assertFalse(config.autoDetectPhoneNumbers)
     }
 
     @Test
@@ -93,6 +94,7 @@ class CascadeDocumentPreviewConfigTest {
             linksEnabled = false,
             crashPolicy = CrashPolicy.Rethrow,
             onInternalError = reporter,
+            autoDetectPhoneNumbers = true,
         )
 
         val changed = original.copy(maxBlocks = 2)
@@ -104,6 +106,7 @@ class CascadeDocumentPreviewConfigTest {
         assertFalse(changed.linksEnabled)
         assertEquals(CrashPolicy.Rethrow, changed.crashPolicy)
         assertSame(reporter, changed.onInternalError)
+        assertTrue(changed.autoDetectPhoneNumbers)
         assertTrue(errors.isEmpty())
     }
 }

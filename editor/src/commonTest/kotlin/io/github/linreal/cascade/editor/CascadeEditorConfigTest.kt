@@ -16,6 +16,7 @@ class CascadeEditorConfigTest {
         assertTrue(CascadeEditorConfig.Default.blockIndentationEnabled)
         assertFalse(CascadeEditorConfig.Default.emptyDocumentPlaceholderEnabled)
         assertFalse(CascadeEditorConfig.Default.keyboardInsetsEnabled)
+        assertFalse(CascadeEditorConfig.Default.autoDetectPhoneNumbers)
         assertEquals(
             CascadeEditorConfig(
                 readOnly = false,
@@ -24,6 +25,7 @@ class CascadeEditorConfigTest {
                 blockIndentationEnabled = true,
                 emptyDocumentPlaceholderEnabled = false,
                 keyboardInsetsEnabled = false,
+                autoDetectPhoneNumbers = false,
             ),
             CascadeEditorConfig.Default,
         )

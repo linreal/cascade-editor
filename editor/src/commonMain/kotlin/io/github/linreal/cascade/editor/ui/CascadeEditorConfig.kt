@@ -32,6 +32,10 @@ import io.github.linreal.cascade.editor.CrashPolicy
  *        toolbar move together. Leave this `false` when the host already resizes
  *        or pads the editor for the keyboard, otherwise the inset is applied
  *        twice.
+ * @param autoDetectPhoneNumbers When `true`, unfocused built-in text blocks use
+ *        the platform's phone-number detector to expose transient `tel:` links.
+ *        Detection is available on Android and iOS and never changes document
+ *        spans or serialization.
  */
 @Immutable
 public data class CascadeEditorConfig(
@@ -52,6 +56,7 @@ public data class CascadeEditorConfig(
     val blockIndentationEnabled: Boolean = true,
     val emptyDocumentPlaceholderEnabled: Boolean = false,
     val keyboardInsetsEnabled: Boolean = false,
+    val autoDetectPhoneNumbers: Boolean = false,
 ) {
     public companion object {
         /** Editable default used when callers do not provide a config. */

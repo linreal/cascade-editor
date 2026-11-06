@@ -42,6 +42,7 @@ import io.github.linreal.cascade.editor.action.UpdateBlockContent
 import io.github.linreal.cascade.editor.core.BlockType
 import io.github.linreal.cascade.editor.richtext.SpanMapper
 import io.github.linreal.cascade.editor.richtext.LinkHitTester
+import io.github.linreal.cascade.editor.richtext.automaticPhoneLinkSpans
 import io.github.linreal.cascade.editor.richtext.SpanMaintenanceTextObserver
 import io.github.linreal.cascade.editor.slash.SlashCommandTextObserver
 import io.github.linreal.cascade.editor.ui.observers.ListAutoDetectObserver
@@ -154,6 +155,22 @@ internal fun TextBlockField(
     val crashConfig = LocalCascadeEditorConfig.current
     val crashPolicy = crashConfig.crashPolicy
     val crashReporter = crashConfig.onInternalError
+    val phoneDetectionEnabled =
+        crashConfig.autoDetectPhoneNumbers && !isFocused && supportsSpans
+    val phoneDetectionText = if (phoneDetectionEnabled) textFieldState.visibleText() else ""
+    val explicitSpansForDetection = if (phoneDetectionEnabled) spanState.value else emptyList()
+    val automaticPhoneSpans = remember(
+        phoneDetectionEnabled,
+        phoneDetectionText,
+        explicitSpansForDetection,
+    ) {
+        if (phoneDetectionEnabled && phoneDetectionText.isNotEmpty()) {
+            automaticPhoneLinkSpans(phoneDetectionText, explicitSpansForDetection)
+        } else {
+            emptyList()
+        }
+    }
+    val currentAutomaticPhoneSpans by rememberUpdatedState(automaticPhoneSpans)
     val placeholderEligible = isEmptyDocumentPlaceholderCandidate(
         enabled = crashConfig.emptyDocumentPlaceholderEnabled,
         canEditText = interactionPolicy.canEditText,
@@ -182,7 +199,13 @@ internal fun TextBlockField(
                     fallback = { /* leave buffer as plain, unstyled text */ },
                 ) {
                     SpanMapper.run {
-                        applyStyles(spanState.value, inlineCodeBackground, highlightBackground, linkText, baseDecoration)
+                        applyStyles(
+                            spanState.value + currentAutomaticPhoneSpans,
+                            inlineCodeBackground,
+                            highlightBackground,
+                            linkText,
+                            baseDecoration,
+                        )
                     }
                 }
             }
@@ -601,7 +624,11 @@ internal fun TextBlockField(
                                     // Non-spans block types cannot host links. Hand the hit
                                     // tester an empty list so a malformed runtime span list
                                     // (left over from a prior type) cannot surface a tappable link.
-                                    spans = if (supportsSpans) spanState.value else emptyList(),
+                                    spans = if (supportsSpans) {
+                                        spanState.value + currentAutomaticPhoneSpans
+                                    } else {
+                                        emptyList()
+                                    },
                                 )
                                 val opener = currentLinkOpener
                                 if (linkUrl != null && opener != null) {

@@ -40,6 +40,9 @@ private const val DEFAULT_MAX_LINES_PER_TEXT_BLOCK: Int = 3
  * containment. Composition-time custom-renderer exceptions remain a trusted
  * extension boundary and are not caught in-tree.
  * @param onInternalError Optional host reporter for contained preview failures.
+ * @param autoDetectPhoneNumbers When `true`, built-in text previews use the
+ * platform's phone-number detector to expose transient `tel:` links. Detection
+ * is available on Android and iOS and never changes input blocks or serialization.
  */
 @ExperimentalCascadePreviewApi
 @Immutable
@@ -52,6 +55,7 @@ public data class CascadeDocumentPreviewConfig(
     val linksEnabled: Boolean = true,
     val crashPolicy: CrashPolicy = CrashPolicy.ContainAndReport,
     val onInternalError: CascadeErrorReporter? = null,
+    val autoDetectPhoneNumbers: Boolean = false,
 ) {
     init {
         require(maxBlocks == null || maxBlocks > 0) {

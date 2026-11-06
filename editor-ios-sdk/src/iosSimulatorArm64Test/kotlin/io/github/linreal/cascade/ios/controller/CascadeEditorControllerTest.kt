@@ -53,6 +53,7 @@ class CascadeEditorControllerTest {
         assertTrue(configuration.blockIndentationEnabled)
         assertFalse(configuration.emptyDocumentPlaceholderEnabled)
         assertFalse(configuration.keyboardInsetsEnabled)
+        assertFalse(configuration.autoDetectPhoneNumbers)
         assertEquals(configuration, emptyController.configuration)
         assertEquals("Seed", jsonController.exportPlainText())
     }
@@ -68,6 +69,7 @@ class CascadeEditorControllerTest {
             blockIndentationEnabled = false,
             emptyDocumentPlaceholderEnabled = true,
             keyboardInsetsEnabled = true,
+            autoDetectPhoneNumbers = true,
         )
 
         val core = configuration.toCoreEditorConfig(reporter)
@@ -80,6 +82,7 @@ class CascadeEditorControllerTest {
         assertFalse(core.blockIndentationEnabled)
         assertTrue(core.emptyDocumentPlaceholderEnabled)
         assertTrue(core.keyboardInsetsEnabled)
+        assertTrue(core.autoDetectPhoneNumbers)
     }
 
     @Test

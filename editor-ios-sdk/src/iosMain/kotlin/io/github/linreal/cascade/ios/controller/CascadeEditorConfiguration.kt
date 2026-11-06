@@ -36,7 +36,37 @@ public data class CascadeEditorConfiguration(
     public val blockIndentationEnabled: Boolean = true,
     public val emptyDocumentPlaceholderEnabled: Boolean = false,
     public val keyboardInsetsEnabled: Boolean = false,
-)
+    public val autoDetectPhoneNumbers: Boolean = false,
+) {
+    /**
+     * Compatibility initializer for hosts using the configuration shape from
+     * before automatic phone-number detection was added.
+     */
+    public constructor(
+        readOnly: Boolean,
+        toolbarMode: CascadeToolbarMode,
+        slashCommandsEnabled: Boolean,
+        blockSelectionEnabled: Boolean,
+        blockDraggingEnabled: Boolean,
+        isDark: Boolean,
+        crashPolicy: CascadeCrashPolicy,
+        blockIndentationEnabled: Boolean,
+        emptyDocumentPlaceholderEnabled: Boolean,
+        keyboardInsetsEnabled: Boolean,
+    ) : this(
+        readOnly = readOnly,
+        toolbarMode = toolbarMode,
+        slashCommandsEnabled = slashCommandsEnabled,
+        blockSelectionEnabled = blockSelectionEnabled,
+        blockDraggingEnabled = blockDraggingEnabled,
+        isDark = isDark,
+        crashPolicy = crashPolicy,
+        blockIndentationEnabled = blockIndentationEnabled,
+        emptyDocumentPlaceholderEnabled = emptyDocumentPlaceholderEnabled,
+        keyboardInsetsEnabled = keyboardInsetsEnabled,
+        autoDetectPhoneNumbers = false,
+    )
+}
 
 internal fun CascadeCrashPolicy.toCoreCrashPolicy(): CrashPolicy = when (this) {
     CascadeCrashPolicy.containAndReport -> CrashPolicy.ContainAndReport
@@ -54,6 +84,7 @@ internal fun CascadeEditorConfiguration.toCoreEditorConfig(
     blockIndentationEnabled = blockIndentationEnabled,
     emptyDocumentPlaceholderEnabled = emptyDocumentPlaceholderEnabled,
     keyboardInsetsEnabled = keyboardInsetsEnabled,
+    autoDetectPhoneNumbers = autoDetectPhoneNumbers,
 )
 
 /**
