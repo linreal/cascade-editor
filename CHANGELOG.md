@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.10.1] - 2026-11-08
+
+### Added
+
+- **Tap-to-call phone links on Android and iOS.** Enable
+  `autoDetectPhoneNumbers` in the editor or preview configuration to make
+  detected numbers tappable in previews and unfocused built-in text blocks.
+  The setting is also available in the native iOS SDK and defaults to `false`.
+  Explicit links take precedence, and detected links stay out of saved
+  documents. See the [phone link setup guide](docs/PhoneNumberLinks.md).
+
+### Fixed
+
+- Manually entered `tel:` links keep their scheme when saved through the
+  editor’s link controls.
+
+### Changed
+
+- `CascadeEditorConfig` and `CascadeDocumentPreviewConfig` have new binary
+  signatures for their constructors and `copy` methods. Rebuild Kotlin
+  libraries compiled against 1.10.0 that use those APIs. In Swift, pass
+  `autoDetectPhoneNumbers` when calling `doCopy` on either native configuration.
+
 ## [1.10.0] - 2026-11-05
 
 ### Changed

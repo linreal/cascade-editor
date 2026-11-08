@@ -128,7 +128,7 @@ For a one-off formatted input, the smaller model may be the right call. When the
 Start with the smallest useful setup: one paragraph block, a limited toolbar, and slash commands disabled.
 
 ```groovy
-implementation("io.github.linreal:cascade-editor:1.10.0")
+implementation("io.github.linreal:cascade-editor:1.10.1")
 ```
 
 ```kotlin
@@ -689,11 +689,11 @@ Most of this logic lives in `editor/src/commonMain`, with platform-specific code
 
 ## Platform Requirements
 
-Release 1.10.0 is built with Kotlin **2.4.21** and Compose Multiplatform
+Release 1.10.1 is built with Kotlin **2.4.21** and Compose Multiplatform
 **1.12.2**, using Android Gradle Plugin **9.5.0** and Gradle **9.8.2**. The
 Kotlin and Compose badges show these build dependency versions.
 
-Consumer minimums for 1.10.0 depend on the target:
+Consumer minimums for 1.10.1 depend on the target:
 
 | Target/toolchain | Requirement |
 |---|---|
