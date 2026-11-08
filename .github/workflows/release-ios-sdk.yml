@@ -87,6 +87,36 @@ jobs:
             exit 1
           }
 
+      - name: Prepare the tagged Gradle wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ./gradlew --version; then
+            exit 0
+          fi
+
+          # If the distribution redirect fails, fetch the same ZIP via the
+          # GitHub release asset API and seed the wrapper's existing cache.
+          version="$(sed -nE 's|^distributionUrl=.*gradle-([0-9.]+)-bin\.zip$|\1|p' gradle/wrapper/gradle-wrapper.properties)"
+          [[ "$version" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]
+          archive="gradle-$version-bin.zip"
+          locks=("${GRADLE_USER_HOME:-$HOME/.gradle}/wrapper/dists/${archive%.zip}"/*/"$archive.lck")
+          if [[ "${#locks[@]}" -ne 1 || ! -f "${locks[0]}" ]]; then
+            echo "Could not identify the wrapper cache for $archive." >&2
+            exit 1
+          fi
+
+          download_dir="$(mktemp -d "$RUNNER_TEMP/gradle-wrapper.XXXXXX")"
+          trap 'rm -rf "$download_dir"' EXIT
+          gh release download "v$version" --repo gradle/gradle-distributions \
+            --pattern "$archive" --dir "$download_dir"
+          checksum="$(curl --fail --silent --show-error --location --retry 3 \
+            "https://downloads.gradle.org/distributions/$archive.sha256")"
+          [[ "$checksum" =~ ^[0-9a-f]{64}$ ]]
+          printf '%s  %s\n' "$checksum" "$download_dir/$archive" | shasum -a 256 -c -
+          mv "$download_dir/$archive" "${locks[0]%.lck}"
+          ./gradlew --version
+
       - name: Boot iOS simulator
         shell: bash
         run: |
