@@ -122,7 +122,7 @@ Run the same consumer-relevant gates used by CI:
 
 ```bash
 ./gradlew \
-  :editor:assembleDebug \
+  :editor:assemble \
   :editor:allTests \
   :editor:apiCheck \
   :sample:allTests \
@@ -205,9 +205,9 @@ state before retrying so an immutable version is not duplicated or abandoned.
 
 ## 8. Verify both publication channels
 
-1. Find the tag-triggered `Release iOS SDK` GitHub Actions run and monitor it to
-   a successful conclusion. Use `gh run watch <run-id> --exit-status` when
-   available.
+1. Monitor the `Release iOS SDK` run for `$TAG` to a successful conclusion. If
+   recovery required manual dispatch, follow the dispatched run. Use
+   `gh run watch <run-id> --exit-status` when available.
 2. Verify the GitHub Release for `$TAG` contains the XCFramework ZIP and its
    SHA-256 file.
 3. Verify `linreal/cascade-editor-ios` has the matching unprefixed `$VERSION`
@@ -216,7 +216,9 @@ state before retrying so an immutable version is not duplicated or abandoned.
    `io/github/linreal/cascade-editor/$VERSION/cascade-editor-$VERSION.pom` is
    public. Report “publication accepted; propagation pending” if the bounded
    wait expires—do not claim full completion early.
-5. Confirm the local worktree is clean and still on the release commit.
+5. Confirm the local worktree is clean and the local and remote `$TAG` resolve
+   to the release commit. If workflow-only recovery advanced `main`, verify
+   local `main` matches `origin/main`.
 
 Declare the operation complete only when the Maven publication command
 succeeded and the iOS workflow succeeded. Distinguish successful publication
@@ -228,14 +230,41 @@ from downstream repository propagation in the debrief.
   preparation commit if needed, and review again.
 - After pushing `$TAG`, follow `docs/iOsPublication.md`. Do not move the tag or
   overwrite GitHub Release assets.
-- If the iOS workflow fails before creating its GitHub Release, fix
-  workflow-only problems on `main` and dispatch the existing source tag as the
-  runbook permits.
 - If immutable iOS assets already exist, recover from the recorded workflow
   evidence and checksum; never rebuild or clobber them.
 - If a published binary is defective, prepare a new patch version.
 - If Maven publication partially fails, inspect the Central deployment before
   retrying. Never reuse the version for different bytes.
+
+### Recover the iOS workflow
+
+Before retrying, confirm that no GitHub Release exists for `$TAG`. Retry a
+transient download failure once. If the tagged workflow lacks the current
+bootstrap or needs a workflow-only fix, use the updated workflow on `main` and
+dispatch it with the existing source tag.
+
+```bash
+gh workflow run release-ios-sdk.yml --ref main -f "tag=$TAG"
+```
+
+The dispatch reads the workflow from `main` and checks out `$TAG` for the build.
+If the release already has assets, use the evidence-based recovery above.
+
+### iOS runner download failures
+
+Check the failed step in `.github/workflows/release-ios-sdk.yml`.
+
+- **Java.** `Select the runner's Java 17` uses the JDK preinstalled on the
+  `macos-26` arm64 runner at `JAVA_HOME_17_arm64`. It runs `java -version`
+  and sets `JAVA_HOME` and `PATH` for later steps. An older tag that fails at
+  `Set up Java` while downloading Temurin can use the workflow on `main`.
+- **Gradle.** `Prepare the tagged Gradle wrapper` first runs
+  `./gradlew --version`. If the download fails, the step reads the version from
+  the tagged `gradle/wrapper/gradle-wrapper.properties` and fetches that exact
+  distribution ZIP through GitHub's release asset API. It checks the ZIP against
+  Gradle's SHA-256 from `downloads.gradle.org`, seeds the wrapper cache, and
+  reruns `./gradlew --version`. If the fallback fails, diagnose the failed
+  substep and preserve the tagged Gradle version and checksum check in any fix.
 
 ## Debrief
 
